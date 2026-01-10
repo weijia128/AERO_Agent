@@ -1,0 +1,1245 @@
+{
+  "graph": {
+    "nodes": {
+      "stand_113": {
+        "id": "stand_113",
+        "type": "stand",
+        "lat": 34.441857039928436,
+        "lon": 108.75363528728485,
+        "stand_name": "113",
+        "sample_count": 2
+      },
+      "stand_521": {
+        "id": "stand_521",
+        "type": "stand",
+        "lat": 34.45755869150162,
+        "lon": 108.77030789852142,
+        "stand_name": "521",
+        "sample_count": 2
+      },
+      "stand_311": {
+        "id": "stand_311",
+        "type": "stand",
+        "lat": 34.4346284866333,
+        "lon": 108.75986605882645,
+        "stand_name": "311",
+        "sample_count": 2
+      },
+      "stand_507": {
+        "id": "stand_507",
+        "type": "stand",
+        "lat": 34.4550347328186,
+        "lon": 108.76288622617722,
+        "stand_name": "507",
+        "sample_count": 2
+      },
+      "stand_504": {
+        "id": "stand_504",
+        "type": "stand",
+        "lat": 34.45876568555832,
+        "lon": 108.77665936946869,
+        "stand_name": "504",
+        "sample_count": 2
+      },
+      "stand_316": {
+        "id": "stand_316",
+        "type": "stand",
+        "lat": 34.4363397359848,
+        "lon": 108.76553624868393,
+        "stand_name": "316",
+        "sample_count": 2
+      },
+      "stand_110": {
+        "id": "stand_110",
+        "type": "stand",
+        "lat": 34.44505423307419,
+        "lon": 108.75653743743896,
+        "stand_name": "110",
+        "sample_count": 2
+      },
+      "stand_342R": {
+        "id": "stand_342R",
+        "type": "stand",
+        "lat": 34.44154053926468,
+        "lon": 108.75221639871597,
+        "stand_name": "342R",
+        "sample_count": 2
+      },
+      "stand_344L": {
+        "id": "stand_344L",
+        "type": "stand",
+        "lat": 34.442015290260315,
+        "lon": 108.75100404024124,
+        "stand_name": "344L",
+        "sample_count": 2
+      },
+      "stand_522": {
+        "id": "stand_522",
+        "type": "stand",
+        "lat": 34.45357024669647,
+        "lon": 108.75919282436371,
+        "stand_name": "522",
+        "sample_count": 2
+      },
+      "stand_320": {
+        "id": "stand_320",
+        "type": "stand",
+        "lat": 34.44205015897751,
+        "lon": 108.75283062458038,
+        "stand_name": "320",
+        "sample_count": 2
+      },
+      "stand_402": {
+        "id": "stand_402",
+        "type": "stand",
+        "lat": 34.444756507873535,
+        "lon": 108.75577569007874,
+        "stand_name": "402",
+        "sample_count": 2
+      },
+      "stand_305": {
+        "id": "stand_305",
+        "type": "stand",
+        "lat": 34.43295478820801,
+        "lon": 108.76314908266068,
+        "stand_name": "305",
+        "sample_count": 2
+      },
+      "stand_107": {
+        "id": "stand_107",
+        "type": "stand",
+        "lat": 34.44713294506073,
+        "lon": 108.75217616558075,
+        "stand_name": "107",
+        "sample_count": 2
+      },
+      "stand_108": {
+        "id": "stand_108",
+        "type": "stand",
+        "lat": 34.44721609354019,
+        "lon": 108.75206083059311,
+        "stand_name": "108",
+        "sample_count": 2
+      },
+      "stand_543R": {
+        "id": "stand_543R",
+        "type": "stand",
+        "lat": 34.45184826850891,
+        "lon": 108.76105159521103,
+        "stand_name": "543R",
+        "sample_count": 2
+      },
+      "stand_322": {
+        "id": "stand_322",
+        "type": "stand",
+        "lat": 34.442168176174164,
+        "lon": 108.75233978033066,
+        "stand_name": "322",
+        "sample_count": 2
+      },
+      "stand_303": {
+        "id": "stand_303",
+        "type": "stand",
+        "lat": 34.442634880542755,
+        "lon": 108.7533187866211,
+        "stand_name": "303",
+        "sample_count": 2
+      },
+      "stand_428": {
+        "id": "stand_428",
+        "type": "stand",
+        "lat": 34.44456070661545,
+        "lon": 108.75647306442261,
+        "stand_name": "428",
+        "sample_count": 2
+      },
+      "stand_308": {
+        "id": "stand_308",
+        "type": "stand",
+        "lat": 34.44220036268234,
+        "lon": 108.75340193510056,
+        "stand_name": "308",
+        "sample_count": 2
+      },
+      "stand_502": {
+        "id": "stand_502",
+        "type": "stand",
+        "lat": 34.45502668619156,
+        "lon": 108.76296937465668,
+        "stand_name": "502",
+        "sample_count": 2
+      },
+      "stand_310": {
+        "id": "stand_310",
+        "type": "stand",
+        "lat": 34.44235324859619,
+        "lon": 108.75310957431793,
+        "stand_name": "310",
+        "sample_count": 2
+      },
+      "stand_545": {
+        "id": "stand_545",
+        "type": "stand",
+        "lat": 34.452145993709564,
+        "lon": 108.76103281974792,
+        "stand_name": "545",
+        "sample_count": 2
+      },
+      "stand_514": {
+        "id": "stand_514",
+        "type": "stand",
+        "lat": 34.444005489349365,
+        "lon": 108.76923769712448,
+        "stand_name": "514",
+        "sample_count": 2
+      },
+      "stand_111": {
+        "id": "stand_111",
+        "type": "stand",
+        "lat": 34.4455960392952,
+        "lon": 108.7497729063034,
+        "stand_name": "111",
+        "sample_count": 2
+      },
+      "stand_508": {
+        "id": "stand_508",
+        "type": "stand",
+        "lat": 34.452661871910095,
+        "lon": 108.75614404678345,
+        "stand_name": "508",
+        "sample_count": 3
+      },
+      "stand_515": {
+        "id": "stand_515",
+        "type": "stand",
+        "lat": 34.43765938282013,
+        "lon": 108.76182675361633,
+        "stand_name": "515",
+        "sample_count": 1
+      },
+      "stand_109": {
+        "id": "stand_109",
+        "type": "stand",
+        "lat": 34.447382390499115,
+        "lon": 108.75222980976105,
+        "stand_name": "109",
+        "sample_count": 2
+      },
+      "stand_534": {
+        "id": "stand_534",
+        "type": "stand",
+        "lat": 34.4521701335907,
+        "lon": 108.75764787197113,
+        "stand_name": "534",
+        "sample_count": 2
+      },
+      "stand_519": {
+        "id": "stand_519",
+        "type": "stand",
+        "lat": 34.449729323387146,
+        "lon": 108.75288963317871,
+        "stand_name": "519",
+        "sample_count": 2
+      },
+      "stand_540": {
+        "id": "stand_540",
+        "type": "stand",
+        "lat": 34.45202797651291,
+        "lon": 108.75036835670471,
+        "stand_name": "540",
+        "sample_count": 2
+      },
+      "runway_05R": {
+        "id": "runway_05R",
+        "type": "runway",
+        "lat": 34.434062987565994,
+        "lon": 108.76070201396942,
+        "runway_name": "05R",
+        "sample_count": 84
+      },
+      "runway_05L": {
+        "id": "runway_05L",
+        "type": "runway",
+        "lat": 34.44707541630186,
+        "lon": 108.75698000192642,
+        "runway_name": "05L",
+        "sample_count": 58
+      },
+      "intersection_0": {
+        "id": "intersection_0",
+        "type": "intersection",
+        "lat": 34.45172131061554,
+        "lon": 108.7738162279129,
+        "point_count": 6
+      },
+      "intersection_1": {
+        "id": "intersection_1",
+        "type": "intersection",
+        "lat": 34.428097690854756,
+        "lon": 108.75597723892757,
+        "point_count": 7
+      },
+      "intersection_2": {
+        "id": "intersection_2",
+        "type": "intersection",
+        "lat": 34.423490863735395,
+        "lon": 108.75131967714277,
+        "point_count": 59
+      },
+      "intersection_3": {
+        "id": "intersection_3",
+        "type": "intersection",
+        "lat": 34.422104199017795,
+        "lon": 108.75015722853797,
+        "point_count": 56
+      },
+      "intersection_4": {
+        "id": "intersection_4",
+        "type": "intersection",
+        "lat": 34.42140380884039,
+        "lon": 108.75147028216,
+        "point_count": 58
+      },
+      "intersection_5": {
+        "id": "intersection_5",
+        "type": "intersection",
+        "lat": 34.42728102207184,
+        "lon": 108.75490307807922,
+        "point_count": 6
+      },
+      "intersection_6": {
+        "id": "intersection_6",
+        "type": "intersection",
+        "lat": 34.425620287656784,
+        "lon": 108.75422738492489,
+        "point_count": 16
+      },
+      "intersection_7": {
+        "id": "intersection_7",
+        "type": "intersection",
+        "lat": 34.43392000028065,
+        "lon": 108.76020325081689,
+        "point_count": 28
+      },
+      "intersection_8": {
+        "id": "intersection_8",
+        "type": "intersection",
+        "lat": 34.443086832761765,
+        "lon": 108.75442117452621,
+        "point_count": 4
+      },
+      "intersection_9": {
+        "id": "intersection_9",
+        "type": "intersection",
+        "lat": 34.442519545555115,
+        "lon": 108.75529110431671,
+        "point_count": 3
+      },
+      "intersection_10": {
+        "id": "intersection_10",
+        "type": "intersection",
+        "lat": 34.44367378950119,
+        "lon": 108.77754092216492,
+        "point_count": 6
+      },
+      "intersection_11": {
+        "id": "intersection_11",
+        "type": "intersection",
+        "lat": 34.43364679813385,
+        "lon": 108.76535654067993,
+        "point_count": 4
+      },
+      "intersection_12": {
+        "id": "intersection_12",
+        "type": "intersection",
+        "lat": 34.42480742931366,
+        "lon": 108.75310897827148,
+        "point_count": 9
+      },
+      "intersection_13": {
+        "id": "intersection_13",
+        "type": "intersection",
+        "lat": 34.45983529090881,
+        "lon": 108.77262234687805,
+        "point_count": 9
+      },
+      "intersection_14": {
+        "id": "intersection_14",
+        "type": "intersection",
+        "lat": 34.43861871957779,
+        "lon": 108.77047955989838,
+        "point_count": 6
+      },
+      "intersection_15": {
+        "id": "intersection_15",
+        "type": "intersection",
+        "lat": 34.43683433532715,
+        "lon": 108.76228702068329,
+        "point_count": 10
+      },
+      "intersection_16": {
+        "id": "intersection_16",
+        "type": "intersection",
+        "lat": 34.44014489650726,
+        "lon": 108.77270221710205,
+        "point_count": 3
+      },
+      "intersection_17": {
+        "id": "intersection_17",
+        "type": "intersection",
+        "lat": 34.43276762962341,
+        "lon": 108.7572392821312,
+        "point_count": 18
+      },
+      "intersection_18": {
+        "id": "intersection_18",
+        "type": "intersection",
+        "lat": 34.4529265165329,
+        "lon": 108.75393502414227,
+        "point_count": 8
+      },
+      "intersection_19": {
+        "id": "intersection_19",
+        "type": "intersection",
+        "lat": 34.432740211486816,
+        "lon": 108.75357270240784,
+        "point_count": 3
+      },
+      "intersection_20": {
+        "id": "intersection_20",
+        "type": "intersection",
+        "lat": 34.45576639279075,
+        "lon": 108.77262649328813,
+        "point_count": 23
+      },
+      "intersection_21": {
+        "id": "intersection_21",
+        "type": "intersection",
+        "lat": 34.4319623708725,
+        "lon": 108.75515162944794,
+        "point_count": 3
+      },
+      "intersection_22": {
+        "id": "intersection_22",
+        "type": "intersection",
+        "lat": 34.431166648864746,
+        "lon": 108.76027464866638,
+        "point_count": 3
+      },
+      "intersection_23": {
+        "id": "intersection_23",
+        "type": "intersection",
+        "lat": 34.44233822822571,
+        "lon": 108.75458264350891,
+        "point_count": 5
+      },
+      "intersection_24": {
+        "id": "intersection_24",
+        "type": "intersection",
+        "lat": 34.429060220718384,
+        "lon": 108.75106036663055,
+        "point_count": 4
+      },
+      "intersection_25": {
+        "id": "intersection_25",
+        "type": "intersection",
+        "lat": 34.431779980659485,
+        "lon": 108.76262819766998,
+        "point_count": 5
+      },
+      "intersection_26": {
+        "id": "intersection_26",
+        "type": "intersection",
+        "lat": 34.43518906831741,
+        "lon": 108.76222640275955,
+        "point_count": 10
+      },
+      "intersection_27": {
+        "id": "intersection_27",
+        "type": "intersection",
+        "lat": 34.43584442138672,
+        "lon": 108.76324653625488,
+        "point_count": 3
+      },
+      "intersection_28": {
+        "id": "intersection_28",
+        "type": "intersection",
+        "lat": 34.42607581615448,
+        "lon": 108.74961644411087,
+        "point_count": 6
+      },
+      "intersection_29": {
+        "id": "intersection_29",
+        "type": "intersection",
+        "lat": 34.43285286426544,
+        "lon": 108.76424431800842,
+        "point_count": 3
+      },
+      "intersection_30": {
+        "id": "intersection_30",
+        "type": "intersection",
+        "lat": 34.44576233625412,
+        "lon": 108.77624899148941,
+        "point_count": 4
+      },
+      "intersection_31": {
+        "id": "intersection_31",
+        "type": "intersection",
+        "lat": 34.428930499336936,
+        "lon": 108.75320808453993,
+        "point_count": 11
+      },
+      "intersection_32": {
+        "id": "intersection_32",
+        "type": "intersection",
+        "lat": 34.44888353347778,
+        "lon": 108.77285242080688,
+        "point_count": 3
+      },
+      "intersection_33": {
+        "id": "intersection_33",
+        "type": "intersection",
+        "lat": 34.43267476558685,
+        "lon": 108.75868213176727,
+        "point_count": 5
+      },
+      "intersection_34": {
+        "id": "intersection_34",
+        "type": "intersection",
+        "lat": 34.43190121650696,
+        "lon": 108.75824332237244,
+        "point_count": 5
+      },
+      "intersection_35": {
+        "id": "intersection_35",
+        "type": "intersection",
+        "lat": 34.431685720171245,
+        "lon": 108.75935988766807,
+        "point_count": 7
+      },
+      "intersection_36": {
+        "id": "intersection_36",
+        "type": "intersection",
+        "lat": 34.441521763801575,
+        "lon": 108.75223517417908,
+        "point_count": 4
+      },
+      "intersection_37": {
+        "id": "intersection_37",
+        "type": "intersection",
+        "lat": 34.45798301696777,
+        "lon": 108.77016466856003,
+        "point_count": 10
+      },
+      "intersection_38": {
+        "id": "intersection_38",
+        "type": "intersection",
+        "lat": 34.45875093340874,
+        "lon": 108.77748414874077,
+        "point_count": 4
+      },
+      "intersection_39": {
+        "id": "intersection_39",
+        "type": "intersection",
+        "lat": 34.45801627635956,
+        "lon": 108.77524101734161,
+        "point_count": 5
+      },
+      "intersection_40": {
+        "id": "intersection_40",
+        "type": "intersection",
+        "lat": 34.42634582519531,
+        "lon": 108.7552535533905,
+        "point_count": 3
+      },
+      "intersection_41": {
+        "id": "intersection_41",
+        "type": "intersection",
+        "lat": 34.43101018667221,
+        "lon": 108.7565141916275,
+        "point_count": 6
+      },
+      "intersection_42": {
+        "id": "intersection_42",
+        "type": "intersection",
+        "lat": 34.42638158798218,
+        "lon": 108.75395894050598,
+        "point_count": 3
+      },
+      "intersection_43": {
+        "id": "intersection_43",
+        "type": "intersection",
+        "lat": 34.44982945919037,
+        "lon": 108.76965701580048,
+        "point_count": 3
+      },
+      "intersection_44": {
+        "id": "intersection_44",
+        "type": "intersection",
+        "lat": 34.452907741069794,
+        "lon": 108.77404287457466,
+        "point_count": 4
+      },
+      "intersection_45": {
+        "id": "intersection_45",
+        "type": "intersection",
+        "lat": 34.46017384529114,
+        "lon": 108.77332672476768,
+        "point_count": 4
+      },
+      "intersection_46": {
+        "id": "intersection_46",
+        "type": "intersection",
+        "lat": 34.443149864673615,
+        "lon": 108.75563219189644,
+        "point_count": 4
+      }
+    },
+    "edges": [
+      {
+        "from": "runway_05R",
+        "to": "runway_05R",
+        "distance": 0.0,
+        "usage_count": 40
+      },
+      {
+        "from": "stand_113",
+        "to": "stand_113",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_521",
+        "to": "stand_521",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_311",
+        "to": "stand_311",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_507",
+        "to": "stand_507",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_504",
+        "to": "stand_504",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_316",
+        "to": "stand_316",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_110",
+        "to": "stand_110",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_342R",
+        "to": "stand_342R",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_344L",
+        "to": "stand_344L",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_522",
+        "to": "stand_522",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_320",
+        "to": "stand_320",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_402",
+        "to": "stand_402",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_305",
+        "to": "stand_305",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_107",
+        "to": "stand_107",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_108",
+        "to": "stand_108",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_543R",
+        "to": "stand_543R",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_322",
+        "to": "stand_322",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_303",
+        "to": "stand_303",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_428",
+        "to": "stand_428",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_308",
+        "to": "stand_308",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_502",
+        "to": "stand_502",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_310",
+        "to": "stand_310",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_545",
+        "to": "stand_545",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_514",
+        "to": "stand_514",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_111",
+        "to": "stand_111",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_508",
+        "to": "stand_515",
+        "distance": 1747.6946293689525,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_508",
+        "to": "stand_508",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_109",
+        "to": "stand_109",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_534",
+        "to": "stand_534",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_519",
+        "to": "stand_519",
+        "distance": 0.0,
+        "usage_count": 1
+      },
+      {
+        "from": "stand_540",
+        "to": "stand_540",
+        "distance": 0.0,
+        "usage_count": 1
+      }
+    ]
+  },
+  "compatible_format": {
+    "stands": {
+      "113": {
+        "id": "113",
+        "name": "113号机位",
+        "type": "contact",
+        "coordinates": [
+          108.75363528728485,
+          34.441857039928436
+        ],
+        "adjacent": [
+          "stand_113"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "521": {
+        "id": "521",
+        "name": "521号机位",
+        "type": "contact",
+        "coordinates": [
+          108.77030789852142,
+          34.45755869150162
+        ],
+        "adjacent": [
+          "stand_521"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "311": {
+        "id": "311",
+        "name": "311号机位",
+        "type": "contact",
+        "coordinates": [
+          108.75986605882645,
+          34.4346284866333
+        ],
+        "adjacent": [
+          "stand_311"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "507": {
+        "id": "507",
+        "name": "507号机位",
+        "type": "contact",
+        "coordinates": [
+          108.76288622617722,
+          34.4550347328186
+        ],
+        "adjacent": [
+          "stand_507"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "504": {
+        "id": "504",
+        "name": "504号机位",
+        "type": "contact",
+        "coordinates": [
+          108.77665936946869,
+          34.45876568555832
+        ],
+        "adjacent": [
+          "stand_504"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "316": {
+        "id": "316",
+        "name": "316号机位",
+        "type": "contact",
+        "coordinates": [
+          108.76553624868393,
+          34.4363397359848
+        ],
+        "adjacent": [
+          "stand_316"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "110": {
+        "id": "110",
+        "name": "110号机位",
+        "type": "contact",
+        "coordinates": [
+          108.75653743743896,
+          34.44505423307419
+        ],
+        "adjacent": [
+          "stand_110"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "342R": {
+        "id": "342R",
+        "name": "342R号机位",
+        "type": "contact",
+        "coordinates": [
+          108.75221639871597,
+          34.44154053926468
+        ],
+        "adjacent": [
+          "stand_342R"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "344L": {
+        "id": "344L",
+        "name": "344L号机位",
+        "type": "contact",
+        "coordinates": [
+          108.75100404024124,
+          34.442015290260315
+        ],
+        "adjacent": [
+          "stand_344L"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "522": {
+        "id": "522",
+        "name": "522号机位",
+        "type": "contact",
+        "coordinates": [
+          108.75919282436371,
+          34.45357024669647
+        ],
+        "adjacent": [
+          "stand_522"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "320": {
+        "id": "320",
+        "name": "320号机位",
+        "type": "contact",
+        "coordinates": [
+          108.75283062458038,
+          34.44205015897751
+        ],
+        "adjacent": [
+          "stand_320"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "402": {
+        "id": "402",
+        "name": "402号机位",
+        "type": "contact",
+        "coordinates": [
+          108.75577569007874,
+          34.444756507873535
+        ],
+        "adjacent": [
+          "stand_402"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "305": {
+        "id": "305",
+        "name": "305号机位",
+        "type": "contact",
+        "coordinates": [
+          108.76314908266068,
+          34.43295478820801
+        ],
+        "adjacent": [
+          "stand_305"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "107": {
+        "id": "107",
+        "name": "107号机位",
+        "type": "contact",
+        "coordinates": [
+          108.75217616558075,
+          34.44713294506073
+        ],
+        "adjacent": [
+          "stand_107"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "108": {
+        "id": "108",
+        "name": "108号机位",
+        "type": "contact",
+        "coordinates": [
+          108.75206083059311,
+          34.44721609354019
+        ],
+        "adjacent": [
+          "stand_108"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "543R": {
+        "id": "543R",
+        "name": "543R号机位",
+        "type": "contact",
+        "coordinates": [
+          108.76105159521103,
+          34.45184826850891
+        ],
+        "adjacent": [
+          "stand_543R"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "322": {
+        "id": "322",
+        "name": "322号机位",
+        "type": "contact",
+        "coordinates": [
+          108.75233978033066,
+          34.442168176174164
+        ],
+        "adjacent": [
+          "stand_322"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "303": {
+        "id": "303",
+        "name": "303号机位",
+        "type": "contact",
+        "coordinates": [
+          108.7533187866211,
+          34.442634880542755
+        ],
+        "adjacent": [
+          "stand_303"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "428": {
+        "id": "428",
+        "name": "428号机位",
+        "type": "contact",
+        "coordinates": [
+          108.75647306442261,
+          34.44456070661545
+        ],
+        "adjacent": [
+          "stand_428"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "308": {
+        "id": "308",
+        "name": "308号机位",
+        "type": "contact",
+        "coordinates": [
+          108.75340193510056,
+          34.44220036268234
+        ],
+        "adjacent": [
+          "stand_308"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "502": {
+        "id": "502",
+        "name": "502号机位",
+        "type": "contact",
+        "coordinates": [
+          108.76296937465668,
+          34.45502668619156
+        ],
+        "adjacent": [
+          "stand_502"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "310": {
+        "id": "310",
+        "name": "310号机位",
+        "type": "contact",
+        "coordinates": [
+          108.75310957431793,
+          34.44235324859619
+        ],
+        "adjacent": [
+          "stand_310"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "545": {
+        "id": "545",
+        "name": "545号机位",
+        "type": "contact",
+        "coordinates": [
+          108.76103281974792,
+          34.452145993709564
+        ],
+        "adjacent": [
+          "stand_545"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "514": {
+        "id": "514",
+        "name": "514号机位",
+        "type": "contact",
+        "coordinates": [
+          108.76923769712448,
+          34.444005489349365
+        ],
+        "adjacent": [
+          "stand_514"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "111": {
+        "id": "111",
+        "name": "111号机位",
+        "type": "contact",
+        "coordinates": [
+          108.7497729063034,
+          34.4455960392952
+        ],
+        "adjacent": [
+          "stand_111"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "508": {
+        "id": "508",
+        "name": "508号机位",
+        "type": "contact",
+        "coordinates": [
+          108.75614404678345,
+          34.452661871910095
+        ],
+        "adjacent": [
+          "stand_515",
+          "stand_508"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "515": {
+        "id": "515",
+        "name": "515号机位",
+        "type": "contact",
+        "coordinates": [
+          108.76182675361633,
+          34.43765938282013
+        ],
+        "adjacent": [
+          "stand_508"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "109": {
+        "id": "109",
+        "name": "109号机位",
+        "type": "contact",
+        "coordinates": [
+          108.75222980976105,
+          34.447382390499115
+        ],
+        "adjacent": [
+          "stand_109"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "534": {
+        "id": "534",
+        "name": "534号机位",
+        "type": "contact",
+        "coordinates": [
+          108.75764787197113,
+          34.4521701335907
+        ],
+        "adjacent": [
+          "stand_534"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "519": {
+        "id": "519",
+        "name": "519号机位",
+        "type": "contact",
+        "coordinates": [
+          108.75288963317871,
+          34.449729323387146
+        ],
+        "adjacent": [
+          "stand_519"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      },
+      "540": {
+        "id": "540",
+        "name": "540号机位",
+        "type": "contact",
+        "coordinates": [
+          108.75036835670471,
+          34.45202797651291
+        ],
+        "adjacent": [
+          "stand_540"
+        ],
+        "adjacent_taxiways": [],
+        "nearest_runway": null
+      }
+    },
+    "taxiways": {},
+    "runways": {
+      "05R": {
+        "id": "05R",
+        "name": "05R跑道",
+        "status": "ACTIVE"
+      },
+      "05L": {
+        "id": "05L",
+        "name": "05L跑道",
+        "status": "ACTIVE"
+      }
+    }
+  }
+}

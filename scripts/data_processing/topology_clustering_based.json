@@ -1,0 +1,1293 @@
+{
+  "nodes": {
+    "corrected_stand_0": {
+      "id": "corrected_stand_0",
+      "type": "stand",
+      "lat": 34.42208816059704,
+      "lon": 108.7501775129088,
+      "observations": 29,
+      "avg_dwell_time": 82.431
+    },
+    "corrected_stand_1": {
+      "id": "corrected_stand_1",
+      "type": "stand",
+      "lat": 34.42148619890213,
+      "lon": 108.75161236524582,
+      "observations": 2,
+      "avg_dwell_time": 36.027
+    },
+    "corrected_stand_2": {
+      "id": "corrected_stand_2",
+      "type": "stand",
+      "lat": 34.428875505924225,
+      "lon": 108.75127977132797,
+      "observations": 3,
+      "avg_dwell_time": 203.005
+    },
+    "corrected_stand_3": {
+      "id": "corrected_stand_3",
+      "type": "stand",
+      "lat": 34.422925719848045,
+      "lon": 108.7505566065128,
+      "observations": 13,
+      "avg_dwell_time": 98.45123076923076
+    },
+    "corrected_stand_4": {
+      "id": "corrected_stand_4",
+      "type": "stand",
+      "lat": 34.42376730271748,
+      "lon": 108.75165436097554,
+      "observations": 7,
+      "avg_dwell_time": 144.143
+    },
+    "corrected_stand_5": {
+      "id": "corrected_stand_5",
+      "type": "stand",
+      "lat": 34.44506243297032,
+      "lon": 108.77696061985833,
+      "observations": 7,
+      "avg_dwell_time": 42.02871428571429
+    },
+    "corrected_stand_6": {
+      "id": "corrected_stand_6",
+      "type": "stand",
+      "lat": 34.43863928318024,
+      "lon": 108.77049207687378,
+      "observations": 3,
+      "avg_dwell_time": 125.00266666666666
+    },
+    "corrected_stand_8": {
+      "id": "corrected_stand_8",
+      "type": "stand",
+      "lat": 34.45099586248398,
+      "lon": 108.76410180330276,
+      "observations": 1,
+      "avg_dwell_time": 100.992
+    },
+    "corrected_stand_9": {
+      "id": "corrected_stand_9",
+      "type": "stand",
+      "lat": 34.43733161687851,
+      "lon": 108.76879405975342,
+      "observations": 1,
+      "avg_dwell_time": 33.016
+    },
+    "corrected_stand_11": {
+      "id": "corrected_stand_11",
+      "type": "stand",
+      "lat": 34.44320172071457,
+      "lon": 108.77691543102264,
+      "observations": 6,
+      "avg_dwell_time": 76.96233333333333
+    },
+    "corrected_stand_12": {
+      "id": "corrected_stand_12",
+      "type": "stand",
+      "lat": 34.428284257650375,
+      "lon": 108.75624105334282,
+      "observations": 2,
+      "avg_dwell_time": 31.008
+    },
+    "corrected_stand_13": {
+      "id": "corrected_stand_13",
+      "type": "stand",
+      "lat": 34.42706626653671,
+      "lon": 108.75456976890564,
+      "observations": 1,
+      "avg_dwell_time": 159.008
+    },
+    "corrected_stand_14": {
+      "id": "corrected_stand_14",
+      "type": "stand",
+      "lat": 34.424494564533234,
+      "lon": 108.752690076828,
+      "observations": 1,
+      "avg_dwell_time": 93.985
+    },
+    "corrected_stand_15": {
+      "id": "corrected_stand_15",
+      "type": "stand",
+      "lat": 34.43152570724487,
+      "lon": 108.75460302829742,
+      "observations": 2,
+      "avg_dwell_time": 315.02
+    },
+    "corrected_stand_16": {
+      "id": "corrected_stand_16",
+      "type": "stand",
+      "lat": 34.44302675127983,
+      "lon": 108.75423288345337,
+      "observations": 6,
+      "avg_dwell_time": 335.194
+    },
+    "corrected_stand_18": {
+      "id": "corrected_stand_18",
+      "type": "stand",
+      "lat": 34.43810744583607,
+      "lon": 108.76989483833313,
+      "observations": 4,
+      "avg_dwell_time": 121.01175
+    },
+    "corrected_stand_19": {
+      "id": "corrected_stand_19",
+      "type": "stand",
+      "lat": 34.426882803440094,
+      "lon": 108.75599670410156,
+      "observations": 1,
+      "avg_dwell_time": 154.031
+    },
+    "corrected_stand_20": {
+      "id": "corrected_stand_20",
+      "type": "stand",
+      "lat": 34.43644666671753,
+      "lon": 108.76264536380768,
+      "observations": 3,
+      "avg_dwell_time": 210.015
+    },
+    "corrected_stand_21": {
+      "id": "corrected_stand_21",
+      "type": "stand",
+      "lat": 34.427000284194946,
+      "lon": 108.75045311450958,
+      "observations": 1,
+      "avg_dwell_time": 31.024
+    },
+    "corrected_stand_23": {
+      "id": "corrected_stand_23",
+      "type": "stand",
+      "lat": 34.455750703811646,
+      "lon": 108.77226421236992,
+      "observations": 6,
+      "avg_dwell_time": 275.18333333333334
+    },
+    "corrected_stand_24": {
+      "id": "corrected_stand_24",
+      "type": "stand",
+      "lat": 34.42723846435547,
+      "lon": 108.7564845085144,
+      "observations": 3,
+      "avg_dwell_time": 125.00833333333333
+    },
+    "corrected_stand_26": {
+      "id": "corrected_stand_26",
+      "type": "stand",
+      "lat": 34.42610764503479,
+      "lon": 108.75491480827331,
+      "observations": 5,
+      "avg_dwell_time": 113.01700000000001
+    },
+    "corrected_stand_27": {
+      "id": "corrected_stand_27",
+      "type": "stand",
+      "lat": 34.441581442952156,
+      "lon": 108.75227862596512,
+      "observations": 4,
+      "avg_dwell_time": 226.5155
+    },
+    "corrected_stand_28": {
+      "id": "corrected_stand_28",
+      "type": "stand",
+      "lat": 34.45765793323517,
+      "lon": 108.77580910921097,
+      "observations": 1,
+      "avg_dwell_time": 217.969
+    },
+    "corrected_stand_29": {
+      "id": "corrected_stand_29",
+      "type": "stand",
+      "lat": 34.45798999071121,
+      "lon": 108.77544406056404,
+      "observations": 2,
+      "avg_dwell_time": 173.97199999999998
+    },
+    "corrected_stand_30": {
+      "id": "corrected_stand_30",
+      "type": "stand",
+      "lat": 34.43379324674606,
+      "lon": 108.76072597503662,
+      "observations": 1,
+      "avg_dwell_time": 55.976
+    },
+    "corrected_stand_31": {
+      "id": "corrected_stand_31",
+      "type": "stand",
+      "lat": 34.4263436794281,
+      "lon": 108.75399135053158,
+      "observations": 4,
+      "avg_dwell_time": 200.016
+    },
+    "corrected_stand_32": {
+      "id": "corrected_stand_32",
+      "type": "stand",
+      "lat": 34.43265974521637,
+      "lon": 108.75729435682297,
+      "observations": 2,
+      "avg_dwell_time": 284.082
+    },
+    "corrected_stand_34": {
+      "id": "corrected_stand_34",
+      "type": "stand",
+      "lat": 34.434968054294586,
+      "lon": 108.76193922758102,
+      "observations": 3,
+      "avg_dwell_time": 36.01766666666666
+    },
+    "runway_0": {
+      "id": "runway_0",
+      "type": "runway",
+      "lat": 34.424101065312115,
+      "lon": 108.75530159047672,
+      "observations": 280,
+      "avg_speed": 38.93526148138263,
+      "avg_heading": 50.35615613556738
+    },
+    "runway_1": {
+      "id": "runway_1",
+      "type": "runway",
+      "lat": 34.451347181461,
+      "lon": 108.74829301098049,
+      "observations": 149,
+      "avg_speed": 38.23529916403847,
+      "avg_heading": 50.085348857978985
+    },
+    "runway_2": {
+      "id": "runway_2",
+      "type": "runway",
+      "lat": 34.43091809749603,
+      "lon": 108.76462697982788,
+      "observations": 6,
+      "avg_speed": 35.376620209636215,
+      "avg_heading": 50.11725514167917
+    },
+    "taxiway_0": {
+      "id": "taxiway_0",
+      "type": "taxiway",
+      "lat": 34.43906035870003,
+      "lon": 108.76151852271856,
+      "point_count": 36025,
+      "avg_speed": 5.549800287461037
+    },
+    "taxiway_1": {
+      "id": "taxiway_1",
+      "type": "taxiway",
+      "lat": 34.45908334163519,
+      "lon": 108.7766361786769,
+      "point_count": 130,
+      "avg_speed": 2.5179762296838457
+    },
+    "taxiway_2": {
+      "id": "taxiway_2",
+      "type": "taxiway",
+      "lat": 34.44027626979787,
+      "lon": 108.77222058087884,
+      "point_count": 1204,
+      "avg_speed": 2.0710432659350153
+    },
+    "taxiway_3": {
+      "id": "taxiway_3",
+      "type": "taxiway",
+      "lat": 34.43016608289424,
+      "lon": 108.75296052270288,
+      "point_count": 149,
+      "avg_speed": 2.1036328376441364
+    },
+    "taxiway_4": {
+      "id": "taxiway_4",
+      "type": "taxiway",
+      "lat": 34.4582879404689,
+      "lon": 108.77650891625603,
+      "point_count": 43,
+      "avg_speed": 2.298562157017388
+    },
+    "taxiway_5": {
+      "id": "taxiway_5",
+      "type": "taxiway",
+      "lat": 34.44304602486746,
+      "lon": 108.7546683209283,
+      "point_count": 14,
+      "avg_speed": 4.932419172221366
+    },
+    "taxiway_6": {
+      "id": "taxiway_6",
+      "type": "taxiway",
+      "lat": 34.44262146949768,
+      "lon": 108.75520308171549,
+      "point_count": 31,
+      "avg_speed": 3.1845646363157645
+    },
+    "taxiway_7": {
+      "id": "taxiway_7",
+      "type": "taxiway",
+      "lat": 34.43345391750336,
+      "lon": 108.75973320007324,
+      "point_count": 45,
+      "avg_speed": 3.7219313495001884
+    },
+    "taxiway_8": {
+      "id": "taxiway_8",
+      "type": "taxiway",
+      "lat": 34.44137692451477,
+      "lon": 108.7510803937912,
+      "point_count": 15,
+      "avg_speed": 5.157864520156155
+    },
+    "taxiway_9": {
+      "id": "taxiway_9",
+      "type": "taxiway",
+      "lat": 34.441877914511636,
+      "lon": 108.75384683194368,
+      "point_count": 23,
+      "avg_speed": 3.993151143527025
+    },
+    "taxiway_10": {
+      "id": "taxiway_10",
+      "type": "taxiway",
+      "lat": 34.43886123597622,
+      "lon": 108.76541174948215,
+      "point_count": 24,
+      "avg_speed": 2.7215878260645963
+    },
+    "taxiway_12": {
+      "id": "taxiway_12",
+      "type": "taxiway",
+      "lat": 34.46059662848711,
+      "lon": 108.7727352976799,
+      "point_count": 16,
+      "avg_speed": 4.0659088579743035
+    },
+    "taxiway_13": {
+      "id": "taxiway_13",
+      "type": "taxiway",
+      "lat": 34.43812591955066,
+      "lon": 108.76548352651298,
+      "point_count": 64,
+      "avg_speed": 2.9235284377597877
+    },
+    "taxiway_14": {
+      "id": "taxiway_14",
+      "type": "taxiway",
+      "lat": 34.44197237491608,
+      "lon": 108.75182819366455,
+      "point_count": 15,
+      "avg_speed": 4.947025808811131
+    },
+    "taxiway_15": {
+      "id": "taxiway_15",
+      "type": "taxiway",
+      "lat": 34.443259835243225,
+      "lon": 108.75387285436902,
+      "point_count": 7,
+      "avg_speed": 4.640421018036607
+    },
+    "taxiway_16": {
+      "id": "taxiway_16",
+      "type": "taxiway",
+      "lat": 34.44354189069647,
+      "lon": 108.75423384340186,
+      "point_count": 19,
+      "avg_speed": 3.645703036941008
+    },
+    "taxiway_17": {
+      "id": "taxiway_17",
+      "type": "taxiway",
+      "lat": 34.44698529584067,
+      "lon": 108.77954159464154,
+      "point_count": 21,
+      "avg_speed": 0.947863087521587
+    },
+    "taxiway_19": {
+      "id": "taxiway_19",
+      "type": "taxiway",
+      "lat": 34.43691501617432,
+      "lon": 108.77060894966125,
+      "point_count": 50,
+      "avg_speed": 4.4895490503242765
+    },
+    "taxiway_20": {
+      "id": "taxiway_20",
+      "type": "taxiway",
+      "lat": 34.45716832692806,
+      "lon": 108.77200594315163,
+      "point_count": 26,
+      "avg_speed": 2.4395922566094566
+    },
+    "taxiway_21": {
+      "id": "taxiway_21",
+      "type": "taxiway",
+      "lat": 34.42605098852744,
+      "lon": 108.74966252308626,
+      "point_count": 26,
+      "avg_speed": 2.5739970684942786
+    },
+    "taxiway_22": {
+      "id": "taxiway_22",
+      "type": "taxiway",
+      "lat": 34.440157532691956,
+      "lon": 108.75139141082764,
+      "point_count": 45,
+      "avg_speed": 5.071210747134178
+    },
+    "taxiway_23": {
+      "id": "taxiway_23",
+      "type": "taxiway",
+      "lat": 34.43528562784195,
+      "lon": 108.76249493921505,
+      "point_count": 34,
+      "avg_speed": 2.160293042401235
+    },
+    "taxiway_24": {
+      "id": "taxiway_24",
+      "type": "taxiway",
+      "lat": 34.451395869255066,
+      "lon": 108.77475678920746,
+      "point_count": 27,
+      "avg_speed": 2.5766378997832287
+    },
+    "taxiway_25": {
+      "id": "taxiway_25",
+      "type": "taxiway",
+      "lat": 34.446570312275604,
+      "lon": 108.75842476592345,
+      "point_count": 17,
+      "avg_speed": 3.4131850842714333
+    },
+    "taxiway_26": {
+      "id": "taxiway_26",
+      "type": "taxiway",
+      "lat": 34.430967941880226,
+      "lon": 108.75831238925457,
+      "point_count": 8,
+      "avg_speed": 3.7785647790146633
+    },
+    "taxiway_27": {
+      "id": "taxiway_27",
+      "type": "taxiway",
+      "lat": 34.430047273635864,
+      "lon": 108.75694265732399,
+      "point_count": 26,
+      "avg_speed": 3.814971650395901
+    },
+    "taxiway_28": {
+      "id": "taxiway_28",
+      "type": "taxiway",
+      "lat": 34.44352647837471,
+      "lon": 108.75633169622982,
+      "point_count": 17,
+      "avg_speed": 4.524708437455566
+    },
+    "taxiway_29": {
+      "id": "taxiway_29",
+      "type": "taxiway",
+      "lat": 34.433847806032965,
+      "lon": 108.76139570684994,
+      "point_count": 17,
+      "avg_speed": 4.208647967568352
+    },
+    "taxiway_30": {
+      "id": "taxiway_30",
+      "type": "taxiway",
+      "lat": 34.44422740685312,
+      "lon": 108.75711171250595,
+      "point_count": 19,
+      "avg_speed": 3.9029416000229427
+    },
+    "taxiway_31": {
+      "id": "taxiway_31",
+      "type": "taxiway",
+      "lat": 34.4326325399535,
+      "lon": 108.75360501664025,
+      "point_count": 14,
+      "avg_speed": 4.178391004756633
+    },
+    "taxiway_32": {
+      "id": "taxiway_32",
+      "type": "taxiway",
+      "lat": 34.43301396985208,
+      "lon": 108.75417795873457,
+      "point_count": 31,
+      "avg_speed": 2.377881382317953
+    },
+    "taxiway_33": {
+      "id": "taxiway_33",
+      "type": "taxiway",
+      "lat": 34.43610291655471,
+      "lon": 108.76496376060858,
+      "point_count": 41,
+      "avg_speed": 5.671786477409083
+    },
+    "taxiway_34": {
+      "id": "taxiway_34",
+      "type": "taxiway",
+      "lat": 34.42292137579484,
+      "lon": 108.7466708096591,
+      "point_count": 11,
+      "avg_speed": 3.28618495707102
+    },
+    "taxiway_35": {
+      "id": "taxiway_35",
+      "type": "taxiway",
+      "lat": 34.42122054422224,
+      "lon": 108.74483320519731,
+      "point_count": 185,
+      "avg_speed": 1.3671676530186225
+    },
+    "taxiway_36": {
+      "id": "taxiway_36",
+      "type": "taxiway",
+      "lat": 34.4357807636261,
+      "lon": 108.76548099517822,
+      "point_count": 10,
+      "avg_speed": 4.27540979934618
+    },
+    "taxiway_37": {
+      "id": "taxiway_37",
+      "type": "taxiway",
+      "lat": 34.43222987651825,
+      "lon": 108.75475108623505,
+      "point_count": 15,
+      "avg_speed": 4.421296017274631
+    },
+    "taxiway_38": {
+      "id": "taxiway_38",
+      "type": "taxiway",
+      "lat": 34.43745630128043,
+      "lon": 108.76372958932605,
+      "point_count": 14,
+      "avg_speed": 4.156711804759237
+    },
+    "taxiway_39": {
+      "id": "taxiway_39",
+      "type": "taxiway",
+      "lat": 34.43776452541351,
+      "lon": 108.76270043849945,
+      "point_count": 45,
+      "avg_speed": 2.7413027791916504
+    },
+    "taxiway_40": {
+      "id": "taxiway_40",
+      "type": "taxiway",
+      "lat": 34.44277514429653,
+      "lon": 108.7531054721159,
+      "point_count": 17,
+      "avg_speed": 5.597986650190013
+    },
+    "taxiway_42": {
+      "id": "taxiway_42",
+      "type": "taxiway",
+      "lat": 34.44679464063337,
+      "lon": 108.77859367478278,
+      "point_count": 31,
+      "avg_speed": 3.8485424893365545
+    },
+    "taxiway_43": {
+      "id": "taxiway_43",
+      "type": "taxiway",
+      "lat": 34.452053245745205,
+      "lon": 108.77363412003768,
+      "point_count": 19,
+      "avg_speed": 3.249163125895908
+    },
+    "taxiway_44": {
+      "id": "taxiway_44",
+      "type": "taxiway",
+      "lat": 34.43748738616705,
+      "lon": 108.76425817608833,
+      "point_count": 16,
+      "avg_speed": 4.940856933146202
+    },
+    "taxiway_45": {
+      "id": "taxiway_45",
+      "type": "taxiway",
+      "lat": 34.42965131253004,
+      "lon": 108.75311058014631,
+      "point_count": 16,
+      "avg_speed": 5.469050369726803
+    },
+    "taxiway_47": {
+      "id": "taxiway_47",
+      "type": "taxiway",
+      "lat": 34.44260460989816,
+      "lon": 108.75233939715794,
+      "point_count": 14,
+      "avg_speed": 7.034173447115733
+    },
+    "taxiway_48": {
+      "id": "taxiway_48",
+      "type": "taxiway",
+      "lat": 34.46161646109361,
+      "lon": 108.77526131960062,
+      "point_count": 13,
+      "avg_speed": 5.160427386094274
+    },
+    "taxiway_49": {
+      "id": "taxiway_49",
+      "type": "taxiway",
+      "lat": 34.44584822931955,
+      "lon": 108.77810851086018,
+      "point_count": 43,
+      "avg_speed": 2.9670722023486906
+    },
+    "taxiway_50": {
+      "id": "taxiway_50",
+      "type": "taxiway",
+      "lat": 34.44385812563055,
+      "lon": 108.77936492947971,
+      "point_count": 17,
+      "avg_speed": 6.571461785854812
+    },
+    "taxiway_51": {
+      "id": "taxiway_51",
+      "type": "taxiway",
+      "lat": 34.44411025327795,
+      "lon": 108.75309789881987,
+      "point_count": 17,
+      "avg_speed": 4.66656763623938
+    },
+    "taxiway_52": {
+      "id": "taxiway_52",
+      "type": "taxiway",
+      "lat": 34.43659849026624,
+      "lon": 108.7652618744794,
+      "point_count": 17,
+      "avg_speed": 4.3946574961952045
+    },
+    "taxiway_53": {
+      "id": "taxiway_53",
+      "type": "taxiway",
+      "lat": 34.45676672458649,
+      "lon": 108.75778806209564,
+      "point_count": 15,
+      "avg_speed": 4.93749522420035
+    },
+    "taxiway_54": {
+      "id": "taxiway_54",
+      "type": "taxiway",
+      "lat": 34.43496314378885,
+      "lon": 108.76193569256709,
+      "point_count": 13,
+      "avg_speed": 1.6762748921495216
+    },
+    "taxiway_55": {
+      "id": "taxiway_55",
+      "type": "taxiway",
+      "lat": 34.45924126184904,
+      "lon": 108.7772944340339,
+      "point_count": 13,
+      "avg_speed": 1.30192400491177
+    }
+  },
+  "edges": [
+    {
+      "from": "corrected_stand_5",
+      "to": "taxiway_43",
+      "distance": 835.0458714260023,
+      "usage_count": 1
+    },
+    {
+      "from": "corrected_stand_5",
+      "to": "taxiway_50",
+      "distance": 257.9565949211204,
+      "usage_count": 9
+    },
+    {
+      "from": "corrected_stand_11",
+      "to": "taxiway_50",
+      "distance": 236.18176632630315,
+      "usage_count": 10
+    },
+    {
+      "from": "corrected_stand_11",
+      "to": "taxiway_2",
+      "distance": 539.6047345300856,
+      "usage_count": 21
+    },
+    {
+      "from": "corrected_stand_6",
+      "to": "taxiway_2",
+      "distance": 241.36950846275195,
+      "usage_count": 21
+    },
+    {
+      "from": "corrected_stand_18",
+      "to": "corrected_stand_6",
+      "distance": 80.60441535188028,
+      "usage_count": 21
+    },
+    {
+      "from": "corrected_stand_18",
+      "to": "corrected_stand_9",
+      "distance": 132.78909519588828,
+      "usage_count": 22
+    },
+    {
+      "from": "corrected_stand_9",
+      "to": "taxiway_36",
+      "distance": 332.74969388817846,
+      "usage_count": 22
+    },
+    {
+      "from": "taxiway_29",
+      "to": "taxiway_36",
+      "distance": 431.9366851383385,
+      "usage_count": 10
+    },
+    {
+      "from": "taxiway_26",
+      "to": "taxiway_29",
+      "distance": 427.21116208655246,
+      "usage_count": 8
+    },
+    {
+      "from": "taxiway_26",
+      "to": "taxiway_27",
+      "distance": 162.05549579925992,
+      "usage_count": 6
+    },
+    {
+      "from": "corrected_stand_12",
+      "to": "taxiway_27",
+      "distance": 206.32937869114878,
+      "usage_count": 5
+    },
+    {
+      "from": "corrected_stand_12",
+      "to": "corrected_stand_13",
+      "distance": 166.29225917019693,
+      "usage_count": 5
+    },
+    {
+      "from": "corrected_stand_13",
+      "to": "corrected_stand_31",
+      "distance": 96.28251755407419,
+      "usage_count": 6
+    },
+    {
+      "from": "corrected_stand_26",
+      "to": "corrected_stand_31",
+      "distance": 88.67245707464038,
+      "usage_count": 54
+    },
+    {
+      "from": "corrected_stand_14",
+      "to": "corrected_stand_31",
+      "distance": 237.74281035902496,
+      "usage_count": 32
+    },
+    {
+      "from": "corrected_stand_14",
+      "to": "corrected_stand_4",
+      "distance": 98.2923343783481,
+      "usage_count": 34
+    },
+    {
+      "from": "corrected_stand_4",
+      "to": "corrected_stand_3",
+      "distance": 103.60248718972367,
+      "usage_count": 31
+    },
+    {
+      "from": "corrected_stand_0",
+      "to": "corrected_stand_3",
+      "distance": 99.41185435700778,
+      "usage_count": 33
+    },
+    {
+      "from": "corrected_stand_0",
+      "to": "corrected_stand_1",
+      "distance": 147.6543463467325,
+      "usage_count": 30
+    },
+    {
+      "from": "corrected_stand_1",
+      "to": "corrected_stand_4",
+      "distance": 270.027425928198,
+      "usage_count": 30
+    },
+    {
+      "from": "corrected_stand_4",
+      "to": "runway_0",
+      "distance": 313.39604732844816,
+      "usage_count": 27
+    },
+    {
+      "from": "runway_2",
+      "to": "taxiway_26",
+      "distance": 579.1660015830514,
+      "usage_count": 3
+    },
+    {
+      "from": "corrected_stand_12",
+      "to": "taxiway_26",
+      "distance": 353.75144095172953,
+      "usage_count": 5
+    },
+    {
+      "from": "corrected_stand_12",
+      "to": "corrected_stand_24",
+      "distance": 118.41131326498706,
+      "usage_count": 20
+    },
+    {
+      "from": "corrected_stand_19",
+      "to": "corrected_stand_24",
+      "distance": 59.71398572815219,
+      "usage_count": 20
+    },
+    {
+      "from": "corrected_stand_19",
+      "to": "corrected_stand_26",
+      "distance": 131.43859491684762,
+      "usage_count": 19
+    },
+    {
+      "from": "corrected_stand_19",
+      "to": "runway_0",
+      "distance": 315.8175415061334,
+      "usage_count": 16
+    },
+    {
+      "from": "corrected_stand_11",
+      "to": "corrected_stand_5",
+      "distance": 206.94325469465372,
+      "usage_count": 11
+    },
+    {
+      "from": "taxiway_40",
+      "to": "taxiway_9",
+      "distance": 120.72855024080357,
+      "usage_count": 3
+    },
+    {
+      "from": "corrected_stand_8",
+      "to": "taxiway_25",
+      "distance": 716.3373092608923,
+      "usage_count": 16
+    },
+    {
+      "from": "corrected_stand_23",
+      "to": "corrected_stand_8",
+      "distance": 916.3278123546818,
+      "usage_count": 4
+    },
+    {
+      "from": "corrected_stand_23",
+      "to": "taxiway_20",
+      "distance": 159.40118365719334,
+      "usage_count": 9
+    },
+    {
+      "from": "taxiway_12",
+      "to": "taxiway_20",
+      "distance": 387.03031510529456,
+      "usage_count": 9
+    },
+    {
+      "from": "corrected_stand_29",
+      "to": "taxiway_12",
+      "distance": 381.6897323210838,
+      "usage_count": 8
+    },
+    {
+      "from": "corrected_stand_28",
+      "to": "corrected_stand_29",
+      "distance": 49.83494701674562,
+      "usage_count": 2
+    },
+    {
+      "from": "taxiway_1",
+      "to": "taxiway_4",
+      "distance": 89.21089278811597,
+      "usage_count": 1
+    },
+    {
+      "from": "corrected_stand_2",
+      "to": "corrected_stand_31",
+      "distance": 375.6450983785266,
+      "usage_count": 8
+    },
+    {
+      "from": "corrected_stand_30",
+      "to": "taxiway_29",
+      "distance": 61.72088062864599,
+      "usage_count": 9
+    },
+    {
+      "from": "corrected_stand_30",
+      "to": "taxiway_7",
+      "distance": 98.5575402551205,
+      "usage_count": 1
+    },
+    {
+      "from": "taxiway_25",
+      "to": "taxiway_30",
+      "distance": 286.9976716182449,
+      "usage_count": 4
+    },
+    {
+      "from": "taxiway_28",
+      "to": "taxiway_30",
+      "distance": 105.78662959431097,
+      "usage_count": 4
+    },
+    {
+      "from": "taxiway_28",
+      "to": "taxiway_5",
+      "distance": 161.61827583886875,
+      "usage_count": 2
+    },
+    {
+      "from": "taxiway_5",
+      "to": "taxiway_6",
+      "distance": 68.06902231038518,
+      "usage_count": 2
+    },
+    {
+      "from": "runway_2",
+      "to": "taxiway_36",
+      "distance": 546.347094259757,
+      "usage_count": 13
+    },
+    {
+      "from": "corrected_stand_12",
+      "to": "runway_2",
+      "distance": 822.9965692021452,
+      "usage_count": 10
+    },
+    {
+      "from": "corrected_stand_24",
+      "to": "runway_0",
+      "distance": 365.3450645479803,
+      "usage_count": 1
+    },
+    {
+      "from": "taxiway_23",
+      "to": "taxiway_33",
+      "distance": 243.97151481965093,
+      "usage_count": 5
+    },
+    {
+      "from": "taxiway_33",
+      "to": "taxiway_36",
+      "distance": 59.4414428757174,
+      "usage_count": 6
+    },
+    {
+      "from": "corrected_stand_5",
+      "to": "taxiway_20",
+      "distance": 1420.7099584112732,
+      "usage_count": 7
+    },
+    {
+      "from": "corrected_stand_20",
+      "to": "taxiway_23",
+      "distance": 129.83659699436035,
+      "usage_count": 3
+    },
+    {
+      "from": "runway_1",
+      "to": "taxiway_25",
+      "distance": 1070.1535571212755,
+      "usage_count": 18
+    },
+    {
+      "from": "corrected_stand_5",
+      "to": "corrected_stand_8",
+      "distance": 1351.1353085174567,
+      "usage_count": 9
+    },
+    {
+      "from": "corrected_stand_32",
+      "to": "taxiway_26",
+      "distance": 210.01566158362147,
+      "usage_count": 9
+    },
+    {
+      "from": "corrected_stand_15",
+      "to": "taxiway_27",
+      "distance": 270.31340332396184,
+      "usage_count": 3
+    },
+    {
+      "from": "corrected_stand_15",
+      "to": "taxiway_37",
+      "distance": 79.46876527909974,
+      "usage_count": 2
+    },
+    {
+      "from": "taxiway_31",
+      "to": "taxiway_37",
+      "distance": 114.24838005907961,
+      "usage_count": 1
+    },
+    {
+      "from": "taxiway_31",
+      "to": "taxiway_32",
+      "distance": 67.5273379899586,
+      "usage_count": 1
+    },
+    {
+      "from": "corrected_stand_15",
+      "to": "taxiway_45",
+      "distance": 249.35171467286395,
+      "usage_count": 3
+    },
+    {
+      "from": "corrected_stand_2",
+      "to": "taxiway_45",
+      "distance": 188.77832218074408,
+      "usage_count": 3
+    },
+    {
+      "from": "taxiway_26",
+      "to": "taxiway_7",
+      "distance": 305.60150093271267,
+      "usage_count": 1
+    },
+    {
+      "from": "corrected_stand_14",
+      "to": "runway_0",
+      "distance": 243.49624667546135,
+      "usage_count": 3
+    },
+    {
+      "from": "corrected_stand_16",
+      "to": "taxiway_6",
+      "distance": 89.63603743427088,
+      "usage_count": 2
+    },
+    {
+      "from": "corrected_stand_16",
+      "to": "taxiway_40",
+      "distance": 107.10382066592332,
+      "usage_count": 1
+    },
+    {
+      "from": "corrected_stand_27",
+      "to": "taxiway_40",
+      "distance": 152.86401271402252,
+      "usage_count": 2
+    },
+    {
+      "from": "corrected_stand_27",
+      "to": "taxiway_8",
+      "distance": 112.21004649948026,
+      "usage_count": 3
+    },
+    {
+      "from": "taxiway_22",
+      "to": "taxiway_8",
+      "distance": 138.55745848770195,
+      "usage_count": 3
+    },
+    {
+      "from": "corrected_stand_2",
+      "to": "taxiway_22",
+      "distance": 1230.0999258607387,
+      "usage_count": 3
+    },
+    {
+      "from": "taxiway_33",
+      "to": "taxiway_52",
+      "distance": 61.51459623327079,
+      "usage_count": 1
+    },
+    {
+      "from": "taxiway_44",
+      "to": "taxiway_52",
+      "distance": 135.06343630977392,
+      "usage_count": 1
+    },
+    {
+      "from": "taxiway_38",
+      "to": "taxiway_44",
+      "distance": 48.59835469756029,
+      "usage_count": 1
+    },
+    {
+      "from": "taxiway_38",
+      "to": "taxiway_39",
+      "distance": 100.41074581001328,
+      "usage_count": 1
+    },
+    {
+      "from": "corrected_stand_12",
+      "to": "taxiway_29",
+      "distance": 778.5957914489051,
+      "usage_count": 5
+    },
+    {
+      "from": "runway_2",
+      "to": "taxiway_19",
+      "distance": 863.5017543538405,
+      "usage_count": 1
+    },
+    {
+      "from": "corrected_stand_18",
+      "to": "taxiway_19",
+      "distance": 147.88343216729504,
+      "usage_count": 1
+    },
+    {
+      "from": "corrected_stand_21",
+      "to": "taxiway_21",
+      "distance": 128.06372381628404,
+      "usage_count": 1
+    },
+    {
+      "from": "corrected_stand_2",
+      "to": "corrected_stand_21",
+      "distance": 221.8718242101262,
+      "usage_count": 1
+    },
+    {
+      "from": "corrected_stand_29",
+      "to": "taxiway_4",
+      "distance": 103.0991038882358,
+      "usage_count": 1
+    },
+    {
+      "from": "corrected_stand_5",
+      "to": "taxiway_24",
+      "distance": 732.6658840048889,
+      "usage_count": 1
+    },
+    {
+      "from": "corrected_stand_8",
+      "to": "taxiway_43",
+      "distance": 881.9089746761964,
+      "usage_count": 2
+    },
+    {
+      "from": "corrected_stand_32",
+      "to": "taxiway_27",
+      "distance": 292.27890604687894,
+      "usage_count": 1
+    },
+    {
+      "from": "corrected_stand_9",
+      "to": "taxiway_10",
+      "distance": 353.75279694664766,
+      "usage_count": 1
+    },
+    {
+      "from": "corrected_stand_30",
+      "to": "taxiway_7",
+      "distance": 95.51244096086853,
+      "usage_count": 2
+    },
+    {
+      "from": "corrected_stand_32",
+      "to": "taxiway_7",
+      "distance": 240.47304055199933,
+      "usage_count": 3
+    },
+    {
+      "from": "taxiway_12",
+      "to": "taxiway_48",
+      "distance": 257.8626723948365,
+      "usage_count": 1
+    },
+    {
+      "from": "taxiway_48",
+      "to": "taxiway_55",
+      "distance": 323.26336541315595,
+      "usage_count": 1
+    },
+    {
+      "from": "taxiway_1",
+      "to": "taxiway_55",
+      "distance": 62.853912895664685,
+      "usage_count": 2
+    },
+    {
+      "from": "taxiway_4",
+      "to": "taxiway_55",
+      "distance": 128.15515905554435,
+      "usage_count": 1
+    },
+    {
+      "from": "corrected_stand_9",
+      "to": "taxiway_19",
+      "distance": 172.76566952468588,
+      "usage_count": 1
+    },
+    {
+      "from": "corrected_stand_6",
+      "to": "taxiway_19",
+      "distance": 192.02908915799665,
+      "usage_count": 1
+    },
+    {
+      "from": "taxiway_49",
+      "to": "taxiway_50",
+      "distance": 249.4853916957274,
+      "usage_count": 1
+    },
+    {
+      "from": "corrected_stand_23",
+      "to": "taxiway_49",
+      "distance": 1224.5811129437477,
+      "usage_count": 1
+    },
+    {
+      "from": "taxiway_25",
+      "to": "taxiway_51",
+      "distance": 559.8457160937844,
+      "usage_count": 1
+    },
+    {
+      "from": "taxiway_15",
+      "to": "taxiway_51",
+      "distance": 118.28808301024091,
+      "usage_count": 1
+    },
+    {
+      "from": "corrected_stand_16",
+      "to": "taxiway_15",
+      "distance": 41.9729018195086,
+      "usage_count": 1
+    },
+    {
+      "from": "runway_1",
+      "to": "taxiway_39",
+      "distance": 2006.6199322621635,
+      "usage_count": 1
+    },
+    {
+      "from": "corrected_stand_20",
+      "to": "taxiway_39",
+      "distance": 146.62621786865674,
+      "usage_count": 2
+    },
+    {
+      "from": "runway_1",
+      "to": "taxiway_53",
+      "distance": 1058.8152625961588,
+      "usage_count": 1
+    },
+    {
+      "from": "taxiway_25",
+      "to": "taxiway_53",
+      "distance": 1135.2913726656145,
+      "usage_count": 1
+    },
+    {
+      "from": "taxiway_28",
+      "to": "taxiway_6",
+      "distance": 144.35426152591555,
+      "usage_count": 3
+    },
+    {
+      "from": "corrected_stand_34",
+      "to": "taxiway_54",
+      "distance": 0.635015578135051,
+      "usage_count": 3
+    },
+    {
+      "from": "runway_2",
+      "to": "taxiway_29",
+      "distance": 440.39557905980666,
+      "usage_count": 1
+    }
+  ]
+}

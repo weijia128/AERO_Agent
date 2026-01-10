@@ -1,0 +1,187 @@
+# 漏油场景主配置文件
+# 版本: 1.0
+# 描述: 机坪油液泄漏应急响应场景
+#
+# 子配置文件引用（独立维护）
+# - checklist.yaml: Checklist 定义
+# - fsm_states.yaml: FSM 状态定义
+
+scenario:
+  name: oil_spill
+  version: "1.0"
+  description: "机坪油液泄漏应急响应场景"
+
+# 场景设置
+settings:
+  # 最大对话轮次
+  max_iterations: 20
+  # 是否允许跳过 Checklist
+  allow_checklist_skip: false
+  # 默认响应超时（秒）
+  default_response_timeout: 30
+
+# 空间推理配置
+spatial_config:
+  spread_rules:
+    FUEL:
+      HIGH:
+        radius: 3
+        runway_impact: true
+      MEDIUM:
+        radius: 2
+        runway_impact: true
+      LOW:
+        radius: 1
+        runway_impact: false
+    HYDRAULIC:
+      HIGH:
+        radius: 2
+        runway_impact: false
+      MEDIUM:
+        radius: 1
+        runway_impact: false
+
+# 强制动作规则
+mandatory_triggers:
+  - name: fuel_running_risk_assess
+    condition:
+      "incident.fluid_type": FUEL
+      "incident.engine_status": RUNNING
+    action: assess_risk
+    params: {}
+    check_field: risk_assessed
+    error_message: "燃油+发动机运转需要立即评估风险"
+
+  - name: high_risk_fire_notification
+    condition:
+      risk_level: HIGH
+    action: notify_department
+    params:
+      department: 消防
+      priority: immediate
+    check_field: fire_dept_notified
+
+  - name: medium_high_risk_fire_standby
+    condition:
+      risk_level: MEDIUM_HIGH
+    action: notify_department
+    params:
+      department: 消防
+      priority: high
+    check_field: fire_dept_notified
+
+  - name: medium_risk_fire_standby
+    condition:
+      risk_level: MEDIUM
+    action: notify_department
+    params:
+      department: 消防
+      priority: normal
+    check_field: fire_dept_notified
+
+  - name: risk_level_maintenance_notification
+    condition:
+      risk_level:
+        - HIGH
+        - MEDIUM_HIGH
+        - MEDIUM
+    action: notify_department
+    params:
+      department: 机务
+      priority: high
+    check_field: maintenance_notified
+
+  - name: risk_level_operations_notification
+    condition:
+      risk_level:
+        - HIGH
+        - MEDIUM_HIGH
+        - MEDIUM
+    action: notify_department
+    params:
+      department: 运控
+      priority: normal
+    check_field: operations_notified
+
+  - name: runway_impact_atc_notification
+    condition:
+      affected_runways: not_empty
+    action: notify_department
+    params:
+      department: 塔台
+      priority: high
+    check_field: atc_notified
+
+# 风险评估规则
+risk_rules:
+  - conditions:
+      fluid_type: FUEL
+      continuous: true
+      engine_status: RUNNING
+    level: HIGH
+    score: 95
+
+  - conditions:
+      fluid_type: FUEL
+      engine_status: RUNNING
+    level: HIGH
+    score: 90
+
+  - conditions:
+      fluid_type: FUEL
+      continuous: true
+    level: HIGH
+    score: 85
+
+  - conditions:
+      fluid_type: FUEL
+    level: MEDIUM
+    score: 60
+
+  - conditions:
+      fluid_type: HYDRAULIC
+    level: LOW
+    score: 30
+
+# 通知配置
+notifications:
+  departments:
+    - id: fire
+      name: 消防部门
+      priority: immediate
+      contact: "119 / +86-10-xxxx-xxxx"
+    - id: atc
+      name: 塔台
+      priority: immediate
+      contact: "121.5MHz / +86-10-xxxx-xxxx"
+    - id: ops
+      name: 运行中心
+      priority: high
+      contact: "+86-10-xxxx-xxxx"
+    - id: maintenance
+      name: 机务部门
+      priority: normal
+      contact: "+86-10-xxxx-xxxx"
+
+  templates:
+    - id: fire_emergency
+      name: 消防应急通知
+      content: |
+        紧急事件通知
+        事件类型: 机坪漏油
+        风险等级: HIGH
+        位置: {position}
+        油液类型: {fluid_type}
+        持续滴漏: {continuous}
+        请立即响应
+
+# 报告模板
+report_template:
+  sections:
+    - event_summary
+    - risk_assessment
+    - handling_process
+    - checklist_items
+    - coordination_units
+    - operational_impact
+    - recommendations

@@ -1,0 +1,1670 @@
+{
+  "summary": {
+    "total_paths": 71,
+    "total_stands": 31,
+    "total_runways": 2,
+    "total_turning_points": 514
+  },
+  "stand_locations": {
+    "113": {
+      "lat": 34.441857039928436,
+      "lon": 108.75363528728485,
+      "sample_count": 2
+    },
+    "521": {
+      "lat": 34.45755869150162,
+      "lon": 108.77030789852142,
+      "sample_count": 2
+    },
+    "311": {
+      "lat": 34.4346284866333,
+      "lon": 108.75986605882645,
+      "sample_count": 2
+    },
+    "507": {
+      "lat": 34.4550347328186,
+      "lon": 108.76288622617722,
+      "sample_count": 2
+    },
+    "504": {
+      "lat": 34.45876568555832,
+      "lon": 108.77665936946869,
+      "sample_count": 2
+    },
+    "316": {
+      "lat": 34.4363397359848,
+      "lon": 108.76553624868393,
+      "sample_count": 2
+    },
+    "110": {
+      "lat": 34.44505423307419,
+      "lon": 108.75653743743896,
+      "sample_count": 2
+    },
+    "342R": {
+      "lat": 34.44154053926468,
+      "lon": 108.75221639871597,
+      "sample_count": 2
+    },
+    "344L": {
+      "lat": 34.442015290260315,
+      "lon": 108.75100404024124,
+      "sample_count": 2
+    },
+    "522": {
+      "lat": 34.45357024669647,
+      "lon": 108.75919282436371,
+      "sample_count": 2
+    },
+    "320": {
+      "lat": 34.44205015897751,
+      "lon": 108.75283062458038,
+      "sample_count": 2
+    },
+    "402": {
+      "lat": 34.444756507873535,
+      "lon": 108.75577569007874,
+      "sample_count": 2
+    },
+    "305": {
+      "lat": 34.43295478820801,
+      "lon": 108.76314908266068,
+      "sample_count": 2
+    },
+    "107": {
+      "lat": 34.44713294506073,
+      "lon": 108.75217616558075,
+      "sample_count": 2
+    },
+    "108": {
+      "lat": 34.44721609354019,
+      "lon": 108.75206083059311,
+      "sample_count": 2
+    },
+    "543R": {
+      "lat": 34.45184826850891,
+      "lon": 108.76105159521103,
+      "sample_count": 2
+    },
+    "322": {
+      "lat": 34.442168176174164,
+      "lon": 108.75233978033066,
+      "sample_count": 2
+    },
+    "303": {
+      "lat": 34.442634880542755,
+      "lon": 108.7533187866211,
+      "sample_count": 2
+    },
+    "428": {
+      "lat": 34.44456070661545,
+      "lon": 108.75647306442261,
+      "sample_count": 2
+    },
+    "308": {
+      "lat": 34.44220036268234,
+      "lon": 108.75340193510056,
+      "sample_count": 2
+    },
+    "502": {
+      "lat": 34.45502668619156,
+      "lon": 108.76296937465668,
+      "sample_count": 2
+    },
+    "310": {
+      "lat": 34.44235324859619,
+      "lon": 108.75310957431793,
+      "sample_count": 2
+    },
+    "545": {
+      "lat": 34.452145993709564,
+      "lon": 108.76103281974792,
+      "sample_count": 2
+    },
+    "514": {
+      "lat": 34.444005489349365,
+      "lon": 108.76923769712448,
+      "sample_count": 2
+    },
+    "111": {
+      "lat": 34.4455960392952,
+      "lon": 108.7497729063034,
+      "sample_count": 2
+    },
+    "508": {
+      "lat": 34.452661871910095,
+      "lon": 108.75614404678345,
+      "sample_count": 3
+    },
+    "515": {
+      "lat": 34.43765938282013,
+      "lon": 108.76182675361633,
+      "sample_count": 1
+    },
+    "109": {
+      "lat": 34.447382390499115,
+      "lon": 108.75222980976105,
+      "sample_count": 2
+    },
+    "534": {
+      "lat": 34.4521701335907,
+      "lon": 108.75764787197113,
+      "sample_count": 2
+    },
+    "519": {
+      "lat": 34.449729323387146,
+      "lon": 108.75288963317871,
+      "sample_count": 2
+    },
+    "540": {
+      "lat": 34.45202797651291,
+      "lon": 108.75036835670471,
+      "sample_count": 2
+    }
+  },
+  "runway_entrances": {
+    "05R": {
+      "lat": 34.434062987565994,
+      "lon": 108.76070201396942,
+      "sample_count": 84
+    },
+    "05L": {
+      "lat": 34.44707541630186,
+      "lon": 108.75698000192642,
+      "sample_count": 58
+    }
+  },
+  "paths_summary": [
+    {
+      "callsign": "CDC8557",
+      "start_point": {
+        "lat": 34.45179998874664,
+        "lon": 108.77338707447052,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:00:02.757"
+      },
+      "end_point": {
+        "lat": 34.42517101764679,
+        "lon": 108.75678420066833,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:25:56.765"
+      },
+      "path_length": 5804.194880874396,
+      "duration": 1554.008,
+      "num_points": 840,
+      "num_turning_points": 12
+    },
+    {
+      "callsign": "CES2796",
+      "start_point": {
+        "lat": 34.43187117576599,
+        "lon": 108.76286208629608,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:00:02.757"
+      },
+      "end_point": {
+        "lat": 34.42509591579437,
+        "lon": 108.75664472579956,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:04:55.789"
+      },
+      "path_length": 2474.354158216069,
+      "duration": 293.032,
+      "num_points": 256,
+      "num_turning_points": 2
+    },
+    {
+      "callsign": "CES2461",
+      "start_point": {
+        "lat": 34.42387282848358,
+        "lon": 108.7518060207367,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:00:02.757"
+      },
+      "end_point": {
+        "lat": 34.42468822002411,
+        "lon": 108.75611364841461,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:03:05.781"
+      },
+      "path_length": 1022.8966923104314,
+      "duration": 183.024,
+      "num_points": 149,
+      "num_turning_points": 4
+    },
+    {
+      "callsign": "CHH425",
+      "start_point": {
+        "lat": 34.4212281703949,
+        "lon": 108.75136077404022,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:00:02.757"
+      },
+      "end_point": {
+        "lat": 34.425503611564636,
+        "lon": 108.75721335411072,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:01:17.757"
+      },
+      "path_length": 759.6117351847394,
+      "duration": 75.0,
+      "num_points": 49,
+      "num_turning_points": 4
+    },
+    {
+      "callsign": "CDC8153",
+      "start_point": {
+        "lat": 34.449487924575806,
+        "lon": 108.77228736877441,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:00:02.796"
+      },
+      "end_point": {
+        "lat": 34.425208568573,
+        "lon": 108.7567949295044,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:20:03.820"
+      },
+      "path_length": 5422.391546941892,
+      "duration": 1201.024,
+      "num_points": 663,
+      "num_turning_points": 14
+    },
+    {
+      "callsign": "CCA8325",
+      "start_point": {
+        "lat": 34.442283511161804,
+        "lon": 108.75329196453094,
+        "stand": "113",
+        "runway": "05L",
+        "time": "2025-10-21 11:00:02.898"
+      },
+      "end_point": {
+        "lat": 34.44143056869507,
+        "lon": 108.75397861003876,
+        "stand": "113",
+        "runway": "05L",
+        "time": "2025-10-21 11:00:44.898"
+      },
+      "path_length": 146.8799182961192,
+      "duration": 42.0,
+      "num_points": 43,
+      "num_turning_points": 2
+    },
+    {
+      "callsign": "CES2152",
+      "start_point": {
+        "lat": 34.45742189884186,
+        "lon": 108.76934230327606,
+        "stand": "521",
+        "runway": "05L",
+        "time": "2025-10-21 11:00:03.000"
+      },
+      "end_point": {
+        "lat": 34.45769548416138,
+        "lon": 108.77127349376678,
+        "stand": "521",
+        "runway": "05L",
+        "time": "2025-10-21 11:00:55.015"
+      },
+      "path_length": 214.83576869423723,
+      "duration": 52.015,
+      "num_points": 53,
+      "num_turning_points": 0
+    },
+    {
+      "callsign": "TBA9963",
+      "start_point": {
+        "lat": 34.434574842453,
+        "lon": 108.75990629196167,
+        "stand": "311",
+        "runway": "05L",
+        "time": "2025-10-21 11:00:03.054"
+      },
+      "end_point": {
+        "lat": 34.4346821308136,
+        "lon": 108.75982582569122,
+        "stand": "311",
+        "runway": "05L",
+        "time": "2025-10-21 11:00:15.078"
+      },
+      "path_length": 14.198719030130466,
+      "duration": 12.024,
+      "num_points": 13,
+      "num_turning_points": 0
+    },
+    {
+      "callsign": "CES2126",
+      "start_point": {
+        "lat": 34.45286750793457,
+        "lon": 108.75037372112274,
+        "stand": "507",
+        "runway": "05L",
+        "time": "2025-10-21 11:00:03.250"
+      },
+      "end_point": {
+        "lat": 34.45720195770264,
+        "lon": 108.77539873123169,
+        "stand": "507",
+        "runway": "05L",
+        "time": "2025-10-21 11:10:41.257"
+      },
+      "path_length": 4149.839128977592,
+      "duration": 638.007,
+      "num_points": 631,
+      "num_turning_points": 2
+    },
+    {
+      "callsign": "CES2288",
+      "start_point": {
+        "lat": 34.459508657455444,
+        "lon": 108.77649307250977,
+        "stand": "504",
+        "runway": "05L",
+        "time": "2025-10-21 11:00:03.250"
+      },
+      "end_point": {
+        "lat": 34.458022713661194,
+        "lon": 108.77682566642761,
+        "stand": "504",
+        "runway": "05L",
+        "time": "2025-10-21 11:01:30.226"
+      },
+      "path_length": 239.97908659180575,
+      "duration": 86.976,
+      "num_points": 88,
+      "num_turning_points": 0
+    },
+    {
+      "callsign": "CCA8106",
+      "start_point": {
+        "lat": 34.43445146083832,
+        "lon": 108.74535262584686,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:00:03.351"
+      },
+      "end_point": {
+        "lat": 34.42547678947449,
+        "lon": 108.75721335411072,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:12:19.343"
+      },
+      "path_length": 2843.294135888404,
+      "duration": 735.992,
+      "num_points": 412,
+      "num_turning_points": 13
+    },
+    {
+      "callsign": "CSN6413",
+      "start_point": {
+        "lat": 34.43908631801605,
+        "lon": 108.77121448516846,
+        "stand": "316",
+        "runway": "05L",
+        "time": "2025-10-21 11:00:03.406"
+      },
+      "end_point": {
+        "lat": 34.43359315395355,
+        "lon": 108.7598580121994,
+        "stand": "316",
+        "runway": "05L",
+        "time": "2025-10-21 11:03:56.382"
+      },
+      "path_length": 1427.848643834133,
+      "duration": 232.976,
+      "num_points": 224,
+      "num_turning_points": 2
+    },
+    {
+      "callsign": "KNA8255",
+      "start_point": {
+        "lat": 34.44756746292114,
+        "lon": 108.75781953334808,
+        "stand": "110",
+        "runway": "05L",
+        "time": "2025-10-21 11:00:03.460"
+      },
+      "end_point": {
+        "lat": 34.442541003227234,
+        "lon": 108.75525534152985,
+        "stand": "110",
+        "runway": "05L",
+        "time": "2025-10-21 11:02:36.484"
+      },
+      "path_length": 875.7735978408542,
+      "duration": 153.024,
+      "num_points": 145,
+      "num_turning_points": 5
+    },
+    {
+      "callsign": "CES2355",
+      "start_point": {
+        "lat": 34.434049129486084,
+        "lon": 108.7651526927948,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:00:03.554"
+      },
+      "end_point": {
+        "lat": 34.42583620548248,
+        "lon": 108.75771224498749,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:06:55.570"
+      },
+      "path_length": 2970.8478106513066,
+      "duration": 412.016,
+      "num_points": 302,
+      "num_turning_points": 6
+    },
+    {
+      "callsign": "CES2335",
+      "start_point": {
+        "lat": 34.44433271884918,
+        "lon": 108.77776443958282,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:00:03.703"
+      },
+      "end_point": {
+        "lat": 34.4245970249176,
+        "lon": 108.75597417354584,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:14:04.710"
+      },
+      "path_length": 4500.8702095934195,
+      "duration": 841.007,
+      "num_points": 616,
+      "num_turning_points": 11
+    },
+    {
+      "callsign": "CSN6938",
+      "start_point": {
+        "lat": 34.43569600582123,
+        "lon": 108.76340389251709,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:00:16.875"
+      },
+      "end_point": {
+        "lat": 34.42484378814697,
+        "lon": 108.75631749629974,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:08:50.875"
+      },
+      "path_length": 3061.5961872142498,
+      "duration": 514.0,
+      "num_points": 356,
+      "num_turning_points": 9
+    },
+    {
+      "callsign": "CES2956",
+      "start_point": {
+        "lat": 34.458779096603394,
+        "lon": 108.77408444881439,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:00:19.796"
+      },
+      "end_point": {
+        "lat": 34.425053000450134,
+        "lon": 108.75664472579956,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:21:39.765"
+      },
+      "path_length": 7530.83075096588,
+      "duration": 1279.969,
+      "num_points": 1030,
+      "num_turning_points": 21
+    },
+    {
+      "callsign": "CES2385",
+      "start_point": {
+        "lat": 34.457979798316956,
+        "lon": 108.77517342567444,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:01:00.718"
+      },
+      "end_point": {
+        "lat": 34.42545533180237,
+        "lon": 108.75718116760254,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:30:58.703"
+      },
+      "path_length": 7730.652970354456,
+      "duration": 1797.985,
+      "num_points": 1268,
+      "num_turning_points": 14
+    },
+    {
+      "callsign": "CES2155",
+      "start_point": {
+        "lat": 34.4583660364151,
+        "lon": 108.7739235162735,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:03:10.742"
+      },
+      "end_point": {
+        "lat": 34.42533731460571,
+        "lon": 108.75696659088135,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:32:32.742"
+      },
+      "path_length": 7600.357696093667,
+      "duration": 1762.0,
+      "num_points": 1232,
+      "num_turning_points": 11
+    },
+    {
+      "callsign": "CSN3722",
+      "start_point": {
+        "lat": 34.436988830566406,
+        "lon": 108.76220226287842,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:03:32.390"
+      },
+      "end_point": {
+        "lat": 34.424570202827454,
+        "lon": 108.75592052936554,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:18:37.390"
+      },
+      "path_length": 3272.8951116368266,
+      "duration": 905.0,
+      "num_points": 424,
+      "num_turning_points": 18
+    },
+    {
+      "callsign": "GCR7630",
+      "start_point": {
+        "lat": 34.4504052400589,
+        "lon": 108.74702095985413,
+        "stand": "342R",
+        "runway": "05L",
+        "time": "2025-10-21 11:03:36.296"
+      },
+      "end_point": {
+        "lat": 34.43267583847046,
+        "lon": 108.75741183757782,
+        "stand": "342R",
+        "runway": "05L",
+        "time": "2025-10-21 11:24:39.281"
+      },
+      "path_length": 6478.929924013336,
+      "duration": 1262.985,
+      "num_points": 1036,
+      "num_turning_points": 9
+    },
+    {
+      "callsign": "CQH8845",
+      "start_point": {
+        "lat": 34.427059292793274,
+        "lon": 108.75459015369415,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:03:53.289"
+      },
+      "end_point": {
+        "lat": 34.42491888999939,
+        "lon": 108.75643014907837,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:10:31.281"
+      },
+      "path_length": 1645.3679633539346,
+      "duration": 397.992,
+      "num_points": 255,
+      "num_turning_points": 11
+    },
+    {
+      "callsign": "CHH7465",
+      "start_point": {
+        "lat": 34.45085048675537,
+        "lon": 108.74760031700134,
+        "stand": "344L",
+        "runway": "05L",
+        "time": "2025-10-21 11:05:33.765"
+      },
+      "end_point": {
+        "lat": 34.43318009376526,
+        "lon": 108.75440776348114,
+        "stand": "344L",
+        "runway": "05L",
+        "time": "2025-10-21 11:27:59.718"
+      },
+      "path_length": 7213.619447622448,
+      "duration": 1345.953,
+      "num_points": 1261,
+      "num_turning_points": 5
+    },
+    {
+      "callsign": "CES5728",
+      "start_point": {
+        "lat": 34.45619881153107,
+        "lon": 108.77346754074097,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:06:36.789"
+      },
+      "end_point": {
+        "lat": 34.4256055355072,
+        "lon": 108.75739574432373,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:44:54.734"
+      },
+      "path_length": 7498.059649280353,
+      "duration": 2297.945,
+      "num_points": 1394,
+      "num_turning_points": 20
+    },
+    {
+      "callsign": "CQH6461",
+      "start_point": {
+        "lat": 34.43392038345337,
+        "lon": 108.76061975955963,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:08:06.804"
+      },
+      "end_point": {
+        "lat": 34.42539095878601,
+        "lon": 108.75706315040588,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:23:11.781"
+      },
+      "path_length": 2877.42842690413,
+      "duration": 904.977,
+      "num_points": 523,
+      "num_turning_points": 10
+    },
+    {
+      "callsign": "CES9932",
+      "start_point": {
+        "lat": 34.44985270500183,
+        "lon": 108.74621093273163,
+        "stand": "522",
+        "runway": "05L",
+        "time": "2025-10-21 11:10:47.015"
+      },
+      "end_point": {
+        "lat": 34.45728778839111,
+        "lon": 108.77217471599579,
+        "stand": "522",
+        "runway": "05L",
+        "time": "2025-10-21 11:18:53.023"
+      },
+      "path_length": 3568.5243942894012,
+      "duration": 486.008,
+      "num_points": 481,
+      "num_turning_points": 0
+    },
+    {
+      "callsign": "CBG8811",
+      "start_point": {
+        "lat": 34.43270266056061,
+        "lon": 108.7550300359726,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:12:40.882"
+      },
+      "end_point": {
+        "lat": 34.42547678947449,
+        "lon": 108.75720262527466,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:27:43.890"
+      },
+      "path_length": 2653.011262044216,
+      "duration": 903.008,
+      "num_points": 501,
+      "num_turning_points": 16
+    },
+    {
+      "callsign": "CGN8334",
+      "start_point": {
+        "lat": 34.45142984390259,
+        "lon": 108.74838888645172,
+        "stand": "320",
+        "runway": "05L",
+        "time": "2025-10-21 11:12:42.898"
+      },
+      "end_point": {
+        "lat": 34.43267047405243,
+        "lon": 108.75727236270905,
+        "stand": "320",
+        "runway": "05L",
+        "time": "2025-10-21 11:33:36.906"
+      },
+      "path_length": 6729.9301386060715,
+      "duration": 1254.008,
+      "num_points": 1014,
+      "num_turning_points": 9
+    },
+    {
+      "callsign": "CSN5792",
+      "start_point": {
+        "lat": 34.432311058044434,
+        "lon": 108.76022815704346,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:13:32.296"
+      },
+      "end_point": {
+        "lat": 34.42563235759735,
+        "lon": 108.75743865966797,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:24:35.281"
+      },
+      "path_length": 2656.47764469585,
+      "duration": 662.985,
+      "num_points": 373,
+      "num_turning_points": 8
+    },
+    {
+      "callsign": "CCA1232",
+      "start_point": {
+        "lat": 34.44234251976013,
+        "lon": 108.75460624694824,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:14:58.250"
+      },
+      "end_point": {
+        "lat": 34.42547678947449,
+        "lon": 108.7571382522583,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:39:02.265"
+      },
+      "path_length": 4307.771503126496,
+      "duration": 1444.015,
+      "num_points": 664,
+      "num_turning_points": 11
+    },
+    {
+      "callsign": "CXA8209",
+      "start_point": {
+        "lat": 34.452036023139954,
+        "lon": 108.7492311000824,
+        "stand": "402",
+        "runway": "05L",
+        "time": "2025-10-21 11:15:00.265"
+      },
+      "end_point": {
+        "lat": 34.43747699260712,
+        "lon": 108.76232028007507,
+        "stand": "402",
+        "runway": "05L",
+        "time": "2025-10-21 11:31:53.250"
+      },
+      "path_length": 5819.250570799154,
+      "duration": 1012.985,
+      "num_points": 900,
+      "num_turning_points": 2
+    },
+    {
+      "callsign": "CSN3202",
+      "start_point": {
+        "lat": 34.43393111228943,
+        "lon": 108.76056611537933,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:15:13.726"
+      },
+      "end_point": {
+        "lat": 34.425004720687866,
+        "lon": 108.7565803527832,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:29:22.734"
+      },
+      "path_length": 2777.736889167761,
+      "duration": 849.008,
+      "num_points": 443,
+      "num_turning_points": 6
+    },
+    {
+      "callsign": "CSN3237",
+      "start_point": {
+        "lat": 34.43047642707825,
+        "lon": 108.76401007175446,
+        "stand": "305",
+        "runway": "05R",
+        "time": "2025-10-21 11:16:42.562"
+      },
+      "end_point": {
+        "lat": 34.43543314933777,
+        "lon": 108.7622880935669,
+        "stand": "305",
+        "runway": "05R",
+        "time": "2025-10-21 11:22:50.593"
+      },
+      "path_length": 2047.507060565451,
+      "duration": 368.031,
+      "num_points": 310,
+      "num_turning_points": 8
+    },
+    {
+      "callsign": "CCA1289",
+      "start_point": {
+        "lat": 34.45063591003418,
+        "lon": 108.74733209609985,
+        "stand": "107",
+        "runway": "05L",
+        "time": "2025-10-21 11:18:35.484"
+      },
+      "end_point": {
+        "lat": 34.44362998008728,
+        "lon": 108.75702023506165,
+        "stand": "107",
+        "runway": "05L",
+        "time": "2025-10-21 11:24:41.492"
+      },
+      "path_length": 2464.4554577877225,
+      "duration": 366.008,
+      "num_points": 349,
+      "num_turning_points": 2
+    },
+    {
+      "callsign": "RLH5065",
+      "start_point": {
+        "lat": 34.43622171878815,
+        "lon": 108.76262605190277,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:18:49.210"
+      },
+      "end_point": {
+        "lat": 34.42536413669586,
+        "lon": 108.757084608078,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:35:57.210"
+      },
+      "path_length": 3313.342646287523,
+      "duration": 1028.0,
+      "num_points": 603,
+      "num_turning_points": 12
+    },
+    {
+      "callsign": "LHA4105",
+      "start_point": {
+        "lat": 34.426023960113525,
+        "lon": 108.74933302402496,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:19:00.343"
+      },
+      "end_point": {
+        "lat": 34.42735433578491,
+        "lon": 108.75973999500275,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:37:39.343"
+      },
+      "path_length": 2575.4793356121513,
+      "duration": 1119.0,
+      "num_points": 381,
+      "num_turning_points": 12
+    },
+    {
+      "callsign": "CES2105",
+      "start_point": {
+        "lat": 34.45840358734131,
+        "lon": 108.77695977687836,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:19:03.250"
+      },
+      "end_point": {
+        "lat": 34.42572355270386,
+        "lon": 108.75756204128265,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:52:19.234"
+      },
+      "path_length": 7944.815301644464,
+      "duration": 1995.984,
+      "num_points": 1026,
+      "num_turning_points": 10
+    },
+    {
+      "callsign": "CDG2171",
+      "start_point": {
+        "lat": 34.45091485977173,
+        "lon": 108.74773979187012,
+        "stand": "108",
+        "runway": "05L",
+        "time": "2025-10-21 11:21:45.117"
+      },
+      "end_point": {
+        "lat": 34.443517327308655,
+        "lon": 108.7563818693161,
+        "stand": "108",
+        "runway": "05L",
+        "time": "2025-10-21 11:26:39.117"
+      },
+      "path_length": 2484.074855099908,
+      "duration": 294.0,
+      "num_points": 295,
+      "num_turning_points": 0
+    },
+    {
+      "callsign": "CES6159",
+      "start_point": {
+        "lat": 34.45162296295166,
+        "lon": 108.77506077289581,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:22:59.109"
+      },
+      "end_point": {
+        "lat": 34.425208568573,
+        "lon": 108.75683784484863,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:40:34.125"
+      },
+      "path_length": 5698.557223861155,
+      "duration": 1055.016,
+      "num_points": 819,
+      "num_turning_points": 4
+    },
+    {
+      "callsign": "CSN8920",
+      "start_point": {
+        "lat": 34.43396866321564,
+        "lon": 108.7605232000351,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:23:25.812"
+      },
+      "end_point": {
+        "lat": 34.42473649978638,
+        "lon": 108.75615656375885,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:34:13.843"
+      },
+      "path_length": 2840.231062024231,
+      "duration": 648.031,
+      "num_points": 446,
+      "num_turning_points": 15
+    },
+    {
+      "callsign": "CES6483",
+      "start_point": {
+        "lat": 34.45635437965393,
+        "lon": 108.77302765846252,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:24:09.796"
+      },
+      "end_point": {
+        "lat": 34.42570745944977,
+        "lon": 108.75748693943024,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:57:11.796"
+      },
+      "path_length": 7283.9457334321605,
+      "duration": 1982.0,
+      "num_points": 1069,
+      "num_turning_points": 21
+    },
+    {
+      "callsign": "CES2263",
+      "start_point": {
+        "lat": 34.45155322551727,
+        "lon": 108.74857127666473,
+        "stand": "543R",
+        "runway": "05L",
+        "time": "2025-10-21 11:25:01.312"
+      },
+      "end_point": {
+        "lat": 34.45214331150055,
+        "lon": 108.77353191375732,
+        "stand": "543R",
+        "runway": "05L",
+        "time": "2025-10-21 11:32:44.312"
+      },
+      "path_length": 3505.7066495384165,
+      "duration": 463.0,
+      "num_points": 464,
+      "num_turning_points": 2
+    },
+    {
+      "callsign": "GCR7521",
+      "start_point": {
+        "lat": 34.45114552974701,
+        "lon": 108.74803483486176,
+        "stand": "322",
+        "runway": "05L",
+        "time": "2025-10-21 11:28:08.984"
+      },
+      "end_point": {
+        "lat": 34.43319082260132,
+        "lon": 108.75664472579956,
+        "stand": "322",
+        "runway": "05L",
+        "time": "2025-10-21 11:42:53.007"
+      },
+      "path_length": 6712.787901332637,
+      "duration": 884.023,
+      "num_points": 874,
+      "num_turning_points": 0
+    },
+    {
+      "callsign": "KNA8254",
+      "start_point": {
+        "lat": 34.442524909973145,
+        "lon": 108.75373184680939,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:29:54.281"
+      },
+      "end_point": {
+        "lat": 34.426013231277466,
+        "lon": 108.75795900821686,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:53:55.257"
+      },
+      "path_length": 4112.962200178185,
+      "duration": 1440.976,
+      "num_points": 750,
+      "num_turning_points": 0
+    },
+    {
+      "callsign": "CHH7869",
+      "start_point": {
+        "lat": 34.433035254478455,
+        "lon": 108.75687003135681,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:30:30.750"
+      },
+      "end_point": {
+        "lat": 34.425283670425415,
+        "lon": 108.75696659088135,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:46:39.726"
+      },
+      "path_length": 2839.5731401434014,
+      "duration": 968.976,
+      "num_points": 528,
+      "num_turning_points": 14
+    },
+    {
+      "callsign": "DKH1681",
+      "start_point": {
+        "lat": 34.44884419441223,
+        "lon": 108.74482154846191,
+        "stand": "303",
+        "runway": "05L",
+        "time": "2025-10-21 11:30:38.468"
+      },
+      "end_point": {
+        "lat": 34.43642556667328,
+        "lon": 108.76181602478027,
+        "stand": "303",
+        "runway": "05L",
+        "time": "2025-10-21 11:43:52.468"
+      },
+      "path_length": 6462.43498561147,
+      "duration": 794.0,
+      "num_points": 789,
+      "num_turning_points": 3
+    },
+    {
+      "callsign": "CBJ5078",
+      "start_point": {
+        "lat": 34.449026584625244,
+        "lon": 108.7450897693634,
+        "stand": "428",
+        "runway": "05L",
+        "time": "2025-10-21 11:33:12.320"
+      },
+      "end_point": {
+        "lat": 34.44009482860565,
+        "lon": 108.76785635948181,
+        "stand": "428",
+        "runway": "05L",
+        "time": "2025-10-21 11:44:29.343"
+      },
+      "path_length": 5841.005612220687,
+      "duration": 677.023,
+      "num_points": 678,
+      "num_turning_points": 4
+    },
+    {
+      "callsign": "CHH6208",
+      "start_point": {
+        "lat": 34.432761669158936,
+        "lon": 108.75867247581482,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:33:15.875"
+      },
+      "end_point": {
+        "lat": 34.42489743232727,
+        "lon": 108.75325441360474,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:59:59.679"
+      },
+      "path_length": 1925.6993931680668,
+      "duration": 1603.804,
+      "num_points": 427,
+      "num_turning_points": 26
+    },
+    {
+      "callsign": "CXA8270",
+      "start_point": {
+        "lat": 34.43394720554352,
+        "lon": 108.76055538654327,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:34:02.812"
+      },
+      "end_point": {
+        "lat": 34.42564845085144,
+        "lon": 108.75741183757782,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:55:34.781"
+      },
+      "path_length": 2864.3194130934276,
+      "duration": 1291.969,
+      "num_points": 619,
+      "num_turning_points": 2
+    },
+    {
+      "callsign": "CSN6569",
+      "start_point": {
+        "lat": 34.450035095214844,
+        "lon": 108.74646842479706,
+        "stand": "308",
+        "runway": "05L",
+        "time": "2025-10-21 11:35:16.085"
+      },
+      "end_point": {
+        "lat": 34.43436563014984,
+        "lon": 108.76033544540405,
+        "stand": "308",
+        "runway": "05L",
+        "time": "2025-10-21 11:49:10.062"
+      },
+      "path_length": 6113.410015632667,
+      "duration": 833.977,
+      "num_points": 833,
+      "num_turning_points": 6
+    },
+    {
+      "callsign": "CCA8524",
+      "start_point": {
+        "lat": 34.44084584712982,
+        "lon": 108.7527984380722,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:35:41.226"
+      },
+      "end_point": {
+        "lat": 34.42565381526947,
+        "lon": 108.75749230384827,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:58:40.281"
+      },
+      "path_length": 4103.3079371596805,
+      "duration": 1379.055,
+      "num_points": 610,
+      "num_turning_points": 10
+    },
+    {
+      "callsign": "CES2262",
+      "start_point": {
+        "lat": 34.45160150527954,
+        "lon": 108.74864637851715,
+        "stand": "502",
+        "runway": "05L",
+        "time": "2025-10-21 11:37:24.156"
+      },
+      "end_point": {
+        "lat": 34.45845186710358,
+        "lon": 108.7772923707962,
+        "stand": "502",
+        "runway": "05L",
+        "time": "2025-10-21 11:48:15.179"
+      },
+      "path_length": 4694.059831321093,
+      "duration": 651.023,
+      "num_points": 602,
+      "num_turning_points": 6
+    },
+    {
+      "callsign": "CES2345",
+      "start_point": {
+        "lat": 34.45755064487457,
+        "lon": 108.77589225769043,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:38:17.781"
+      },
+      "end_point": {
+        "lat": 34.42760646343231,
+        "lon": 108.75702559947968,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:57:37.742"
+      },
+      "path_length": 5935.988175655485,
+      "duration": 1159.961,
+      "num_points": 785,
+      "num_turning_points": 7
+    },
+    {
+      "callsign": "CSC3349",
+      "start_point": {
+        "lat": 34.449986815452576,
+        "lon": 108.74642550945282,
+        "stand": "310",
+        "runway": "05L",
+        "time": "2025-10-21 11:39:44.375"
+      },
+      "end_point": {
+        "lat": 34.43471968173981,
+        "lon": 108.75979363918304,
+        "stand": "310",
+        "runway": "05L",
+        "time": "2025-10-21 11:54:29.367"
+      },
+      "path_length": 6089.631610587824,
+      "duration": 884.992,
+      "num_points": 764,
+      "num_turning_points": 2
+    },
+    {
+      "callsign": "DKH1218",
+      "start_point": {
+        "lat": 34.433807730674744,
+        "lon": 108.76067876815796,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:40:30.820"
+      },
+      "end_point": {
+        "lat": 34.42211866378784,
+        "lon": 108.75017523765564,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:59:44.804"
+      },
+      "path_length": 1989.9804649076984,
+      "duration": 1153.984,
+      "num_points": 456,
+      "num_turning_points": 11
+    },
+    {
+      "callsign": "GCR7623",
+      "start_point": {
+        "lat": 34.430792927742004,
+        "lon": 108.75654816627502,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:41:19.867"
+      },
+      "end_point": {
+        "lat": 34.421281814575195,
+        "lon": 108.75130712985992,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:59:29.835"
+      },
+      "path_length": 1908.8517477105615,
+      "duration": 1089.968,
+      "num_points": 429,
+      "num_turning_points": 20
+    },
+    {
+      "callsign": "KAL811",
+      "start_point": {
+        "lat": 34.451258182525635,
+        "lon": 108.74815285205841,
+        "stand": "545",
+        "runway": "05L",
+        "time": "2025-10-21 11:42:01.257"
+      },
+      "end_point": {
+        "lat": 34.453033804893494,
+        "lon": 108.77391278743744,
+        "stand": "545",
+        "runway": "05L",
+        "time": "2025-10-21 11:51:46.242"
+      },
+      "path_length": 3725.4656521810152,
+      "duration": 584.985,
+      "num_points": 529,
+      "num_turning_points": 7
+    },
+    {
+      "callsign": "CES2200",
+      "start_point": {
+        "lat": 34.430513978004456,
+        "lon": 108.76410663127899,
+        "stand": "514",
+        "runway": "05R",
+        "time": "2025-10-21 11:43:40.554"
+      },
+      "end_point": {
+        "lat": 34.457497000694275,
+        "lon": 108.77436876296997,
+        "stand": "514",
+        "runway": "05R",
+        "time": "2025-10-21 11:54:58.570"
+      },
+      "path_length": 5495.715972558644,
+      "duration": 678.016,
+      "num_points": 675,
+      "num_turning_points": 12
+    },
+    {
+      "callsign": "CHH7898",
+      "start_point": {
+        "lat": 34.432557821273804,
+        "lon": 108.75757813453674,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:43:59.835"
+      },
+      "end_point": {
+        "lat": 34.42362070083618,
+        "lon": 108.75146269798279,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:59:39.945"
+      },
+      "path_length": 1642.1050687310028,
+      "duration": 940.11,
+      "num_points": 383,
+      "num_turning_points": 12
+    },
+    {
+      "callsign": "CSZ9252",
+      "start_point": {
+        "lat": 34.44887638092041,
+        "lon": 108.74486446380615,
+        "stand": "111",
+        "runway": "05L",
+        "time": "2025-10-21 11:45:36.554"
+      },
+      "end_point": {
+        "lat": 34.44231569766998,
+        "lon": 108.75468134880066,
+        "stand": "111",
+        "runway": "05L",
+        "time": "2025-10-21 11:50:36.585"
+      },
+      "path_length": 2635.807191664368,
+      "duration": 300.031,
+      "num_points": 296,
+      "num_turning_points": 0
+    },
+    {
+      "callsign": "CES2106",
+      "start_point": {
+        "lat": 34.45089876651764,
+        "lon": 108.74769687652588,
+        "stand": "508",
+        "runway": "05L",
+        "time": "2025-10-21 11:47:52.484"
+      },
+      "end_point": {
+        "lat": 34.43765938282013,
+        "lon": 108.76182675361633,
+        "stand": "515",
+        "runway": "05L",
+        "time": "2025-10-21 11:59:44.156"
+      },
+      "path_length": 2931.6505075662926,
+      "duration": 711.672,
+      "num_points": 96,
+      "num_turning_points": 3
+    },
+    {
+      "callsign": "CES2424",
+      "start_point": {
+        "lat": 34.44955229759216,
+        "lon": 108.74582469463348,
+        "stand": "508",
+        "runway": "05L",
+        "time": "2025-10-21 11:49:53.398"
+      },
+      "end_point": {
+        "lat": 34.45753455162048,
+        "lon": 108.77491056919098,
+        "stand": "508",
+        "runway": "05L",
+        "time": "2025-10-21 11:59:59.437"
+      },
+      "path_length": 4529.888373446078,
+      "duration": 606.039,
+      "num_points": 604,
+      "num_turning_points": 7
+    },
+    {
+      "callsign": "DKH1009",
+      "start_point": {
+        "lat": 34.43413496017456,
+        "lon": 108.76039981842041,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:50:35.835"
+      },
+      "end_point": {
+        "lat": 34.42635118961334,
+        "lon": 108.75529289245605,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:59:59.835"
+      },
+      "path_length": 1281.5819487258138,
+      "duration": 564.0,
+      "num_points": 259,
+      "num_turning_points": 4
+    },
+    {
+      "callsign": "CCA1209",
+      "start_point": {
+        "lat": 34.4516658782959,
+        "lon": 108.74872148036957,
+        "stand": "109",
+        "runway": "05L",
+        "time": "2025-10-21 11:51:44.945"
+      },
+      "end_point": {
+        "lat": 34.44309890270233,
+        "lon": 108.75573813915253,
+        "stand": "109",
+        "runway": "05L",
+        "time": "2025-10-21 11:59:10.937"
+      },
+      "path_length": 3250.733846465341,
+      "duration": 445.992,
+      "num_points": 442,
+      "num_turning_points": 4
+    },
+    {
+      "callsign": "CES2225",
+      "start_point": {
+        "lat": 34.451016783714294,
+        "lon": 108.74797582626343,
+        "stand": "534",
+        "runway": "05L",
+        "time": "2025-10-21 11:54:09.335"
+      },
+      "end_point": {
+        "lat": 34.4533234834671,
+        "lon": 108.76731991767883,
+        "stand": "534",
+        "runway": "05L",
+        "time": "2025-10-21 11:59:59.335"
+      },
+      "path_length": 2691.780752333669,
+      "duration": 350.0,
+      "num_points": 351,
+      "num_turning_points": 0
+    },
+    {
+      "callsign": "CSN3214",
+      "start_point": {
+        "lat": 34.435036182403564,
+        "lon": 108.76195013523102,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:56:30.820"
+      },
+      "end_point": {
+        "lat": 34.43489134311676,
+        "lon": 108.76191258430481,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:57:09.843"
+      },
+      "path_length": 49.522014543752626,
+      "duration": 39.023,
+      "num_points": 13,
+      "num_turning_points": 4
+    },
+    {
+      "callsign": "CES9858",
+      "start_point": {
+        "lat": 34.450721740722656,
+        "lon": 108.74746084213257,
+        "stand": "519",
+        "runway": "05L",
+        "time": "2025-10-21 11:56:54.812"
+      },
+      "end_point": {
+        "lat": 34.448736906051636,
+        "lon": 108.75831842422485,
+        "stand": "519",
+        "runway": "05L",
+        "time": "2025-10-21 11:59:59.835"
+      },
+      "path_length": 1645.684986647521,
+      "duration": 185.023,
+      "num_points": 186,
+      "num_turning_points": 2
+    },
+    {
+      "callsign": "CES2397",
+      "start_point": {
+        "lat": 34.458768367767334,
+        "lon": 108.77773225307465,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:57:18.812"
+      },
+      "end_point": {
+        "lat": 34.459261894226074,
+        "lon": 108.7770563364029,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:59:44.757"
+      },
+      "path_length": 94.61630268619066,
+      "duration": 145.945,
+      "num_points": 20,
+      "num_turning_points": 2
+    },
+    {
+      "callsign": "CES2157",
+      "start_point": {
+        "lat": 34.45769011974335,
+        "lon": 108.7716543674469,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:57:59.882"
+      },
+      "end_point": {
+        "lat": 34.458248019218445,
+        "lon": 108.77058148384094,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:59:55.875"
+      },
+      "path_length": 142.08207817824584,
+      "duration": 115.993,
+      "num_points": 38,
+      "num_turning_points": 2
+    },
+    {
+      "callsign": "CES2232",
+      "start_point": {
+        "lat": 34.44967567920685,
+        "lon": 108.74605000019073,
+        "stand": "540",
+        "runway": "05L",
+        "time": "2025-10-21 11:58:58.671"
+      },
+      "end_point": {
+        "lat": 34.45438027381897,
+        "lon": 108.75468671321869,
+        "stand": "540",
+        "runway": "05L",
+        "time": "2025-10-21 11:59:59.679"
+      },
+      "path_length": 984.2233679346452,
+      "duration": 61.008,
+      "num_points": 62,
+      "num_turning_points": 0
+    },
+    {
+      "callsign": "CSN3762",
+      "start_point": {
+        "lat": 34.43293869495392,
+        "lon": 108.76155853271484,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:59:27.281"
+      },
+      "end_point": {
+        "lat": 34.43169951438904,
+        "lon": 108.76267969608307,
+        "stand": null,
+        "runway": "05R",
+        "time": "2025-10-21 11:59:59.234"
+      },
+      "path_length": 184.73626809077794,
+      "duration": 31.953,
+      "num_points": 15,
+      "num_turning_points": 1
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest:*)",
+      "Bash(timeout:*)",
+      "Bash(python -c \"\nimport sys\nimport io\nfrom unittest.mock import patch\n\n# 模拟输入\ntest_input = ''501机位，发现燃油泄漏，发动机运转中，泄漏持续，面积约2平方米\\\\n''\n\n# 捕获输出\noutput = io.StringIO\\(\\)\n\ndef mock_input\\(prompt=''''\\):\n    print\\(prompt, end='''', flush=True\\)\n    return test_input\n\nwith patch\\(''builtins.input'', mock_input\\), patch\\(''stdout'', output\\):\n    try:\n        exec\\(open\\(''run_agent.py''\\).read\\(\\)\\)\n    except SystemExit:\n        pass\n    except Exception as e:\n        print\\(f''Error: {e}''\\)\n\nprint\\(output.getvalue\\(\\)[:3000]\\)\n\")"
+    ]
+  },
+  "outputStyle": "default"
+}

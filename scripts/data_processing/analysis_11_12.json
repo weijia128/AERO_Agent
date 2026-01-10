@@ -1,0 +1,54 @@
+{
+  "time_period": {
+    "start": "2025-10-21 11:00:00",
+    "end": "2025-10-21 12:00:00",
+    "duration_minutes": 60.0
+  },
+  "data_summary": {
+    "flight_plans": 60,
+    "trajectory_records": 391838
+  },
+  "statistics": {
+    "total_flights": 27,
+    "arrivals": 27,
+    "departures": 0,
+    "flights_with_trajectory": 0,
+    "unique_stands": 21,
+    "unique_runways": 2,
+    "stand_runway_mapping": {
+      "314": {
+        "05L": 1
+      },
+      "312": {
+        "05L": 1
+      },
+      "524": {
+        "05L": 1
+      },
+      "328": {
+        "05R": 1
+      },
+      "545L": {
+        "05L": 1
+      },
+      "514": {
+        "05R": 1
+      },
+      "548": {
+        "05R": 1
+      },
+      "536": {
+        "05L": 1
+      },
+      "317": {
+        "05R": 1
+      },
+      "109": {
+        "05L": 1
+      },
+      "519": {
+        "05L": 1
+      }
+    }
+  }
+}

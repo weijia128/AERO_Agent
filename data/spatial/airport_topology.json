@@ -1,0 +1,123 @@
+{
+  "airport": {
+    "icao": "ZBAA",
+    "name": "北京首都国际机场",
+    "version": "2024.1"
+  },
+  "stands": {
+    "501": {
+      "id": "501",
+      "name": "501号机位",
+      "type": "contact",
+      "terminal": "T3",
+      "zone": "T3_DOMESTIC",
+      "coordinates": [116.5840, 40.0800],
+      "adjacent": ["502", "A", "A3"],
+      "adjacent_taxiways": ["A", "A3"],
+      "nearest_runway": "01L",
+      "distance_to_runway": 450,
+      "fire_station_distance": 200
+    },
+    "502": {
+      "id": "502",
+      "name": "502号机位",
+      "type": "contact",
+      "terminal": "T3",
+      "zone": "T3_DOMESTIC",
+      "coordinates": [116.5850, 40.0800],
+      "adjacent": ["501", "503", "A", "A3"],
+      "adjacent_taxiways": ["A", "A3"],
+      "nearest_runway": "01L",
+      "distance_to_runway": 480,
+      "fire_station_distance": 220
+    },
+    "503": {
+      "id": "503",
+      "name": "503号机位",
+      "type": "contact",
+      "terminal": "T3",
+      "zone": "T3_DOMESTIC",
+      "coordinates": [116.5860, 40.0800],
+      "adjacent": ["502", "504", "A"],
+      "adjacent_taxiways": ["A"],
+      "nearest_runway": "01L",
+      "distance_to_runway": 510,
+      "fire_station_distance": 250
+    },
+    "601": {
+      "id": "601",
+      "name": "601号机位",
+      "type": "remote",
+      "terminal": "CARGO",
+      "zone": "CARGO",
+      "coordinates": [116.5900, 40.0820],
+      "adjacent": ["602", "B", "B2"],
+      "adjacent_taxiways": ["B", "B2"],
+      "nearest_runway": "01R",
+      "distance_to_runway": 300,
+      "fire_station_distance": 350
+    }
+  },
+  "taxiways": {
+    "A": {
+      "id": "A",
+      "name": "A滑行道",
+      "type": "main",
+      "connects_to": ["A1", "A2", "A3", "501", "502", "503"],
+      "runway": "01L"
+    },
+    "A3": {
+      "id": "A3",
+      "name": "A3滑行道",
+      "type": "connector",
+      "connects_to": ["A", "501", "502", "01L"],
+      "runway": "01L"
+    },
+    "B": {
+      "id": "B",
+      "name": "B滑行道",
+      "type": "main",
+      "connects_to": ["B1", "B2", "601"],
+      "runway": "01R"
+    },
+    "B2": {
+      "id": "B2",
+      "name": "B2滑行道",
+      "type": "connector",
+      "connects_to": ["B", "601", "01R"],
+      "runway": "01R"
+    }
+  },
+  "runways": {
+    "01L": {
+      "id": "01L",
+      "name": "01L/19R跑道",
+      "length": 3800,
+      "width": 60,
+      "status": "ACTIVE",
+      "connected_taxiways": ["A3", "A5", "A7"]
+    },
+    "01R": {
+      "id": "01R",
+      "name": "01R/19L跑道",
+      "length": 3200,
+      "width": 50,
+      "status": "ACTIVE",
+      "connected_taxiways": ["B2", "B4"]
+    }
+  },
+  "fire_stations": {
+    "FS1": {
+      "id": "FS1",
+      "name": "1号消防站",
+      "coordinates": [116.5800, 40.0780],
+      "response_time_seconds": 180
+    },
+    "FS2": {
+      "id": "FS2",
+      "name": "2号消防站",
+      "coordinates": [116.5950, 40.0850],
+      "response_time_seconds": 200
+    }
+  }
+}

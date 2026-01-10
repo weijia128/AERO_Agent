@@ -1,0 +1,149 @@
+# Checklist 定义
+# 版本: 1.0
+# 描述: 机坪漏油处置检查单字段定义
+
+checklist:
+  # 完成条件定义
+  done_condition:
+    type: all_required
+    level: P1
+    description: "所有 P1 字段必须收集完成"
+
+  # P1 字段（必须收集的关键事实）
+  p1_fields:
+    - field: flight_no
+      key: flight_no
+      label: 航班号
+      type: string
+      required: true
+      priority: P1
+      ask_prompt: "报告你机号"
+      ui:
+        widget: input
+        placeholder: "如: CA1234, 川航3349"
+
+    - field: fluid_type
+      key: fluid_type
+      label: 油液类型
+      type: enum
+      required: true
+      priority: P1
+      options:
+        - value: FUEL
+          label: 燃油
+        - value: HYDRAULIC
+          label: 液压油
+        - value: OIL
+          label: 发动机滑油
+        - value: UNKNOWN
+          label: 不明（按燃油处理）
+      ask_prompt: "请确认泄漏的油液类型（燃油/液压油/滑油）"
+      ui:
+        widget: radio
+        help: "如无法确认，选择不明"
+      validation:
+        regex: "^(FUEL|HYDRAULIC|OIL|UNKNOWN)$"
+
+    - field: continuous
+      key: continuous
+      label: 是否持续滴漏
+      type: boolean
+      required: true
+      priority: P1
+      ask_prompt: "泄漏是否还在持续？"
+      ui:
+        widget: toggle
+        true_label: "是"
+        false_label: "否"
+
+    - field: engine_status
+      key: engine_status
+      label: 发动机/APU 状态
+      type: enum
+      required: true
+      priority: P1
+      options:
+        - value: RUNNING
+          label: 发动机运转中
+        - value: STOPPED
+          label: 发动机已关闭
+        - value: APU
+          label: 仅 APU 运行
+      ask_prompt: "发动机/APU 当前状态如何？"
+      ui:
+        widget: radio
+
+    - field: position
+      key: position
+      label: 航空器位置
+      type: airport_node
+      required: true
+      priority: P1
+      ask_prompt: "请确认飞机当前位置（机位编号/滑行道/跑道入口）"
+      ui:
+        widget: airport_selector
+        placeholder: "如: 501机位, TWY_A3, RWY_27L"
+
+  # P2 字段（评估所需的补充信息）
+  p2_fields:
+    - field: leak_size
+      key: leak_size
+      label: 泄漏面积估计
+      type: enum
+      required: false
+      priority: P2
+      options:
+        - value: SMALL
+          label: 小面积 (< 1m²)
+        - value: MEDIUM
+          label: 中面积 (1-5m²)
+        - value: LARGE
+          label: 大面积 (> 5m²)
+      ask_prompt: "请估计泄漏面积大小？"
+      ui:
+        widget: select
+
+    - field: reported_by
+      key: reported_by
+      label: 报告人
+      type: string
+      required: false
+      priority: P2
+      ask_prompt: "请告知您的姓名或工号"
+      ui:
+        widget: input
+
+    - field: discovery_method
+      key: discovery_method
+      label: 发现方式
+      type: enum
+      required: false
+      priority: P2
+      options:
+        - value: crew
+          label: 机组报告
+        - value: patrol
+          label: 巡场人员发现
+        - value: sensor
+          label: 传感器监测
+      ask_prompt: "请问是如何发现漏油的？"
+      ui:
+        widget: select
+
+# UI 表单布局配置
+form_layout:
+  sections:
+    - id: critical_facts
+      title: 漏油关键事实（必填）
+      order: 1
+      fields: [fluid_type, continuous, engine_status, position]
+
+    - id: assessment_info
+      title: 评估补充信息
+      order: 2
+      fields: [leak_size, flight_no, discovery_method]
+
+    - id: reporter_info
+      title: 报告人信息
+      order: 3
+      fields: [reported_by]
