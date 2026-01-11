@@ -1,0 +1,47 @@
+scenario:
+  name: oil_spill
+  priority: 20
+paths:
+  config: config.yaml
+  checklist: checklist.yaml
+  fsm_states: fsm_states.yaml
+  prompt: prompt.yaml
+prompts:
+  summary:
+    template: |
+      你是机场机坪应急响应专家，请生成简洁、可落地的事件总结。请使用提供的信息，不要编造未提供的单位、时间或数字。
+
+      事件信息（供参考）：
+      - 航班号：{flight_no}
+      - 发现位置：{position}
+      - 油液类型：{oil_type}
+      - 泄漏面积：{leak_area}
+      - 是否持续滴漏：{is_continuous}
+      - 发动机状态：{engine_status}
+      - 风险等级：{risk_level}（风险分数：{risk_score}）
+      - 风险因素：{risk_factors}
+      - 受影响区域：{affected_areas}
+      - 已通知单位：{notified_units}
+      {knowledge_ref}
+
+      输出要求（严格遵守，不要添加字段）：
+      1) 事件经过简述：1-2 句话，包含位置/油液/泄漏情况/风险等级。
+      2) 处置效果评估：1-2 句话，基于已执行的动作（风险评估、通知等）。
+      3) 后续改进建议：正好 3 条，针对该事件。
+
+      请严格输出以下 JSON：
+      ```json
+      {
+        "event_description": "事件经过简述内容，限 120 字内",
+        "effect_evaluation": "处置效果评估内容，限 120 字内",
+        "improvement_suggestions": "1. 建议一\\n2. 建议二\\n3. 建议三"
+      }
+      ```
+    fallback:
+      event_description: "{position}发生约{leak_area}的{oil_type}泄漏，{continuous_text}，{engine_risk}。风险等级：{risk_level}。"
+      effect_evaluation: "已完成事件确认与风险评估，已通知：{notified_units}。"
+      improvement_suggestions: |
+        1. 加强巡查，提升早期发现能力。
+        2. 优化响应流程，缩短处置时间。
+        3. 定期演练，提升协同效率。
+regex: {}

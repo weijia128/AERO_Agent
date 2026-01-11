@@ -13,7 +13,7 @@ import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +29,10 @@ from agent.nodes.semantic_understanding import (
 )
 
 
-# 实体提取正则表达式
-PATTERNS = {
+# 通用实体提取正则（场景通用部分）
+BASE_PATTERNS = {
     "position": [
+        r"(\d{1,3})\s*(?:滑行道)",  # 12滑行道 -> 12
         r"(\d{2,3})\s*(?:机位|停机位)",  # 501机位, 32停机位 (数字在前)
         r"(?:在|位于)?(?:机位|停机位)\s*号?\s*(\d{2,3})",  # 在32号机位, 501停机位, 机位32
         r"(滑行道|TWY)[_\s]?([A-Z]?\d+)",  # 滑行道W2, TWY A3 (保留完整位置)
@@ -81,6 +82,35 @@ PATTERNS = {
 _RADIOTELEPHONY_RULES = None
 
 
+def _build_incident_and_checklist_templates(scenario_type: str) -> tuple[Dict[str, Any], Dict[str, bool]]:
+    """根据场景配置构建 incident/checklist 模板，便于切换场景时重建字段。"""
+    scenario = ScenarioRegistry.get(scenario_type)
+    if not scenario:
+        incident_fields = {
+            "fluid_type": None,
+            "continuous": None,
+            "engine_status": None,
+            "position": None,
+            "leak_size": None,
+            "flight_no": None,
+            "reported_by": None,
+            "report_time": datetime.now().isoformat(),
+        }
+        checklist_fields = {k: False for k in incident_fields.keys()}
+        return incident_fields, checklist_fields
+
+    incident_fields: Dict[str, Any] = {}
+    checklist_fields: Dict[str, bool] = {}
+    for field in scenario.p1_fields + scenario.p2_fields:
+        key = field.get("key")
+        if key:
+            incident_fields[key] = None
+            checklist_fields[key] = False
+    incident_fields["report_time"] = datetime.now().isoformat()
+
+    return incident_fields, checklist_fields
+
+
 def _load_radiotelephony_rules() -> Dict[str, Any]:
     global _RADIOTELEPHONY_RULES
     if _RADIOTELEPHONY_RULES is not None:
@@ -127,11 +157,18 @@ def normalize_radiotelephony_text(text: str) -> str:
 
         normalized = re.sub(r"(?<=[A-Z0-9])\s+(?=[A-Z0-9])", "", normalized)
 
+    # 规范“数字+滑行道/跑道/机位”顺序为“滑行道12”形式
+    normalized = re.sub(
+        r"\b(\d{1,3})\s*(滑行道|跑道|机位)",
+        lambda m: f"{m.group(2)}{m.group(1)}",
+        normalized,
+    )
+
     return normalized
 
 
-def extract_entities(text: str) -> Dict[str, Any]:
-    """从文本中提取实体（增强版）"""
+def _extract_entities_legacy(text: str) -> Dict[str, Any]:
+    """从文本中提取实体（旧版，兼容保留）"""
     entities = {}
 
     # 提取位置 - 增强模式
@@ -181,6 +218,22 @@ def extract_entities(text: str) -> Dict[str, Any]:
             entities["fluid_type"] = value
             break
 
+    # 鸟击场景特有字段
+    for pattern, value in PATTERNS.get("event_type", []):
+        if re.search(pattern, text):
+            entities["event_type"] = value
+            break
+
+    for pattern, value in PATTERNS.get("affected_part", []):
+        if re.search(pattern, text):
+            entities["affected_part"] = value
+            break
+
+    for pattern, value in PATTERNS.get("current_status", []):
+        if re.search(pattern, text):
+            entities["current_status"] = value
+            break
+
     # 提取发动机状态
     for pattern, value in PATTERNS["engine_status"]:
         if re.search(pattern, text):
@@ -227,25 +280,33 @@ def extract_entities(text: str) -> Dict[str, Any]:
 
 
 def identify_scenario(text: str) -> str:
-    """识别场景类型"""
+    """
+    识别场景类型（基于场景注册的关键词，支持优先级）
+    """
     text_lower = text.lower()
-    
-    # 漏油场景关键词
+    candidates: list[tuple[int, str]] = []
+
+    for name in ScenarioRegistry.list_all():
+        scenario = ScenarioRegistry.get(name)
+        if not scenario:
+            continue
+        keywords = getattr(scenario, "keywords", []) or []
+        priority = scenario.metadata.get("priority", 100)
+        if any(kw.lower() in text_lower for kw in keywords):
+            candidates.append((priority, name))
+
+    if candidates:
+        candidates.sort(key=lambda x: x[0])
+        return candidates[0][1]
+
+    # 回退：保持与历史逻辑一致
     oil_keywords = ["漏油", "泄漏", "燃油", "液压油", "滑油", "油液", "漏液"]
-    if any(kw in text_lower for kw in oil_keywords):
-        return "oil_spill"
-    
-    # 鸟击场景关键词
-    bird_keywords = ["鸟击", "撞鸟", "鸟撞"]
+    bird_keywords = ["鸟击", "撞鸟", "鸟撞", "疑似鸟击"]
     if any(kw in text_lower for kw in bird_keywords):
         return "bird_strike"
-    
-    # 轮胎场景关键词
-    tire_keywords = ["轮胎", "爆胎", "胎压"]
-    if any(kw in text_lower for kw in tire_keywords):
-        return "tire_burst"
-    
-    # 默认返回漏油场景
+    if any(kw in text_lower for kw in oil_keywords):
+        return "oil_spill"
+
     return "oil_spill"
 
 
@@ -472,14 +533,19 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
 
     normalized_message = normalize_radiotelephony_text(user_message)
 
-    # 识别场景类型
-    scenario_type = identify_scenario(normalized_message)
+    # 识别场景类型（保留已有场景优先级，避免降级）
+    detected_scenario = identify_scenario(normalized_message)
+    scenario_type = _select_scenario(state.get("scenario_type", ""), detected_scenario)
 
     # 构建对话历史上下文
     history = build_history_context(messages)
 
-    # 合并到现有 incident
-    current_incident = dict(state.get("incident", {}))
+    # 基于场景模板重建 incident/checklist，保留已知字段
+    incident_template, checklist_template = _build_incident_and_checklist_templates(scenario_type)
+    current_incident = incident_template
+    for key, value in state.get("incident", {}).items():
+        if key in current_incident and value not in [None, ""]:
+            current_incident[key] = value
     semantic_understanding: Dict[str, Any] = {}
     semantic_validation: Dict[str, Any] = {}
     extracted: Dict[str, Any] = {}
@@ -499,7 +565,7 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
         )
 
         # 基于规则的快速提取（更稳定），作为补充
-        deterministic_entities = extract_entities(normalized_message)
+        deterministic_entities = extract_entities(normalized_message, scenario_type)
         extracted.update(deterministic_entities)
         extracted.update(accepted)
 
@@ -514,15 +580,9 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
 
         # 语义验证结果（缺失/低置信度/矛盾）
         scenario = ScenarioRegistry.get(scenario_type)
-        if scenario:
-            required_fields = [
-                field.get("key") for field in scenario.p1_fields
-                if field.get("key") and field.get("required", True)
-            ]
-        else:
-            required_fields = ["fluid_type", "position", "engine_status", "continuous", "flight_no"]
+        required_fields = _infer_required_fields(scenario, current_incident)
 
-        checklist = update_checklist(current_incident, state.get("checklist", {}))
+        checklist = update_checklist(current_incident, checklist_template)
         missing_fields = [field for field in required_fields if not checklist.get(field, False)]
 
         semantic_validation = {
@@ -533,7 +593,7 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
         }
     else:
         # 提取实体（混合方案：正则 + LLM，更灵活）
-        extracted = extract_entities_hybrid(normalized_message, history)
+        extracted = extract_entities_hybrid(normalized_message, history, scenario_type)
         for key, value in extracted.items():
             if value is not None:
                 current_incident[key] = value
@@ -547,16 +607,10 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
     flight_plan_observation = enrichment.get("flight_plan_observation")
 
     # 更新 checklist（保持场景字段）
-    checklist = update_checklist(current_incident, state.get("checklist", {}))
+    checklist = update_checklist(current_incident, checklist_template)
     if semantic_validation:
         scenario = ScenarioRegistry.get(scenario_type)
-        if scenario:
-            required_fields = [
-                field.get("key") for field in scenario.p1_fields
-                if field.get("key") and field.get("required", True)
-            ]
-        else:
-            required_fields = ["fluid_type", "position", "engine_status", "continuous", "flight_no"]
+        required_fields = _infer_required_fields(scenario, current_incident)
         semantic_validation["missing_fields"] = [
             field for field in required_fields if not checklist.get(field, False)
         ]
@@ -666,6 +720,101 @@ SIZE_TYPE_MAP = {
 }
 
 
+def _merge_patterns(scenario_type: str) -> Dict[str, Any]:
+    """合并通用正则与场景正则（manifest regex）"""
+    base = {k: v[:] if isinstance(v, list) else v for k, v in BASE_PATTERNS.items()}
+    scenario = ScenarioRegistry.get(scenario_type) if scenario_type else None
+    if scenario and scenario.regex_patterns:
+        for key, items in scenario.regex_patterns.items():
+            merged: List[Any] = []
+            for item in items or []:
+                pattern = item.get("pattern")
+                value = item.get("value")
+                if pattern:
+                    merged.append((pattern, value))
+            if merged:
+                base[key] = merged
+    return base
+
+
+def extract_entities(text: str, scenario_type: Optional[str] = None) -> Dict[str, Any]:
+    """从文本中提取实体（通用+场景 regex）"""
+    entities: Dict[str, Any] = {}
+    patterns = _merge_patterns(scenario_type or "")
+
+    for pattern in patterns.get("position", []):
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            if len(match.groups()) == 2:
+                prefix, suffix = match.group(1), match.group(2)
+                entities["position"] = f"{prefix}{suffix}"
+            else:
+                entities["position"] = match.group(1)
+            break
+
+    if "position" not in entities:
+        text_stripped = text.strip()
+        if re.match(r"^\d{2,3}$", text_stripped):
+            entities["position"] = text_stripped
+        elif re.match(r"^(跑道|滑行道|机位)\s*\d+", text_stripped, re.IGNORECASE):
+            match = re.match(r"^(跑道|滑行道|机位)\s*(\d+)", text_stripped, re.IGNORECASE)
+            if match:
+                entities["position"] = f"{match.group(1)}{match.group(2)}"
+        else:
+            match = re.search(r"(跑道|滑行道|机位|TWY|RWY)[_\s]?([A-Z]?\d+)", text, re.IGNORECASE)
+            if match:
+                entities["position"] = f"{match.group(1)}{match.group(2)}"
+            else:
+                match = re.search(r"\b(\d{2,3})\b", text)
+                if match:
+                    entities["position"] = match.group(1)
+
+    for pattern, value in patterns.get("fluid_type", []):
+        if re.search(pattern, text):
+            entities["fluid_type"] = value
+            break
+
+    for key in ["event_type", "affected_part", "current_status"]:
+        for pattern, value in patterns.get(key, []):
+            if re.search(pattern, text):
+                entities[key] = value
+                break
+
+    for pattern, value in patterns.get("engine_status", []):
+        if re.search(pattern, text):
+            entities["engine_status"] = value
+            break
+
+    for pattern, value in patterns.get("continuous", []):
+        if re.search(pattern, text):
+            entities["continuous"] = value
+            break
+
+    for pattern, value in patterns.get("leak_size", []):
+        if re.search(pattern, text):
+            entities["leak_size"] = value
+            break
+
+    for pattern in patterns.get("aircraft", []):
+        match = re.search(pattern, text)
+        if match:
+            value = match.group(1)
+            if value.startswith("B-"):
+                continue
+            elif value.isdigit():
+                for cn_name, code in AIRLINE_CHINESE_TO_IATA.items():
+                    if cn_name in text:
+                        entities["flight_no_display"] = f"{cn_name}{value}"
+                        entities["flight_no"] = f"{code}{value}"
+                        break
+            else:
+                entities["flight_no_display"] = value
+                entities["flight_no"] = value
+            break
+
+    return entities
+
+
 def extract_entities_llm(text: str, history: str = "") -> Dict[str, Any]:
     """使用 LLM 提取实体（更灵活）"""
     try:
@@ -702,7 +851,7 @@ def extract_entities_llm(text: str, history: str = "") -> Dict[str, Any]:
         return {}
 
 
-def extract_entities_hybrid(text: str, history: str = "") -> Dict[str, Any]:
+def extract_entities_hybrid(text: str, history: str = "", scenario_type: Optional[str] = None) -> Dict[str, Any]:
     """
     混合实体提取：先用正则，再用 LLM 补充
 
@@ -711,7 +860,7 @@ def extract_entities_hybrid(text: str, history: str = "") -> Dict[str, Any]:
     2. 灵活路径：LLM 提取（处理语义表达）
     """
     # 第一步：正则提取（快速、确定性）
-    entities = extract_entities(text)
+    entities = extract_entities(text, scenario_type)
 
     # 第二步：LLM 补充（处理模糊表达）
     llm_entities = extract_entities_llm(text, history)
@@ -743,3 +892,34 @@ if __name__ == "__main__":
         print(f"\n输入: {inp}")
         print(f"正则: {extract_entities(inp)}")
         print(f"混合: {extract_entities_hybrid(inp)}")
+def _infer_required_fields(scenario: Any, incident: Dict[str, Any]) -> List[str]:
+    """根据场景或已有字段推断必填字段列表，避免误用漏油字段。"""
+    if scenario:
+        return [
+            field.get("key")
+            for field in scenario.p1_fields
+            if field.get("key") and field.get("required", True)
+        ]
+    # 无场景但已有鸟击字段时，按鸟击必填
+    bird_keys = {"event_type", "affected_part", "current_status", "crew_request"}
+    if bird_keys.intersection(incident.keys()):
+        return ["flight_no", "position", "event_type", "affected_part", "current_status", "crew_request"]
+    return ["fluid_type", "position", "engine_status", "continuous", "flight_no"]
+
+
+def _select_scenario(current: str, detected: str) -> str:
+    """根据优先级选择场景，避免已确认场景被降级。"""
+    if not current:
+        return detected
+    if current == detected:
+        return current
+
+    current_scenario = ScenarioRegistry.get(current)
+    detected_scenario = ScenarioRegistry.get(detected)
+    cur_priority = current_scenario.metadata.get("priority", 100) if current_scenario else 100
+    det_priority = detected_scenario.metadata.get("priority", 100) if detected_scenario else 100
+
+    # 优先保留更高优先级（数值更小）的场景，避免从鸟击切回漏油
+    if cur_priority <= det_priority:
+        return current
+    return detected

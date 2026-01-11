@@ -11,9 +11,10 @@ import logging
 import re
 from datetime import datetime
 from typing import Any, Dict, List
-
 from agent.state import AgentState, FSMState, RiskLevel
 from config.llm_config import get_llm_client
+from agent.nodes.template_renderer import render_report
+from scenarios.base import ScenarioRegistry
 
 # =============================================================================
 # 常量定义
@@ -123,6 +124,64 @@ def _build_event_context(
     }
 
 
+def _build_summary_context(
+    incident: Dict[str, Any],
+    risk: Dict[str, Any],
+    spatial: Dict[str, Any],
+    notifications: List[Dict[str, Any]],
+    knowledge: Dict[str, Any] | None,
+) -> Dict[str, Any]:
+    """构建摘要模板上下文。"""
+    ctx = _build_event_context(incident, risk)
+    affected_text = _build_affected_areas_text(spatial) or "无"
+    notified_text = _extract_notified_departments(notifications) or "暂无记录"
+
+    knowledge_ref = ""
+    if knowledge and knowledge.get("regulations"):
+        regs = knowledge["regulations"]
+        if regs:
+            reg = regs[0]
+            knowledge_ref = (
+                f"参考规程：{reg.get('title', '')}，清理方式：{reg.get('cleanup_method', '')}"
+            )
+
+    risk_factors_text = (
+        ", ".join(ctx["risk_factors"]) if ctx["risk_factors"] else "无特殊因素"
+    )
+
+    return {
+        "flight_no": ctx["flight_no"],
+        "position": ctx["position"],
+        "event_type": incident.get("event_type", "确认/疑似"),
+        "affected_part": incident.get("affected_part", "待确认"),
+        "current_status": incident.get("current_status", "待检查"),
+        "risk_level": ctx["risk_level"],
+        "risk_score": ctx["risk_score"],
+        "notified_units": notified_text,
+        "knowledge_ref": knowledge_ref,
+        "oil_type": ctx["oil_type"],
+        "leak_area": ctx["leak_area"],
+        "is_continuous": ctx["is_continuous_text"],
+        "engine_status": ctx["engine_status"],
+        "risk_factors": risk_factors_text,
+        "affected_areas": affected_text,
+        "continuous_text": "泄漏持续" if ctx["is_continuous"] else "泄漏已停止",
+        "engine_risk": (
+            "发动机处于运转状态，存在火灾风险"
+            if ctx["engine_status"] == "运行中"
+            else "发动机已关闭"
+        ),
+    }
+
+
+def _format_template(template: str, context: Dict[str, Any]) -> str:
+    """安全格式化模板，保留未提供字段占位。"""
+    result = template
+    for key, value in context.items():
+        result = result.replace(f"{{{key}}}", str(value))
+    return result
+
+
 def _extract_notified_departments(notifications: List[Dict[str, Any]]) -> str:
     """
     从通知列表提取已通知部门文本
@@ -158,27 +217,6 @@ def _parse_llm_json_response(content: str) -> Dict[str, str] | None:
     return None
 
 
-def _build_notifications_table(coordination_units: List[Dict[str, Any]]) -> str:
-    """
-    构建协同单位通知记录表格行
-
-    Args:
-        coordination_units: 协调单位列表
-
-    Returns:
-        Markdown 表格行字符串
-    """
-    rows = []
-    for unit in coordination_units:
-        name = unit.get("name", "")
-        notified_status = "☑ 是  ☐ 否" if unit.get("notified") else "☐ 是  ☐ 否"
-        notify_time = unit.get("notify_time", "——") or "——"
-        if notify_time and len(notify_time) > 19:
-            notify_time = notify_time[11:19]
-        rows.append(f"| {name} | {notified_status} | {notify_time} | |")
-    return "\n".join(rows) + "\n" if rows else ""
-
-
 # =============================================================================
 # LLM 事件总结生成
 # =============================================================================
@@ -190,6 +228,8 @@ def _build_deterministic_summary(
     spatial: Dict[str, Any],
     notifications: List[Dict[str, Any]],
     recommendations: List[str],
+    scenario_type: str = "oil_spill",
+    knowledge: Dict[str, Any] | None = None,
 ) -> Dict[str, str]:
     """
     构建确定性事件总结（作为 LLM 的回退方案）
@@ -198,6 +238,28 @@ def _build_deterministic_summary(
         包含 event_description, effect_evaluation, improvement_suggestions 的字典
     """
     ctx = _build_event_context(incident, risk)
+    scenario = ScenarioRegistry.get(scenario_type)
+    summary_prompts = scenario.summary_prompts if scenario else {}
+    fallback = summary_prompts.get("fallback") if summary_prompts else None
+    if fallback:
+        summary_context = _build_summary_context(
+            incident=incident,
+            risk=risk,
+            spatial=spatial,
+            notifications=notifications,
+            knowledge=knowledge,
+        )
+        return {
+            "event_description": _format_template(
+                fallback.get("event_description", ""), summary_context
+            ),
+            "effect_evaluation": _format_template(
+                fallback.get("effect_evaluation", ""), summary_context
+            ),
+            "improvement_suggestions": _format_template(
+                fallback.get("improvement_suggestions", ""), summary_context
+            ),
+        }
 
     continuous_text = "泄漏持续" if ctx["is_continuous"] else "泄漏已停止"
     engine_risk_text = (
@@ -225,6 +287,25 @@ def _build_deterministic_summary(
         [f"{i + 1}. {r}" for i, r in enumerate(recommendations[:3])]
     )
 
+    if scenario_type == "bird_strike":
+        event_description = (
+            f"{incident.get('position', '未知位置')}发生鸟击（{incident.get('event_type', '确认/疑似')}），"
+            f"影响部位：{incident.get('affected_part', '待确认')}，当前状态：{incident.get('current_status', '待检查')}。"
+        )
+        effect_evaluation = f"已完成事件确认，已通知：{_extract_notified_departments(notifications)}。"
+        improvement_suggestions = "\n".join(
+            [
+                "1. 安排停场检查确认受损部位与程度。",
+                "2. 评估是否需要返航/改降或更换航路。",
+                "3. 记录鸟击信息并通报运行/机务/消防。",
+            ]
+        )
+        return {
+            "event_description": event_description,
+            "effect_evaluation": effect_evaluation,
+            "improvement_suggestions": improvement_suggestions,
+        }
+
     return {
         "event_description": event_description,
         "effect_evaluation": effect_evaluation,
@@ -238,6 +319,7 @@ def _generate_event_summary_with_llm(
     spatial: Dict[str, Any],
     notifications: List[Dict[str, Any]],
     recommendations: List[str],
+    scenario_type: str,
     knowledge: Dict[str, Any] = None,
 ) -> Dict[str, str]:
     """
@@ -247,25 +329,49 @@ def _generate_event_summary_with_llm(
         包含 event_description, effect_evaluation, improvement_suggestions 的字典
     """
     ctx = _build_event_context(incident, risk)
-    affected_text = _build_affected_areas_text(spatial) or "无"
-    notified_text = _extract_notified_departments(notifications)
-
-    knowledge_ref = ""
-    if knowledge and knowledge.get("regulations"):
-        regs = knowledge["regulations"]
-        if regs:
-            reg = regs[0]
-            knowledge_ref = (
-                f"参考规程：{reg.get('title', '')}，清理方式：{reg.get('cleanup_method', '')}"
-            )
-
-    risk_factors_text = (
-        ", ".join(ctx["risk_factors"]) if ctx["risk_factors"] else "无特殊因素"
+    summary_context = _build_summary_context(
+        incident=incident,
+        risk=risk,
+        spatial=spatial,
+        notifications=notifications,
+        knowledge=knowledge,
     )
+    scenario = ScenarioRegistry.get(scenario_type)
+    summary_prompts = scenario.summary_prompts if scenario else {}
+    prompt_template = summary_prompts.get("template") if summary_prompts else None
 
-    prompt = f"""你是机场机坪应急响应专家，请根据以下事件信息生成专业的事件总结。
+    if prompt_template:
+        prompt = _format_template(prompt_template, summary_context)
+    elif scenario_type == "bird_strike":
+        prompt = f"""你是机场鸟击应急响应专家，请生成简洁、可落地的事件总结。请使用提供的信息，不要编造未提供的单位/时间/数字。
 
-## 事件信息
+事件信息（供参考）：
+- 航班号：{ctx['flight_no']}
+- 发生位置：{ctx['position']}
+- 事件类型：{incident.get('event_type', '确认/疑似')}
+- 影响部位：{incident.get('affected_part', '待确认')}
+- 当前状态：{incident.get('current_status', '待检查')}
+- 风险等级：{ctx['risk_level']}（风险分数：{ctx['risk_score']}）
+- 已通知单位：{summary_context.get('notified_units', '')}
+{summary_context.get('knowledge_ref', '')}
+
+输出要求（严格遵守，不要添加字段）：
+1) 事件经过简述：1-2 句话，包含位置/事件类型/影响部位/风险等级，避免华丽辞藻。
+2) 处置效果评估：1-2 句话，基于已执行的动作（通知/检查安排等），勿夸大。
+3) 后续改进建议：正好 3 条，针对性且与本次鸟击相关（如检查、通报、运行调整）。
+
+请严格输出以下 JSON：
+```json
+{{
+  "event_description": "事件经过简述内容，限 120 字内",
+  "effect_evaluation": "处置效果评估内容，限 120 字内",
+  "improvement_suggestions": "1. 建议一\\n2. 建议二\\n3. 建议三"
+}}
+```"""
+    else:
+        prompt = f"""你是机场机坪应急响应专家，请生成简洁、可落地的事件总结。请使用提供的信息，不要编造任何未提供的单位、时间或数字。
+
+事件信息（供参考）：
 - 航班号：{ctx['flight_no']}
 - 发现位置：{ctx['position']}
 - 油液类型：{ctx['oil_type']}
@@ -273,28 +379,21 @@ def _generate_event_summary_with_llm(
 - 是否持续滴漏：{ctx['is_continuous_text']}
 - 发动机状态：{ctx['engine_status']}
 - 风险等级：{ctx['risk_level']}（风险分数：{ctx['risk_score']}）
-- 风险因素：{risk_factors_text}
-- 受影响区域：{affected_text}
-- 已通知单位：{notified_text}
-{knowledge_ref}
+- 风险因素：{summary_context.get('risk_factors', '')}
+- 受影响区域：{summary_context.get('affected_areas', '')}
+- 已通知单位：{summary_context.get('notified_units', '')}
+{summary_context.get('knowledge_ref', '')}
 
-## 输出要求
-请生成以下三部分内容，使用专业、简洁的民航术语：
+输出要求（严格遵守，不要添加字段）：
+1) 事件经过简述：1-2 句话，包含位置/油液/泄漏情况/风险等级，避免华丽辞藻。
+2) 处置效果评估：1-2 句话，基于已执行的动作（风险评估、通知等），勿夸大。
+3) 后续改进建议：正好 3 条，针对性且与该事件相关，不要泛泛而谈。
 
-### 事件经过简述
-用1-2句话概括事件发生经过，包含关键信息（位置、油液类型、泄漏情况、风险等级），语言流畅自然。
-
-### 处置效果评估
-根据已完成的处置动作（风险评估、通知等），评估当前处置进展和效果，1-2句话。
-
-### 后续改进建议
-根据本次事件的具体情况，提出3条针对性的改进建议（不要太笼统，要结合具体事件特点）。
-
-请严格按照以下 JSON 格式输出：
+请严格输出以下 JSON：
 ```json
 {{
-  "event_description": "事件经过简述内容",
-  "effect_evaluation": "处置效果评估内容",
+  "event_description": "事件经过简述内容，限 120 字内",
+  "effect_evaluation": "处置效果评估内容，限 120 字内",
   "improvement_suggestions": "1. 建议一\\n2. 建议二\\n3. 建议三"
 }}
 ```"""
@@ -311,7 +410,15 @@ def _generate_event_summary_with_llm(
     except Exception as e:
         logging.warning(f"LLM 事件总结生成失败，使用确定性模板: {e}")
 
-    return _build_deterministic_summary(incident, risk, spatial, notifications, recommendations)
+    return _build_deterministic_summary(
+        incident,
+        risk,
+        spatial,
+        notifications,
+        recommendations,
+        scenario_type=scenario_type,
+        knowledge=knowledge,
+    )
 
 
 def generate_event_summary(state: AgentState) -> str:
@@ -643,27 +750,163 @@ def generate_notifications_summary(state: AgentState) -> Dict[str, Any]:
     return summary
 
 
+def _build_event_id() -> str:
+    """生成事件编号。"""
+    now = datetime.now()
+    return f"TQCZ-{now.strftime('%Y%m%d')}-{now.strftime('%H%M')}"
+
+
+def _format_report_time(report_time: str | None) -> str:
+    """格式化报告时间。"""
+    value = report_time or datetime.now().isoformat()
+    return value[:19].replace("T", " ")
+
+
+def _normalize_coordination_units(units: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """标准化协调单位字段，便于模板渲染。"""
+    normalized = []
+    for unit in units:
+        notify_time = unit.get("notify_time", "——") or "——"
+        if notify_time and len(notify_time) > 19:
+            notify_time = notify_time[11:19]
+        normalized.append(
+            {
+                "name": unit.get("name", ""),
+                "role": unit.get("role", ""),
+                "notified": unit.get("notified", False),
+                "notify_time": notify_time,
+            }
+        )
+    return normalized
+
+
+def _build_render_context(
+    state: AgentState,
+    coordination_units: List[Dict[str, Any]],
+    event_summary: Dict[str, str],
+) -> Dict[str, Any]:
+    """构建模板渲染上下文，统一格式化字段。"""
+    incident = state.get("incident", {})
+    risk = state.get("risk_assessment", {})
+    spatial = state.get("spatial_analysis", {})
+    flight_impact = state.get("flight_impact_prediction", {})
+    knowledge = state.get("retrieved_knowledge", {})
+    actions = state.get("actions_taken", [])
+
+    ctx = _build_event_context(incident, risk)
+    engine_status = "运行中" if incident.get("engine_status") == "RUNNING" else "关闭"
+
+    # 事件基本信息
+    report_time_str = _format_report_time(incident.get("report_time"))
+    flight_no_display = incident.get("flight_no_display") or incident.get("flight_no") or "——"
+    discovery_method = incident.get("discovery_method", "巡查") or "巡查"
+    reported_by = incident.get("reported_by", "——") or "——"
+    position = incident.get("position", "——") or "——"
+
+    # 运行影响
+    affected_area_text = _build_affected_areas_text(spatial, separator=", ") or "——"
+    flight_delay_text = "——"
+    if flight_impact and flight_impact.get("statistics"):
+        stats = flight_impact["statistics"]
+        total = stats.get("total_affected_flights", 0)
+        avg_delay = stats.get("average_delay_minutes", 0)
+        if total > 0:
+            flight_delay_text = f"预计影响 {total} 架次，平均延误 {avg_delay:.0f} 分钟"
+    runway_adjust_text = (
+        "建议调整滑行路线/跑道运行"
+        if spatial.get("affected_taxiways") or spatial.get("affected_runways")
+        else "——"
+    )
+
+    # 知识库
+    cleanup_method = "——"
+    regs = knowledge.get("regulations", []) if knowledge else []
+    if regs and regs[0].get("cleanup_method"):
+        cleanup_method = regs[0].get("cleanup_method")
+
+    recent_actions = [a.get("action", "") for a in actions[-5:] if a.get("action")]
+    recent_actions_text = "、".join(recent_actions) if recent_actions else "——"
+
+    return {
+        "scope": "机坪特情处置检查单",
+        "event_id": _build_event_id(),
+        "aircraft_display": flight_no_display,
+        "report_time": report_time_str,
+        "discovery_method": discovery_method,
+        "reported_by": reported_by,
+        "position": position,
+        "risk_level": ctx["risk_level"],
+        "risk_score": ctx["risk_score"],
+        "session_id": state.get("session_id", "") or "——",
+        "fsm_state": state.get("fsm_state", "") or "——",
+        "actions_total": len(actions),
+        "recent_actions_text": recent_actions_text,
+        "oil_type": ctx["oil_type"],
+        "is_continuous": ctx["is_continuous_text"],
+        "engine_status": engine_status,
+        "leak_area": ctx["leak_area"],
+        "coordination_units": _normalize_coordination_units(coordination_units),
+        "cleanup_method": cleanup_method,
+        "flight_delay_text": flight_delay_text,
+        "affected_area_text": affected_area_text,
+        "runway_adjust_text": runway_adjust_text,
+        "event_description": event_summary.get("event_description", "——"),
+        "effect_text": event_summary.get("effect_evaluation", "——"),
+        "improvement_suggestions": event_summary.get("improvement_suggestions", "——"),
+        "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        # 鸟击等场景特有字段，默认占位
+        "event_type": incident.get("event_type", "鸟击（确认/疑似）") or "鸟击（确认/疑似）",
+        "tail_no": incident.get("tail_no", "——") or "——",
+        "affected_part": incident.get("affected_part", "——") or "——",
+        "current_status": incident.get("current_status", "——") or "——",
+        "crew_request": incident.get("crew_request", "——") or "——",
+        "suspend_resources": "是" if incident.get("suspend_resources") else "否",
+        "followup_required": "是" if incident.get("followup_required") else "否",
+    }
+
+
 def output_generator_node(state: AgentState) -> Dict[str, Any]:
     """
     输出生成节点
 
     调用 LLM 基于 SKILL 规范和知识库生成结构化的机坪特情处置检查单报告
     """
-    # 构建事件数据
+    scenario_type = state.get("scenario_type", "oil_spill")
     incident = state.get("incident", {})
     risk = state.get("risk_assessment", {})
     spatial = state.get("spatial_analysis", {})
     actions = state.get("actions_taken", [])
-
-    # 获取检索到的知识库内容
     knowledge = state.get("retrieved_knowledge", {})
 
-    # 生成协调单位详细记录
+    # 基础数据准备
     coordination_units = generate_coordination_units(state)
     notifications_summary = generate_notifications_summary(state)
+    recommendations = generate_recommendations(state)
 
-    # 使用确定性模板生成报告，保证结构完整
-    final_answer = _render_checklist_report(state, coordination_units, notifications_summary)
+    # LLM 生成摘要槽位（失败自动回退）
+    notifications = state.get("notifications_sent", [])
+    event_summary = _generate_event_summary_with_llm(
+        incident=incident,
+        risk=risk,
+        spatial=spatial,
+        notifications=notifications,
+        recommendations=recommendations,
+        scenario_type=scenario_type,
+        knowledge=knowledge,
+    )
+
+    # 使用模板渲染最终 Markdown
+    render_context = _build_render_context(
+        state=state,
+        coordination_units=coordination_units,
+        event_summary=event_summary,
+    )
+    scenario = ScenarioRegistry.get(scenario_type)
+    final_answer = render_report(
+        scenario_type,
+        render_context,
+        template_path=scenario.template_path if scenario else None,
+    )
 
     # 构建结构化报告（供 API 返回）
     recent_actions = [a.get("action", "") for a in actions[-5:]]
@@ -682,7 +925,7 @@ def output_generator_node(state: AgentState) -> Dict[str, Any]:
         "checklist_items": generate_checklist_items(state),
         "coordination_units": coordination_units,
         "notifications_summary": notifications_summary,
-        "recommendations": generate_recommendations(state),
+        "recommendations": recommendations,
         "operational_impact": generate_operational_impact(state),
         "execution_summary": execution_summary,
         "generated_at": datetime.now().isoformat(),
@@ -699,199 +942,32 @@ def output_generator_node(state: AgentState) -> Dict[str, Any]:
 
 
 def _render_checklist_report(state: AgentState, coordination_units: List[Dict[str, Any]], notifications_summary: Dict[str, Any]) -> str:
-    """生成完整的检查单 Markdown（确定性模板）"""
+    """兼容保留：复用 Jinja 模板渲染路径。"""
     incident = state.get("incident", {})
     risk = state.get("risk_assessment", {})
     spatial = state.get("spatial_analysis", {})
     knowledge = state.get("retrieved_knowledge", {})
-    flight_impact = state.get("flight_impact_prediction", {})
-    position_impact = state.get("position_impact_analysis", {})
-    actions = state.get("actions_taken", [])
-    session_id = state.get("session_id", "") or "——"
-    fsm_state = state.get("fsm_state", "") or "——"
-    recent_actions = [a.get("action", "") for a in actions[-5:] if a.get("action")]
-    recent_actions_text = "、".join(recent_actions) if recent_actions else "——"
-
-    # 事件编号与时间
-    event_id = f"TQCZ-{datetime.now().strftime('%Y%m%d')}-{datetime.now().strftime('%H%M')}"
-    report_time = incident.get("report_time") or datetime.now().isoformat()
-    report_time_str = report_time[:19].replace("T", " ")
-
-    # 航班号
-    flight_no_display = incident.get("flight_no_display") or incident.get("flight_no") or ""
-    aircraft_display = flight_no_display or "——"
-
-    # 使用公共上下文构建函数
-    ctx = _build_event_context(incident, risk)
-    oil_type = ctx["oil_type"]
-    leak_area = ctx["leak_area"]
-    # 报告中发动机状态显示为"关闭"而非"已关闭"
-    engine_status = "运行中" if incident.get("engine_status") == "RUNNING" else "关闭"
-    is_continuous = ctx["is_continuous_text"]
-    risk_level = ctx["risk_level"]
-    risk_score = ctx["risk_score"]
-
-    # 协同单位通知记录表
-    notifications_table = _build_notifications_table(coordination_units)
-
-    # 影响区域
-    affected_area_text = _build_affected_areas_text(spatial, separator=", ") or "——"
-
-    # 运行影响
-    flight_delay_text = "——"
-    if flight_impact and flight_impact.get("statistics"):
-        stats = flight_impact["statistics"]
-        total = stats.get("total_affected_flights", 0)
-        avg_delay = stats.get("average_delay_minutes", 0)
-        if total > 0:
-            flight_delay_text = f"预计影响 {total} 架次，平均延误 {avg_delay:.0f} 分钟"
-
-    runway_adjust_text = "——"
-    if spatial.get("affected_taxiways") or spatial.get("affected_runways"):
-        runway_adjust_text = "建议调整滑行路线/跑道运行"
-
-    # 处置建议（用于 LLM 参考）
-    recommendations = generate_recommendations(state)
-
-    # 使用 LLM 生成事件总结（包含润色和智能建议）
     notifications = state.get("notifications_sent", [])
+    recommendations = generate_recommendations(state)
+    scenario_type = state.get("scenario_type", "oil_spill")
+
     event_summary = _generate_event_summary_with_llm(
         incident=incident,
         risk=risk,
         spatial=spatial,
         notifications=notifications,
         recommendations=recommendations,
+        scenario_type=scenario_type,
         knowledge=knowledge,
     )
-
-    # 提取 LLM 生成的内容
-    event_description = event_summary.get("event_description", "")
-    effect_text = event_summary.get("effect_evaluation", "")
-    improvement_suggestions = event_summary.get("improvement_suggestions", "")
-
-    # 清理方式（取知识库第一个）
-    cleanup_method = "——"
-    regs = knowledge.get("regulations", []) if knowledge else []
-    if regs and regs[0].get("cleanup_method"):
-        cleanup_method = regs[0].get("cleanup_method")
-
-    return f"""# 机坪特情处置检查单
-
-**适用范围**：机坪航空器漏油、油污、渗漏等特情事件的识别、处置与闭环记录
-
-## 1. 事件基本信息
-| 项目 | 记录 |
-|-----|------|
-| 事件编号 | {event_id} |
-| 航班号/航空器注册号 | {aircraft_display} |
-| 事件触发时间 | {report_time_str} |
-| 上报方式 | {incident.get('discovery_method', '巡查') or '巡查'} |
-| 报告人 | {incident.get('reported_by', '——') or '——'} |
-| 发现位置 | {incident.get('position', '——')} |
-| 风险等级 | {risk_level} (风险分数: {risk_score}) |
-
-### 1.1 执行轨迹摘要
-| 项目 | 记录 |
-|-----|------|
-| 会话ID | {session_id} |
-| FSM 状态 | {fsm_state} |
-| 工具执行次数 | {len(actions)} |
-| 最近动作 | {recent_actions_text} |
-
-## 2. 特情初始确认
-### 2.1 漏油基本情况
-| 关键项 | 选择/填写 |
-|-------|---------|
-| 油液类型 | {oil_type} |
-| 是否持续滴漏 | {is_continuous} |
-| 发动机/APU状态 | {engine_status} |
-| 泄漏面积评估 | {leak_area} |
-| 漏油形态 | 滴漏 |
-| 现场气象条件 | —— |
-
-## 3. 初期风险控制措施
-检查项（勾选已执行项）：
-
-- {"☑" if engine_status == "关闭" else "☐"} 已要求机组关车或保持关车
-- ☐ 已禁止航空器滑行
-- ☐ 已设置安全警戒区域
-- ☐ 已排除现场点火源
-- ☐ 已向周边航空器发布注意通告
-
-## 4. 协同单位通知记录
-
-| 单位 | 是否通知 | 通知时间 | 备注 |
-|-----|---------|---------|------|
-{notifications_table}## 5. 区域隔离与现场检查
-### 5.1 隔离与运行限制
-| 项目 | 是/否 | 备注 |
-|-----|------|-----|
-| 隔离区域已明确划定 | ☐ 是  ☐ 否 | |
-| 滑行道关闭执行 | ☐ 是  ☐ 否 | |
-| 停机位暂停使用 | ☐ 是  ☐ 否 | |
-| 跑道运行受影响 | ☐ 是  ☐ 否 | |
-
-### 5.2 现场检查要点
-
-- ☐ 地面油污范围已确认
-- ☐ 周边设施未受污染
-- ☐ 无二次泄漏风险
-- ☐ 无新增安全隐患
-
-## 6. 清污处置执行情况
-| 项目 | 记录 |
-|-----|------|
-| 清污车辆到场时间 | —— |
-| 作业开始时间 | —— |
-| 作业结束时间 | —— |
-| 清理方式 | {cleanup_method} |
-| 是否符合环保要求 | —— |
-
-## 7. 处置结果确认
-| 检查项 | 结果 | 备注 |
-|-------|------|-----|
-| 泄漏已停止 | ☐ 是  ☐ 否 | |
-| 地面无残留油污 | ☐ 是  ☐ 否 | |
-| 表面摩擦系数符合要求 | ☐ 是  ☐ 否 | |
-| 现场检查合格 | ☐ 是  ☐ 否 | |
-
-## 8. 区域恢复与运行返还
-检查项（勾选已完成项）：
-
-- ☐ 已解除现场警戒
-- ☐ 已恢复滑行道使用
-- ☐ 已恢复停机位使用
-- ☐ 已通知管制/运控运行恢复
-
-## 9. 运行影响评估
-| 影响项 | 说明 |
-|-------|-----|
-| 航班延误情况 | {flight_delay_text} |
-| 航班调整/取消 | —— |
-| 机坪运行影响 | {affected_area_text} |
-| 跑道/滑行路线调整 | {runway_adjust_text} |
-
-## 10. 事件总结与改进建议
-**事件经过简述：**
-{event_description}
-
-**处置效果评估：**
-{effect_text}
-
-**后续改进建议：**
-{improvement_suggestions}
-
-## 11. 签字与存档
-| 角色 | 姓名 | 签字 | 时间 |
-|-----|------|-----|------|
-| 现场负责人 | | | |
-| 机务代表 | | | |
-| 清洗/场务代表 | | | |
-| 消防代表 | | | |
-| 机场运行指挥 | | | |
-
----
-**说明**：本检查单应随事件处置过程同步填写，事件关闭后统一归档，用于运行复盘与安全审计。
-
-报告生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-"""
+    render_context = _build_render_context(
+        state=state,
+        coordination_units=coordination_units,
+        event_summary=event_summary,
+    )
+    scenario = ScenarioRegistry.get(scenario_type)
+    return render_report(
+        scenario_type,
+        render_context,
+        template_path=scenario.template_path if scenario else None,
+    )

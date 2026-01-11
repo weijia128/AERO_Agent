@@ -4,6 +4,7 @@
 from typing import Dict, Any, List, Tuple
 from tools.base import BaseTool
 from config.airline_codes import format_callsign_display
+from scenarios.base import ScenarioRegistry
 
 
 # 字段中文名称
@@ -16,7 +17,6 @@ FIELD_NAMES = {
     "leak_size": "泄漏面积",
 }
 
-# 字段追问提示
 ASK_PROMPTS = {
     "flight_no": "报告你机号",
     "position": "具体位置（停机位号/滑行道/跑道）？",
@@ -27,15 +27,50 @@ ASK_PROMPTS = {
 }
 
 
-def get_missing_fields(incident: Dict[str, Any], checklist: Dict[str, bool]) -> List[str]:
-    """获取未收集的必填字段（仅P1字段）"""
-    required_fields = ["fluid_type", "position", "engine_status", "continuous"]
+def _resolve_required_fields(scenario_type: str, incident: Dict[str, Any]) -> List[str]:
+    """从场景配置中获取必填字段列表（P1 required），无配置则回退并按已知字段推断。"""
+    scenario = ScenarioRegistry.get(scenario_type)
+    if scenario:
+        fields = [
+            field.get("key")
+            for field in scenario.p1_fields
+            if field.get("required", True) and field.get("key")
+        ]
+        if fields:
+            return fields
+
+    # 无场景或缺省时，按已知字段推断鸟击必填
+    bird_keys = {"event_type", "affected_part", "current_status", "crew_request"}
+    if bird_keys.intersection(incident.keys()):
+        return ["flight_no", "position", "event_type", "affected_part", "current_status", "crew_request"]
+
+    # 默认漏油字段
+    return ["fluid_type", "position", "engine_status", "continuous"]
+
+
+def _field_name(scenario_type: str, field_key: str) -> str:
+    scenario = ScenarioRegistry.get(scenario_type)
+    if scenario:
+        return scenario.get_field_name(field_key)
+    return FIELD_NAMES.get(field_key, field_key)
+
+
+def _ask_prompt(scenario_type: str, field_key: str) -> str:
+    scenario = ScenarioRegistry.get(scenario_type)
+    if scenario:
+        prompt = scenario.get_ask_prompt_by_key(field_key)
+        if prompt:
+            return prompt
+    return ASK_PROMPTS.get(field_key, f"请提供{_field_name(scenario_type, field_key)}")
+
+
+def get_missing_fields(incident: Dict[str, Any], checklist: Dict[str, bool], scenario_type: str) -> List[str]:
+    """获取未收集的必填字段（按场景配置）。"""
+    required_fields = _resolve_required_fields(scenario_type, incident)
     missing = []
     for field in required_fields:
-        # 修复：只检查 incident 中是否有值，不依赖 checklist 标记
-        # 原因：checklist 标记可能更新不及时，导致已提取的字段仍被认为缺失
         value = incident.get(field)
-        if value is None:
+        if value in [None, ""]:
             missing.append(field)
     return missing
 
@@ -84,14 +119,14 @@ def group_missing_fields(missing: List[str]) -> List[List[str]]:
     return groups
 
 
-def build_combined_question(fields: List[str], flight_no: str = None) -> str:
+def build_combined_question(fields: List[str], flight_no: str = None, scenario_type: str = "oil_spill") -> str:
     """根据字段列表构建合并的问题"""
     if len(fields) == 1:
         # 单个字段
-        question = ASK_PROMPTS.get(fields[0], f"请提供{FIELD_NAMES.get(fields[0], fields[0])}")
+        question = _ask_prompt(scenario_type, fields[0])
     elif len(fields) == 2:
         # 两个字段合并
-        prompts = [ASK_PROMPTS.get(f, FIELD_NAMES.get(f, f)) for f in fields]
+        prompts = [_ask_prompt(scenario_type, f) for f in fields]
         # 组合问题，用问号分隔
         if prompts[0].endswith("？") or prompts[0].endswith("?"):
             question = prompts[0] + " " + prompts[1]
@@ -99,7 +134,7 @@ def build_combined_question(fields: List[str], flight_no: str = None) -> str:
             question = "？".join(prompts) + "？"
     else:
         # 多个字段，限制数量
-        prompts = [ASK_PROMPTS.get(f, FIELD_NAMES.get(f, f)) for f in fields[:2]]
+        prompts = [_ask_prompt(scenario_type, f) for f in fields[:2]]
         question = "？".join(prompts) + "？"
 
     # 添加航班号前缀（统一格式化显示）
@@ -134,9 +169,10 @@ class SmartAskTool(BaseTool):
     def execute(self, state: Dict[str, Any], inputs: Dict[str, Any] = None) -> Dict[str, Any]:
         incident = state.get("incident", {})
         checklist = state.get("checklist", {})
+        scenario_type = state.get("scenario_type", "oil_spill")
 
         # 获取缺失字段
-        missing = get_missing_fields(incident, checklist)
+        missing = get_missing_fields(incident, checklist, scenario_type)
 
         if not missing:
             return {
@@ -154,7 +190,7 @@ class SmartAskTool(BaseTool):
         first_group = groups[0] if groups else []
         # 使用原始显示格式进行呼叫
         flight_no = incident.get("flight_no_display") or incident.get("flight_no")
-        question = build_combined_question(first_group, flight_no)
+        question = build_combined_question(first_group, flight_no, scenario_type)
 
         # 生成要发送的消息
         new_message = {

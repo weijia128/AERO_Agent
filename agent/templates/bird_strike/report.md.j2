@@ -1,0 +1,19 @@
+{% extends "base_report.md.j2" %}
+
+{% set scope = "机场机坪鸟击/鸟害事件的识别、处置与闭环记录" %}
+
+{% block incident_section %}
+### 2.1 现场情况
+| 关键项 | 选择/填写 |
+|-------|---------|
+| 事件类型 | {{ event_type }} |
+| 发现位置/机位 | {{ position }} |
+| 航班号 | {{ aircraft_display }} |
+| 机号 | {{ tail_no }} |
+| 发生时间 | {{ report_time }} |
+| 影响部位 | {{ affected_part }} |
+| 当前状态 | {{ current_status }} |
+| 机组请求 | {{ crew_request }} |
+| 是否暂停机坪资源 | {{ suspend_resources }} |
+| 是否触发后续检查/通报 | {{ followup_required }} |
+{% endblock %}

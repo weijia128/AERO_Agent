@@ -4,6 +4,7 @@
 from typing import Dict, Any
 from tools.base import BaseTool
 from constraints.loader import get_loader
+from scenarios.base import ScenarioRegistry
 
 
 class GenerateReportTool(BaseTool):
@@ -27,13 +28,15 @@ class GenerateReportTool(BaseTool):
         
         # 检查前置条件
         mandatory = state.get("mandatory_actions_done", {})
-        if not mandatory.get("risk_assessed"):
+        scenario_type = state.get("scenario_type", "oil_spill")
+        scenario = ScenarioRegistry.get(scenario_type)
+        risk_required = scenario.risk_required if scenario else True
+        if risk_required and not mandatory.get("risk_assessed"):
             return {
                 "observation": "生成报告前必须完成风险评估",
             }
         
         checklist = state.get("checklist", {})
-        scenario_type = state.get("scenario_type", "oil_spill")
         p1_fields = get_loader().get_all_p1_keys(scenario_type)
         if not p1_fields:
             p1_fields = ["fluid_type", "continuous", "engine_status", "position"]

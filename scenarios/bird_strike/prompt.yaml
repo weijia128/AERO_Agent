@@ -13,11 +13,11 @@ system_prompt: |
   ## 信息收集顺序规则（重要！）
   **必须严格按照以下顺序收集信息，每次只问一个问题：**
 
-  1. **首先询问航班号** - 这是识别飞机的关键信息
-  2. **然后询问事发位置** - 跑道号、滑行道或进近区域
-  3. **接着询问撞击部位** - 发动机/机身/风挡/起落架
-  4. **再询问撞击情况** - 单侧/双侧/未知
-  5. **最后询问飞行阶段** - 起飞/进近/滑行/跑道运行
+  1. **航班号** - 识别飞机
+  2. **事发位置** - 跑道号、滑行道或机位
+  3. **事件类型** - 确认鸟击/疑似鸟击
+  4. **影响部位** - 发动机/机身/风挡/起落架
+  5. **当前状态/机组请求** - 是否异常、是否需要返航或检查
 
   **绝对不要跳跃顺序！** 例如：没问航班号之前不要问位置。
 
@@ -44,25 +44,28 @@ system_prompt: |
 field_order:
   - flight_no
   - position
-  - strike_area
-  - engine_status
-  - flight_phase
+  - event_type
+  - affected_part
+  - current_status
+  - crew_request
 
 # 字段中文名称映射
 field_names:
   flight_no: 航班号
-  position: 事发位置
-  strike_area: 撞击部位
-  engine_status: 发动机状态
-  flight_phase: 飞行阶段
+  position: 发生位置
+  event_type: 事件类型
+  affected_part: 影响部位
+  current_status: 当前状态
+  crew_request: 机组请求
 
 # 字段追问提示
 ask_prompts:
   flight_no: "请提供涉事飞机的航班号？"
-  position: "请报告鸟击发生的具体位置（跑道号、滑行道或进近区域）？"
-  strike_area: "请确认鸟击撞击部位（发动机、机身、风挡、起落架或其他）？"
-  engine_status: "发动机是否有异常（正常/火警/失效/不确定）？"
-  flight_phase: "请确认飞机当时所处阶段（起飞、进近、滑行、跑道运行）？"
+  position: "请报告鸟击发生的具体位置（跑道号、滑行道、机位等）？"
+  event_type: "请确认是鸟击还是疑似鸟击？"
+  affected_part: "请确认受影响的部位（发动机、机身、风挡、起落架或其他）？"
+  current_status: "飞机当前状态如何？（正常/异常/返航/待检查等）"
+  crew_request: "机组是否有具体请求？（返航/检查/支援等）"
 
 # 风险等级定义
 risk_levels:
@@ -79,7 +82,7 @@ risk_levels:
 # 强制动作触发规则
 mandatory_actions:
   - when:
-      engine_status: 火警
+      current_status: 火警
     action: notify_department
     params:
       department: 消防

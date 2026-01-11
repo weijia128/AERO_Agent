@@ -4,7 +4,7 @@
 """
 from config.airline_codes import format_callsign_display
 from scenarios.base import ScenarioRegistry
-from tools.information.smart_ask import build_combined_question, group_missing_fields
+from tools.information.smart_ask import build_combined_question, group_missing_fields, SmartAskTool
 
 
 def test_callsign_display_variants():
@@ -51,3 +51,30 @@ def test_prompt_ask_prompts_style():
     banned_terms = ["请问", "麻烦", "您"]
     for prompt in ask_prompts.values():
         assert all(term not in prompt for term in banned_terms)
+
+
+def test_smart_ask_bird_strike_fields():
+    """鸟击场景下仅收集鸟击必填字段，不应回退到漏油字段"""
+    tool = SmartAskTool()
+    state = {
+        "scenario_type": "bird_strike",
+        "incident": {
+            "flight_no": "3U3349",
+            "flight_no_display": "川航3349",
+            "position": "滑行道12",
+            "event_type": "确认鸟击",
+            "affected_part": "左发",
+            # 未填 current_status/crew_request
+        },
+        "checklist": {
+            "flight_no": True,
+            "position": True,
+            "event_type": True,
+            "affected_part": True,
+            "current_status": False,
+            "crew_request": False,
+        },
+    }
+    result = tool.execute(state)
+    assert result["missing_fields"] == ["current_status", "crew_request"]
+    assert "油" not in (result.get("question") or "")

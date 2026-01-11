@@ -1,2 +1,2 @@
 [console_scripts]
-airport-agent = api.main:main
+airport-agent = apps.api.main:main

@@ -1,0 +1,15 @@
+{% extends "base_report.md.j2" %}
+
+{% set scope = "机坪航空器漏油、油污、渗漏等特情事件的识别、处置与闭环记录" %}
+
+{% block incident_section %}
+### 2.1 漏油基本情况
+| 关键项 | 选择/填写 |
+|-------|---------|
+| 油液类型 | {{ oil_type }} |
+| 是否持续滴漏 | {{ is_continuous }} |
+| 发动机/APU状态 | {{ engine_status }} |
+| 泄漏面积评估 | {{ leak_area }} |
+| 漏油形态 | 滴漏 |
+| 现场气象条件 | —— |
+{% endblock %}
