@@ -1,0 +1,99 @@
+# 鸟击场景主配置文件
+
+scenario:
+  name: bird_strike
+  version: "1.0"
+  description: "机场鸟击/疑似鸟击应急响应场景"
+  priority: 10
+  keywords:
+    - 鸟击
+    - 撞鸟
+    - 鸟撞
+    - 疑似鸟击
+
+settings:
+  max_iterations: 20
+  allow_checklist_skip: false
+  default_response_timeout: 30
+  risk_required: true
+
+# 通知配置（简化版）
+notifications:
+  departments:
+    - id: fire
+      name: 消防部门
+      priority: immediate
+      contact: "119 / 内线"
+    - id: atc
+      name: 塔台
+      priority: immediate
+      contact: "121.5MHz / 内线"
+    - id: ops
+      name: 运行中心
+      priority: high
+      contact: "内线"
+    - id: maintenance
+      name: 机务部门
+      priority: normal
+      contact: "内线"
+
+# 强制动作规则（示例）
+mandatory_triggers:
+  - name: engine_abnormal_notify_fire
+    condition:
+      "incident.current_status": 火警
+    action: notify_department
+    params:
+      department: 消防
+      priority: immediate
+    check_field: fire_dept_notified
+
+# 报告模板
+report_template:
+  sections:
+    - event_summary
+    - risk_assessment
+    - handling_process
+    - checklist_items
+    - coordination_units
+    - operational_impact
+    - recommendations
+
+# 风险评估规则（鸟击场景）
+risk_rules:
+  - conditions:
+      affected_part: ["左发", "右发", "双发", "发动机"]
+    level: HIGH
+    score: 85
+    description: "发动机受影响=高风险，需要优先保障安全"
+
+  - conditions:
+      current_status: 异常
+    level: MEDIUM
+    score: 60
+    description: "当前状态异常=中风险"
+
+  - conditions:
+      current_status: 返航/备降
+    level: MEDIUM
+    score: 55
+    description: "需返航/备降=中风险"
+
+  - conditions:
+      current_status: 正常
+    level: LOW
+    score: 20
+    description: "状态正常=低风险"
+
+immediate_actions:
+  HIGH:
+    - "立即通知机务与消防"
+    - "安排发动机/机体检查"
+    - "评估是否需要暂停滑行或返航"
+  MEDIUM:
+    - "通知机务待命"
+    - "安排机组按程序检查"
+    - "评估运行影响并通报运控"
+  LOW:
+    - "持续监控，记录鸟击信息"
+    - "安排停场检查或复飞后检查"

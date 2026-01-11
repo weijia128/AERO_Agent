@@ -1,0 +1,111 @@
+# 鸟击场景 Checklist
+
+checklist:
+  done_condition:
+    type: all_required
+    level: P1
+    description: "所有 P1 字段必须收集完成"
+
+  p1_fields:
+    - field: flight_no
+      key: flight_no
+      label: 航班号
+      type: string
+      required: true
+      priority: P1
+      ask_prompt: "请确认航班号"
+      ui:
+        widget: input
+        placeholder: "如: CA1234, 川航3349"
+
+    - field: position
+      key: position
+      label: 发生位置
+      type: airport_node
+      required: true
+      priority: P1
+      ask_prompt: "请确认鸟击发生的具体位置（跑道/滑行道/机位）"
+      ui:
+        widget: airport_selector
+
+    - field: event_type
+      key: event_type
+      label: 事件类型
+      type: enum
+      required: true
+      priority: P1
+      options:
+        - value: 确认鸟击
+          label: 确认鸟击
+        - value: 疑似鸟击
+          label: 疑似鸟击
+      ask_prompt: "请确认是鸟击还是疑似鸟击？"
+
+    - field: affected_part
+      key: affected_part
+      label: 影响部位
+      type: string
+      required: true
+      priority: P1
+      ask_prompt: "请说明受影响部位（发动机/机身/风挡/起落架等）"
+
+    - field: current_status
+      key: current_status
+      label: 当前状态
+      type: string
+      required: true
+      priority: P1
+      ask_prompt: "飞机当前状态如何？（正常/异常/返航/待检查等）"
+
+    - field: crew_request
+      key: crew_request
+      label: 机组请求
+      type: string
+      required: true
+      priority: P1
+      ask_prompt: "机组是否有具体请求？（返航/检查/支援等）"
+
+  p2_fields:
+    - field: tail_no
+      key: tail_no
+      label: 机号
+      type: string
+      required: false
+      priority: P2
+      ask_prompt: "请确认机号"
+
+    - field: suspend_resources
+      key: suspend_resources
+      label: 是否暂停机坪资源
+      type: boolean
+      required: false
+      priority: P2
+      ask_prompt: "是否需要暂停相关机坪资源？"
+      ui:
+        widget: toggle
+        true_label: "是"
+        false_label: "否"
+
+    - field: followup_required
+      key: followup_required
+      label: 是否触发后续检查/通报
+      type: boolean
+      required: false
+      priority: P2
+      ask_prompt: "是否需要后续检查或通报？"
+      ui:
+        widget: toggle
+        true_label: "是"
+        false_label: "否"
+
+# UI 表单布局配置
+form_layout:
+  sections:
+    - id: critical_facts
+      title: 鸟击关键信息（必填）
+      order: 1
+      fields: [event_type, flight_no, position, affected_part, current_status, crew_request]
+    - id: supplementary
+      title: 补充信息
+      order: 2
+      fields: [tail_no, suspend_resources, followup_required]

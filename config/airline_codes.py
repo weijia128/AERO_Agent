@@ -206,7 +206,9 @@ def format_callsign_display(flight_no: str) -> str:
         return raw
 
     upper = raw.upper()
-    match = re.match(r"^([A-Z0-9]{2,3})(\d+)$", upper)
+    match = re.match(r"^([A-Z0-9]{2})(\d+)$", upper)
+    if not match:
+        match = re.match(r"^([A-Z0-9]{3})(\d+)$", upper)
     if not match:
         return raw
 

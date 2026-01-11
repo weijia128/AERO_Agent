@@ -25,6 +25,14 @@ import json
 from datetime import datetime
 from typing import Dict, Any, Optional
 
+# 改进的输入处理（支持更好的终端编辑体验）
+try:
+    from prompt_toolkit import PromptSession
+    from prompt_toolkit.history import InMemoryHistory
+    PROMPT_TOOLKIT_AVAILABLE = True
+except ImportError:
+    PROMPT_TOOLKIT_AVAILABLE = False
+
 # 添加项目路径
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
@@ -245,8 +253,17 @@ def apply_readout_for_processing(text: str, is_first_contact: bool) -> str:
 
 
 def get_user_input(prompt: str = "机长") -> str:
+    """获取用户输入，支持更好的终端编辑体验"""
     try:
-        return input(f"\n{prompt}: ").strip()
+        if PROMPT_TOOLKIT_AVAILABLE:
+            # 使用 prompt_toolkit 提供更好的编辑体验
+            # 支持 Delete/Backspace、方向键移动、命令历史等功能
+            session = PromptSession(history=InMemoryHistory())
+            user_input = session.prompt(f"\n{prompt}: ")
+        else:
+            # 回退到内置 input()（如果 prompt_toolkit 不可用）
+            user_input = input(f"\n{prompt}: ")
+        return user_input.strip()
     except (KeyboardInterrupt, EOFError):
         print("\n")
         return "exit"
@@ -649,21 +666,32 @@ class AgentRunner:
             # 等待用户回复
             if self.state.get("awaiting_user") or self._is_waiting_answer():
                 question = self._get_latest_assistant_message()
-                # 防止重复追问相同问题
-                if question and question == pre_last_assistant:
-                    # 相同问题仍应等待用户回复，避免重复循环
-                    if self.state.get("report_generated") and not self.state.get("is_complete"):
-                        print_warning("检测到重复确认问题，继续等待用户回复...")
-                        return {
-                            "status": "need_confirmation",
-                            "question": question,
-                        }
-                    print_warning("检测到重复提问，继续等待用户回复...")
-                    return {
-                        "status": "need_input",
-                        "question": question,
-                        "field": "",
-                    }
+
+                # 检查是否出现重复提问（基于消息历史而非简单文本比较）
+                duplicate_count = self.state.get("_duplicate_question_count", 0)
+                last_asked_question = self.state.get("_last_asked_question", "")
+
+                if question and question == last_asked_question:
+                    # 如果是相同问题，增加计数器
+                    duplicate_count += 1
+                    self.state["_duplicate_question_count"] = duplicate_count
+
+                    # 如果重复次数过多（超过3次），重置状态并继续推理
+                    if duplicate_count >= 3:
+                        print_warning("检测到重复提问超过3次，重置状态并重新评估...")
+                        self.state["_duplicate_question_count"] = 0
+                        self.state["_last_asked_question"] = ""
+                        self.state["pending_question"] = None
+                        self.state["pending_field"] = None
+                        # 清除awaiting标志，让系统重新进入推理
+                        self.state["awaiting_user"] = False
+                        # 继续循环，让系统重新评估状态
+                        return {"status": "continue"}
+                else:
+                    # 新问题，重置计数器
+                    self.state["_duplicate_question_count"] = 1
+                    self.state["_last_asked_question"] = question or ""
+
                 if question:
                     self.last_assistant_message = question
                 return {
@@ -721,6 +749,10 @@ class AgentRunner:
         self.state["is_complete"] = False
         self.state["next_node"] = "input_parser"
         self.state["awaiting_user"] = False
+
+        # 重置重复提问相关状态
+        self.state["_duplicate_question_count"] = 0
+        self.state["_last_asked_question"] = ""
 
     def _get_latest_assistant_message(self) -> str:
         """获取最近一条 assistant 消息"""
@@ -1210,6 +1242,16 @@ def main():
             user_input = get_user_input()
 
             if not user_input:
+                # 空输入处理：检查是否需要澄清问题
+                if "是否" in question and question.count("是否") >= 2:
+                    # 如果问题包含多个"是否"，可能用户困惑，尝试澄清
+                    print_info("检测到问题可能表述不清，自动澄清...")
+                    # 强制清除状态，让系统重新推理
+                    runner.state["awaiting_user"] = False
+                    runner.state["_duplicate_question_count"] = 0
+                    runner.state["_last_asked_question"] = ""
+                    runner.state["next_node"] = "reasoning"
+                    continue
                 continue
             user_input = apply_readout_for_processing(user_input, is_first_contact=False)
 

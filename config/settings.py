@@ -55,6 +55,14 @@ class Settings(BaseSettings):
     API_HOST: str = Field(default="0.0.0.0", description="API 主机")
     API_PORT: int = Field(default=8000, description="API 端口")
     CORS_ALLOW_ORIGINS: List[str] = Field(default=["*"], description="CORS 允许来源")
+
+    # 模板/Jinja 配置
+    TEMPLATE_ROOT: Path = Field(
+        default=Path(__file__).parent.parent / "agent" / "templates",
+        description="报告模板根目录",
+    )
+    JINJA_AUTO_RELOAD: bool = Field(default=True, description="开发模式下自动重载模板")
+    JINJA_CACHE_SIZE: int = Field(default=50, description="Jinja 模板缓存大小")
     
     # 日志配置
     LOG_LEVEL: str = Field(default="INFO", description="日志级别")

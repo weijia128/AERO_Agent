@@ -10,11 +10,21 @@ scenario:
   name: oil_spill
   version: "1.0"
   description: "机坪油液泄漏应急响应场景"
+  priority: 20
+  keywords:
+    - 漏油
+    - 泄漏
+    - 燃油
+    - 液压油
+    - 滑油
+    - 油液
+    - 漏液
 
 # 场景设置
 settings:
   # 最大对话轮次
   max_iterations: 20
+  risk_required: true
   # 是否允许跳过 Checklist
   allow_checklist_skip: false
   # 默认响应超时（秒）
@@ -142,6 +152,31 @@ risk_rules:
       fluid_type: HYDRAULIC
     level: LOW
     score: 30
+
+immediate_actions:
+  HIGH:
+    - "立即通知消防部门"
+    - "要求机组关闭发动机"
+    - "疏散周边人员"
+    - "设置警戒区域"
+    - "使用泡沫覆盖(航空燃油)"
+    - "禁止任何火花和热源靠近"
+  MEDIUM_HIGH:
+    - "通知消防部门待命"
+    - "要求机组先泄压(液压油)"
+    - "通知机务部门"
+    - "准备应急物资"
+    - "设置警戒区域"
+  MEDIUM:
+    - "通知消防部门待命"
+    - "通知机务部门"
+    - "准备应急物资"
+    - "使用吸附材料控制扩散"
+    - "注意防滑处理"
+  LOW:
+    - "通知清洗部门"
+    - "持续监控"
+    - "使用工业清洁剂清理"
 
 # 通知配置
 notifications:

@@ -6,6 +6,7 @@
 """
 from typing import Dict, Any, List, Tuple
 from tools.base import BaseTool
+from scenarios.base import ScenarioRegistry
 
 
 # 风险评估规则矩阵
@@ -91,36 +92,6 @@ RISK_RULES = [
     },
 ]
 
-# 立即行动映射
-IMMEDIATE_ACTIONS = {
-    "HIGH": [
-        "立即通知消防部门",
-        "要求机组关闭发动机",
-        "疏散周边人员",
-        "设置警戒区域",
-        "使用泡沫覆盖(航空燃油)",
-        "禁止任何火花和热源靠近",
-    ],
-    "MEDIUM_HIGH": [
-        "通知消防部门待命",
-        "要求机组先泄压(液压油)",
-        "通知机务部门",
-        "准备应急物资",
-        "设置警戒区域",
-    ],
-    "MEDIUM": [
-        "通知消防部门待命",
-        "通知机务部门",
-        "准备应急物资",
-        "使用吸附材料控制扩散",
-        "注意防滑处理",
-    ],
-    "LOW": [
-        "通知清洗部门",
-        "持续监控",
-        "使用工业清洁剂清理",
-    ],
-}
 
 
 def match_rule(incident: Dict[str, Any], rule: Dict) -> Tuple[bool, List[str]]:
@@ -132,7 +103,10 @@ def match_rule(incident: Dict[str, Any], rule: Dict) -> Tuple[bool, List[str]]:
         actual_value = incident.get(key)
         if actual_value is None:
             return False, []
-        if actual_value != expected_value:
+        if isinstance(expected_value, list):
+            if actual_value not in expected_value:
+                return False, []
+        elif actual_value != expected_value:
             return False, []
         matched_factors.append(f"{key}={actual_value}")
     
@@ -161,18 +135,15 @@ class AssessRiskTool(BaseTool):
         # 合并输入和状态中的事件信息
         incident = state.get("incident", {}).copy()
         incident.update(inputs)
-        
-        # 检查必要信息
-        if not incident.get("fluid_type"):
-            return {
-                "observation": "缺少油液类型信息，无法评估风险",
-            }
+        scenario_type = state.get("scenario_type", "oil_spill")
+        scenario = ScenarioRegistry.get(scenario_type)
+        rules = scenario.risk_rules if scenario and scenario.risk_rules else RISK_RULES
         
         # 遍历规则，找到匹配的最高风险规则
         matched_rule = None
         matched_factors = []
         
-        for rule in RISK_RULES:
+        for rule in rules:
             is_match, factors = match_rule(incident, rule)
             if is_match:
                 matched_rule = rule
@@ -191,7 +162,8 @@ class AssessRiskTool(BaseTool):
         score = matched_rule["score"]
         
         # 获取立即行动
-        immediate_actions = IMMEDIATE_ACTIONS.get(level, [])
+        immediate_actions_map = scenario.immediate_actions if scenario else {}
+        immediate_actions = immediate_actions_map.get(level, [])
         
         # 构建结果
         observation = (

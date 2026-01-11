@@ -1,0 +1,211 @@
+{
+    "rule_set_id": "airport-irregularity-birdstrike-risk",
+    "version": "1.0.0",
+    "effective_date": "2026-01-11",
+    "owner": "AOC/Apron-Orchestration",
+    "input_schema": {
+      "required": ["phase", "impact_area", "evidence"],
+      "properties": {
+        "phase": {
+          "type": "string",
+          "enum": ["PUSHBACK", "TAXI", "TAKEOFF_ROLL", "INITIAL_CLIMB", "CRUISE", "DESCENT", "APPROACH", "LANDING_ROLL", "ON_STAND", "UNKNOWN"]
+        },
+        "impact_area": {
+          "type": "string",
+          "enum": ["ENGINE", "WINDSHIELD", "RADOME", "WING_LEADING_EDGE", "FUSELAGE", "LANDING_GEAR", "UNKNOWN"]
+        },
+        "evidence": {
+          "type": "string",
+          "enum": ["CONFIRMED_STRIKE_WITH_REMAINS", "SYSTEM_WARNING", "ABNORMAL_NOISE_VIBRATION", "SUSPECTED_ONLY", "NO_ABNORMALITY"]
+        },
+        "bird_info": {
+          "type": "string",
+          "enum": ["LARGE_BIRD", "FLOCK", "MEDIUM_SMALL_SINGLE", "UNKNOWN"],
+          "default": "UNKNOWN"
+        },
+        "ops_impact": {
+          "type": "string",
+          "enum": ["RTO_OR_RTB", "BLOCKING_RUNWAY_OR_TAXIWAY", "REQUEST_MAINT_CHECK", "NO_OPS_IMPACT", "UNKNOWN"],
+          "default": "UNKNOWN"
+        }
+      }
+    },
+  
+    "scoring_model": {
+      "method": "weighted_sum",
+      "max_score": 100,
+      "dimensions": [
+        { "name": "phase", "weight": 1.0 },
+        { "name": "impact_area", "weight": 1.0 },
+        { "name": "evidence", "weight": 1.0 },
+        { "name": "bird_info", "weight": 0.7 },
+        { "name": "ops_impact", "weight": 0.8 }
+      ]
+    },
+  
+    "lookup_tables": {
+      "phase_points": {
+        "TAKEOFF_ROLL": 30,
+        "INITIAL_CLIMB": 25,
+        "APPROACH": 25,
+        "LANDING_ROLL": 30,
+        "DESCENT": 15,
+        "CRUISE": 10,
+        "TAXI": 15,
+        "PUSHBACK": 10,
+        "ON_STAND": 5,
+        "UNKNOWN": 20
+      },
+      "impact_area_points": {
+        "ENGINE": 30,
+        "WINDSHIELD": 25,
+        "RADOME": 25,
+        "WING_LEADING_EDGE": 15,
+        "FUSELAGE": 12,
+        "LANDING_GEAR": 12,
+        "UNKNOWN": 20
+      },
+      "evidence_points": {
+        "CONFIRMED_STRIKE_WITH_REMAINS": 30,
+        "SYSTEM_WARNING": 30,
+        "ABNORMAL_NOISE_VIBRATION": 20,
+        "SUSPECTED_ONLY": 15,
+        "NO_ABNORMALITY": 5
+      },
+      "bird_info_points": {
+        "LARGE_BIRD": 20,
+        "FLOCK": 25,
+        "MEDIUM_SMALL_SINGLE": 10,
+        "UNKNOWN": 12
+      },
+      "ops_impact_points": {
+        "RTO_OR_RTB": 25,
+        "BLOCKING_RUNWAY_OR_TAXIWAY": 20,
+        "REQUEST_MAINT_CHECK": 10,
+        "NO_OPS_IMPACT": 0,
+        "UNKNOWN": 8
+      }
+    },
+  
+    "rules": [
+      {
+        "id": "BS-K1-ENGINE-CRITICAL",
+        "priority": 10,
+        "when": {
+          "all": [
+            { "in": ["phase", ["TAKEOFF_ROLL", "INITIAL_CLIMB", "APPROACH", "LANDING_ROLL"]] },
+            { "eq": ["impact_area", "ENGINE"] },
+            { "in": ["evidence", ["CONFIRMED_STRIKE_WITH_REMAINS", "SYSTEM_WARNING", "ABNORMAL_NOISE_VIBRATION", "SUSPECTED_ONLY"]] }
+          ]
+        },
+        "then": {
+          "risk_floor": "R3",
+          "explain": "Critical phase + engine involved => at least High risk (R3)."
+        }
+      },
+      {
+        "id": "BS-K2-WINDSHIELD-RADOME-CRITICAL",
+        "priority": 20,
+        "when": {
+          "all": [
+            { "in": ["phase", ["TAKEOFF_ROLL", "INITIAL_CLIMB", "APPROACH", "LANDING_ROLL"]] },
+            { "in": ["impact_area", ["WINDSHIELD", "RADOME"]] },
+            { "in": ["evidence", ["CONFIRMED_STRIKE_WITH_REMAINS", "SYSTEM_WARNING", "ABNORMAL_NOISE_VIBRATION", "SUSPECTED_ONLY"]] }
+          ]
+        },
+        "then": {
+          "risk_floor": "R3",
+          "explain": "Critical phase + windshield/radome suspected => at least High risk (R3)."
+        }
+      },
+      {
+        "id": "BS-K3-RTO-RTB-SEVERE",
+        "priority": 30,
+        "when": { "any": [{ "eq": ["ops_impact", "RTO_OR_RTB"] }] },
+        "then": {
+          "risk_floor": "R4",
+          "explain": "RTO/RTB triggered => Severe risk (R4) floor."
+        }
+      },
+      {
+        "id": "BS-K4-FLOCK-LARGE-BIRD-UPGRADE",
+        "priority": 40,
+        "when": {
+          "any": [
+            { "eq": ["bird_info", "FLOCK"] },
+            { "eq": ["bird_info", "LARGE_BIRD"] }
+          ]
+        },
+        "then": {
+          "risk_boost": 8,
+          "explain": "Flock/large bird increases probability of damage => score +8."
+        }
+      },
+      {
+        "id": "BS-K5-UNKNOWN-AREA-CONSERVATIVE",
+        "priority": 50,
+        "when": {
+          "all": [
+            { "eq": ["impact_area", "UNKNOWN"] },
+            { "in": ["evidence", ["CONFIRMED_STRIKE_WITH_REMAINS", "SYSTEM_WARNING", "ABNORMAL_NOISE_VIBRATION", "SUSPECTED_ONLY"]] }
+          ]
+        },
+        "then": {
+          "risk_boost": 6,
+          "explain": "Unknown impact area but non-trivial evidence => conservative score +6."
+        }
+      }
+    ],
+  
+    "risk_mapping": {
+      "by_score": [
+        { "min": 0, "max": 29, "risk_level": "R1" },
+        { "min": 30, "max": 54, "risk_level": "R2" },
+        { "min": 55, "max": 74, "risk_level": "R3" },
+        { "min": 75, "max": 100, "risk_level": "R4" }
+      ],
+      "apply_floor_override": true
+    },
+  
+    "guardrails": {
+      "by_risk_level": {
+        "R1": {
+          "requires_human_approval": true,
+          "allowed_actions": ["LOG_EVENT", "REQUEST_VISUAL_CHECK", "NOTIFY_MAINT_OPTIONAL"],
+          "forbidden_actions": ["AUTO_RELEASE_TO_DEPARTURE"]
+        },
+        "R2": {
+          "requires_human_approval": true,
+          "allowed_actions": ["LOG_EVENT", "REQUEST_MAINT_CHECK", "HOLD_POSITION_OR_RETURN_STAND_RECOMMEND", "NOTIFY_BIRD_CONTROL"],
+          "forbidden_actions": ["AUTO_RELEASE_TO_DEPARTURE", "AUTO_CONTINUE_TAXI_IF_SUSPECTED"]
+        },
+        "R3": {
+          "requires_human_approval": true,
+          "allowed_actions": ["LOG_EVENT", "REQUEST_MAINT_CHECK_URGENT", "COORDINATE_GATE_REALLOC", "NOTIFY_BIRD_CONTROL", "RECOMMEND_STOP_TAXI"],
+          "forbidden_actions": ["AUTO_RELEASE_TO_DEPARTURE", "AUTO_PUSHBACK", "AUTO_TOW"]
+        },
+        "R4": {
+          "requires_human_approval": true,
+          "allowed_actions": ["LOG_EVENT", "TRIGGER_EMERGENCY_COORDINATION", "REQUEST_MAINT_CHECK_IMMEDIATE", "COORDINATE_RUNWAY_SWEEP", "COORDINATE_GATE_REALLOC"],
+          "forbidden_actions": ["AUTO_RELEASE_TO_DEPARTURE", "AUTO_PUSHBACK", "AUTO_TOW", "AUTO_CLEAR_BLOCKED_AREA"]
+        }
+      }
+    },
+  
+    "output_schema": {
+      "properties": {
+        "risk_level": { "type": "string", "enum": ["R1", "R2", "R3", "R4"] },
+        "score": { "type": "number" },
+        "risk_floor_applied": { "type": "string", "enum": ["NONE", "R2", "R3", "R4"] },
+        "explanations": { "type": "array", "items": { "type": "string" } },
+        "guardrails": {
+          "type": "object",
+          "properties": {
+            "requires_human_approval": { "type": "boolean" },
+            "allowed_actions": { "type": "array", "items": { "type": "string" } },
+            "forbidden_actions": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    }
+  }

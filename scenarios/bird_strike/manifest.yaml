@@ -1,0 +1,81 @@
+scenario:
+  name: bird_strike
+  priority: 10
+paths:
+  config: config.yaml
+  checklist: checklist.yaml
+  fsm_states: fsm_states.yaml
+  prompt: prompt.yaml
+tools:
+  - ask_for_detail
+  - get_aircraft_info
+  - assess_risk
+  - notify_department
+  - generate_report
+prompts:
+  summary:
+    template: |
+      你是机场鸟击应急响应专家，请生成简洁、可落地的事件总结。请使用提供的信息，不要编造未提供的单位/时间/数字。
+
+      事件信息（供参考）：
+      - 航班号：{flight_no}
+      - 发生位置：{position}
+      - 事件类型：{event_type}
+      - 影响部位：{affected_part}
+      - 当前状态：{current_status}
+      - 风险等级：{risk_level}（风险分数：{risk_score}）
+      - 已通知单位：{notified_units}
+      {knowledge_ref}
+
+      输出要求（严格遵守，不要添加字段）：
+      1) 事件经过简述：1-2 句话，包含位置/事件类型/影响部位/风险等级。
+      2) 处置效果评估：1-2 句话，基于已执行的动作（通知/检查安排等）。
+      3) 后续改进建议：正好 3 条，针对本次鸟击（检查、通报、运行调整等）。
+
+      请严格输出以下 JSON：
+      ```json
+      {
+        "event_description": "事件经过简述内容，限 120 字内",
+        "effect_evaluation": "处置效果评估内容，限 120 字内",
+        "improvement_suggestions": "1. 建议一\\n2. 建议二\\n3. 建议三"
+      }
+      ```
+    fallback:
+      event_description: "{position}发生鸟击（{event_type}），影响部位：{affected_part}，当前状态：{current_status}。"
+      effect_evaluation: "已完成事件确认，已通知：{notified_units}。"
+      improvement_suggestions: |
+        1. 安排停场检查确认受损部位与程度。
+        2. 评估是否需要返航/改降或更换航路。
+        3. 记录鸟击信息并通报运行/机务/消防。
+regex:
+  event_type:
+    - pattern: "(确认)?鸟击"
+      value: "确认鸟击"
+    - pattern: "疑似鸟击"
+      value: "疑似鸟击"
+  affected_part:
+    - pattern: "左发|左侧发动机|左发动机"
+      value: "左发"
+    - pattern: "右发|右侧发动机|右发动机"
+      value: "右发"
+    - pattern: "双发|双侧发动机"
+      value: "双发"
+    - pattern: "风挡|挡风玻璃"
+      value: "风挡"
+    - pattern: "机身|机腹"
+      value: "机身"
+    - pattern: "机翼|翼尖|翼根"
+      value: "机翼"
+    - pattern: "起落架|落架"
+      value: "起落架"
+    - pattern: "发动机"
+      value: "发动机"
+  current_status:
+    - pattern: "待检查|需要检查"
+      value: "待检查"
+    - pattern: "正常"
+      value: "正常"
+    - pattern: "异常"
+      value: "异常"
+    - pattern: "返航|备降"
+      value: "返航/备降"
