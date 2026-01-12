@@ -37,13 +37,13 @@ fsm_states:
     description: "执行初始安全控制措施"
     order: 2
     triggers:
-      - condition: "risk.level == HIGH"
+      - condition: "risk.level in [R3, R4]"
         action: notify_department
         params:
           department: 消防
           priority: immediate
         description: "高风险时通知消防"
-      - condition: "risk.level in [HIGH, MEDIUM]"
+      - condition: "risk.level in [R2, R3, R4]"
         action: notify_department
         params:
           department: 运行中心

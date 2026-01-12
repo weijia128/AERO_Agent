@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Airport emergency response intelligent agent system that combines **ReAct Agent** with **FSM (Finite State Machine) validation** for handling airport apron incidents like fuel spills. The system uses LLM-driven reasoning while ensuring compliance through deterministic validation layers.
+Airport emergency response intelligent agent system that combines **ReAct Agent** with **FSM (Finite State Machine) validation** for handling airport apron incidents like fuel spills and bird strikes. The system uses LLM-driven reasoning while ensuring compliance through deterministic validation layers.
 
 ## Development Commands
 
@@ -106,6 +106,8 @@ identify_scenario()
 extract_entities_hybrid()
     ├─ Fast path: Regex patterns
     │  # Extracts: position, fluid_type, engine_status, flight_no
+    │  # Bird strike adds: event_type, affected_part, current_status,
+    │  # phase, evidence, bird_info, ops_impact (from manifest regex)
     │  # Patterns: r'[A-Z]{2,3}\d{3,4}', r'(燃油|滑油|液压油)', etc.
     ├─ Flex path: LLM semantic extraction
     │  # Handles ambiguous natural language
@@ -142,6 +144,30 @@ Output: Updated AgentState
     ├─ spatial_analysis: {affected_taxiways, affected_runways, ...}
     ├─ flight_plan_table: flight schedule data
     └─ observations: enrichment process records
+
+### Bird Strike Checklist Fields
+
+Bird strike adds P2 fields for risk assessment accuracy:
+- `phase` (flight phase)
+- `evidence` (evidence strength)
+- `bird_info` (bird characteristics)
+- `ops_impact` (operational impact)
+
+See `scenarios/bird_strike/checklist.yaml` and `docs/SCENARIO_FIELD_CONTRACTS.md`.
+
+### Bird Strike Risk Assessment (BSRC)
+
+```python
+# tools/assessment/assess_bird_strike_risk.py
+
+incident (phase, affected_part, event_type, current_status, crew_request, ...)
+    ↓
+assess_bird_strike_risk.execute()
+    ├─ Normalize inputs: phase/impact_area/evidence/bird_info/ops_impact
+    ├─ Weighted score + rule boosts (BSRC.json)
+    ├─ Apply risk floor overrides (R1-R4)
+    └─ Update state.risk_assessment + mandatory_actions_done.risk_assessed
+```
 ```
 
 ### Risk Assessment → Spatial Analysis Flow

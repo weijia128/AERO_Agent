@@ -29,7 +29,7 @@ def test_notification_fix():
 
     # 模拟风险评估完成
     state["risk_assessment"] = {
-        "level": "MEDIUM",
+        "level": "R2",
         "score": 50,
         "factors": ["fluid_type=OIL", "continuous=True"],
         "rationale": "发动机滑油持续泄漏=中风险(可燃)",
@@ -68,7 +68,7 @@ def test_notification_fix():
         {
             "department": "机务",
             "priority": "high",
-            "message": "滑行道19发生滑油泄漏，风险等级: MEDIUM",
+            "message": "滑行道19发生滑油泄漏，风险等级: R2",
             "timestamp": "2026-01-07T16:21:30",
             "status": "SENT",
         }
@@ -91,7 +91,7 @@ def test_notification_fix():
     state["notifications_sent"].append({
         "department": "消防",
         "priority": "normal",
-        "message": "滑行道19发生滑油泄漏，风险等级: MEDIUM",
+        "message": "滑行道19发生滑油泄漏，风险等级: R2",
         "timestamp": "2026-01-07T16:21:35",
         "status": "SENT",
     })
@@ -113,7 +113,7 @@ def test_notification_fix():
     state["notifications_sent"].append({
         "department": "运控",
         "priority": "normal",
-        "message": "滑行道19发生滑油泄漏，风险等级: MEDIUM",
+        "message": "滑行道19发生滑油泄漏，风险等级: R2",
         "timestamp": "2026-01-07T16:21:40",
         "status": "SENT",
     })

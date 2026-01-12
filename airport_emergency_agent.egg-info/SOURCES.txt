@@ -36,6 +36,7 @@ fsm/states.py
 fsm/validator.py
 scenarios/__init__.py
 scenarios/base.py
+scenarios/schema.py
 tools/__init__.py
 tools/base.py
 tools/registry.py
@@ -43,7 +44,8 @@ tools/action/__init__.py
 tools/action/generate_report.py
 tools/action/notify_department.py
 tools/assessment/__init__.py
-tools/assessment/assess_risk.py
+tools/assessment/assess_bird_strike_risk.py
+tools/assessment/assess_oil_spill_risk.py
 tools/information/__init__.py
 tools/information/ask_for_detail.py
 tools/information/flight_plan_lookup.py

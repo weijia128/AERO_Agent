@@ -6,6 +6,7 @@
 from typing import Dict, Any, List, Set
 from tools.base import BaseTool
 from tools.spatial.topology_loader import get_topology_loader
+from agent.state import risk_level_rank
 
 # 扩散规则
 SPREAD_RULES = {
@@ -38,7 +39,7 @@ class CalculateImpactZoneTool(BaseTool):
 输入参数:
 - position: 事发位置（停机位/滑行道）
 - fluid_type: 油液类型 (FUEL/HYDRAULIC/OIL)
-- risk_level: 风险等级 (HIGH/MEDIUM/LOW)
+    - risk_level: 风险等级 (R1-R4)
 
 返回信息:
 - 隔离节点列表
@@ -50,7 +51,7 @@ class CalculateImpactZoneTool(BaseTool):
         # 获取参数
         position = inputs.get("position", "")
         fluid_type = inputs.get("fluid_type", "FUEL")
-        risk_level = inputs.get("risk_level", "MEDIUM")
+        risk_level = inputs.get("risk_level", "R2")
 
         # 从状态获取默认值
         if not position:
@@ -61,7 +62,7 @@ class CalculateImpactZoneTool(BaseTool):
             fluid_type = incident.get("fluid_type", "FUEL")
         if not risk_level:
             risk = state.get("risk_assessment", {})
-            risk_level = risk.get("level", "MEDIUM")
+            risk_level = risk.get("level", "R2")
 
         if not position:
             return {"observation": "缺少位置信息，无法计算影响范围"}
@@ -78,7 +79,16 @@ class CalculateImpactZoneTool(BaseTool):
 
         # 获取扩散规则
         fluid_rules = SPREAD_RULES.get(fluid_type, SPREAD_RULES["FUEL"])
-        rule = fluid_rules.get(risk_level, fluid_rules["MEDIUM"])
+        rank = risk_level_rank(risk_level)
+        if rank >= 3:
+            normalized_level = "HIGH"
+        elif rank == 2:
+            normalized_level = "MEDIUM"
+        elif rank == 1:
+            normalized_level = "LOW"
+        else:
+            normalized_level = "MEDIUM"
+        rule = fluid_rules.get(normalized_level, fluid_rules["MEDIUM"])
 
         # BFS 扩散计算（使用拓扑加载器的方法）
         isolated_nodes = topology.bfs_spread(start_node_id, rule["radius"])

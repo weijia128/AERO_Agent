@@ -25,10 +25,12 @@ fsm_states:
       - affected_part
       - current_status
       - crew_request
+    required_mandatory_actions:
+      - risk_assessed
     allowed_transitions:
       - to: P2_IMMEDIATE_CONTROL
-        condition: "p1_fields_complete"
-        description: "关键信息已收集"
+        condition: "risk_assessed"
+        description: "风险已评估"
       - to: INIT
         condition: "more_info_needed"
         description: "需要更多信息"
@@ -132,6 +134,8 @@ fsm_states:
       - affected_part
       - current_status
       - crew_request
+    required_mandatory_actions:
+      - risk_assessed
     allowed_transitions:
       - to: COMPLETED
         condition: "report_generated"
@@ -154,7 +158,7 @@ transitions:
   - from: P1_RISK_ASSESS
     to: P2_IMMEDIATE_CONTROL
     trigger: complete_risk_assessment
-    guard: "event_type is not None and affected_part is not None"
+    guard: "risk.level is not None"
 
   - from: P2_IMMEDIATE_CONTROL
     to: P3_RESOURCE_DISPATCH

@@ -294,6 +294,7 @@ class BirdStrikeScenario(BaseScenario):
         return [
             "ask_for_detail",
             "get_aircraft_info",
+            "assess_bird_strike_risk",
             "notify_department",
             "generate_report",
         ]

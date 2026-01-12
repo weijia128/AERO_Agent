@@ -17,6 +17,8 @@ from datetime import datetime
 import yaml
 from pathlib import Path
 
+from agent.state import risk_level_rank
+
 from .states import (
     FSMStateEnum,
     StateDefinition,
@@ -195,7 +197,7 @@ class FSMEngine:
         # 检查是否完成风险评估
         if risk_assessed:
             risk_level = risk.get("level", "")
-            if risk_level == "HIGH":
+            if risk_level_rank(risk_level) >= 3:
                 if mandatory.get("fire_dept_notified", False):
                     return FSMStateEnum.P3_RESOURCE_DISPATCH.value
                 return FSMStateEnum.P2_IMMEDIATE_CONTROL.value

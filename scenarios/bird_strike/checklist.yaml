@@ -74,6 +74,98 @@ checklist:
       priority: P2
       ask_prompt: "请确认机号"
 
+    - field: phase
+      key: phase
+      label: 飞行阶段
+      type: enum
+      required: false
+      priority: P2
+      options:
+        - value: PUSHBACK
+          label: 推出
+        - value: TAXI
+          label: 滑行
+        - value: TAKEOFF_ROLL
+          label: 起飞滑跑
+        - value: INITIAL_CLIMB
+          label: 起飞后爬升
+        - value: CRUISE
+          label: 巡航
+        - value: DESCENT
+          label: 下降
+        - value: APPROACH
+          label: 进近
+        - value: LANDING_ROLL
+          label: 落地滑跑
+        - value: ON_STAND
+          label: 停机位
+        - value: UNKNOWN
+          label: 不明
+      ask_prompt: "请确认鸟击发生时的飞行阶段"
+      ui:
+        widget: select
+
+    - field: evidence
+      key: evidence
+      label: 迹象强度
+      type: enum
+      required: false
+      priority: P2
+      options:
+        - value: CONFIRMED_STRIKE_WITH_REMAINS
+          label: 确认撞击有残留
+        - value: SYSTEM_WARNING
+          label: 系统告警
+        - value: ABNORMAL_NOISE_VIBRATION
+          label: 异响/振动
+        - value: SUSPECTED_ONLY
+          label: 仅怀疑
+        - value: NO_ABNORMALITY
+          label: 无异常
+      ask_prompt: "是否有明确迹象（残留/告警/异响）？"
+      ui:
+        widget: select
+
+    - field: bird_info
+      key: bird_info
+      label: 鸟类信息
+      type: enum
+      required: false
+      priority: P2
+      options:
+        - value: LARGE_BIRD
+          label: 大型鸟类
+        - value: FLOCK
+          label: 鸟群
+        - value: MEDIUM_SMALL_SINGLE
+          label: 中小型单只
+        - value: UNKNOWN
+          label: 不明
+      ask_prompt: "鸟类规模/大小如何？"
+      ui:
+        widget: select
+
+    - field: ops_impact
+      key: ops_impact
+      label: 运行影响
+      type: enum
+      required: false
+      priority: P2
+      options:
+        - value: RTO_OR_RTB
+          label: 中断起飞/返航
+        - value: BLOCKING_RUNWAY_OR_TAXIWAY
+          label: 占用跑道/滑行道
+        - value: REQUEST_MAINT_CHECK
+          label: 请求机务检查
+        - value: NO_OPS_IMPACT
+          label: 不影响运行
+        - value: UNKNOWN
+          label: 不明
+      ask_prompt: "对运行影响如何？"
+      ui:
+        widget: select
+
     - field: suspend_resources
       key: suspend_resources
       label: 是否暂停机坪资源
@@ -108,4 +200,4 @@ form_layout:
     - id: supplementary
       title: 补充信息
       order: 2
-      fields: [tail_no, suspend_resources, followup_required]
+      fields: [tail_no, phase, evidence, bird_info, ops_impact, suspend_resources, followup_required]

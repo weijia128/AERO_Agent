@@ -201,7 +201,7 @@ DEFAULT_STATE_DEFINITIONS = {
         description="高风险情况下的立即控制措施",
         preconditions=["mandatory.risk_assessed"],
         triggers=[{
-            "condition": {"risk_level": "HIGH"},
+            "condition": {"risk_level": ["R3", "R4"]},
             "action": "notify_department",
             "params": {"department": "消防", "priority": "immediate"}
         }]
@@ -269,7 +269,7 @@ DEFAULT_TRANSITIONS = {
 DEFAULT_MANDATORY_ACTIONS = [
     MandatoryAction(
         name="high_risk_fire_notification",
-        condition={"risk_level": "HIGH"},
+        condition={"risk_level": ["R3", "R4"]},
         action="notify_department",
         params={"department": "消防", "priority": "immediate"},
         check_field="fire_dept_notified",

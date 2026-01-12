@@ -18,10 +18,40 @@ from pydantic import BaseModel, Field
 
 class RiskLevel(str, Enum):
     """风险等级"""
-    HIGH = "HIGH"
-    MEDIUM = "MEDIUM"
-    LOW = "LOW"
+    R4 = "R4"
+    R3 = "R3"
+    R2 = "R2"
+    R1 = "R1"
     UNKNOWN = "UNKNOWN"
+
+
+RISK_LEVEL_ALIASES = {
+    "HIGH": RiskLevel.R3.value,
+    "MEDIUM_HIGH": RiskLevel.R3.value,
+    "MEDIUM": RiskLevel.R2.value,
+    "LOW": RiskLevel.R1.value,
+}
+
+
+def normalize_risk_level(level: str) -> str:
+    """将历史风险等级映射为 R1-R4。"""
+    if not level:
+        return RiskLevel.UNKNOWN.value
+    upper = str(level).strip().upper()
+    if upper in {RiskLevel.R1.value, RiskLevel.R2.value, RiskLevel.R3.value, RiskLevel.R4.value}:
+        return upper
+    return RISK_LEVEL_ALIASES.get(upper, level)
+
+
+def risk_level_rank(level: str) -> int:
+    """返回风险等级强度排序（0=最低/未知）。"""
+    normalized = normalize_risk_level(level)
+    return {
+        RiskLevel.R1.value: 1,
+        RiskLevel.R2.value: 2,
+        RiskLevel.R3.value: 3,
+        RiskLevel.R4.value: 4,
+    }.get(normalized, 0)
 
 
 class FSMState(str, Enum):

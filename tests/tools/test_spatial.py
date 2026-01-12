@@ -100,13 +100,13 @@ class TestCalculateImpactZone:
 
         state = {
             "incident": {"position": "taxiway_19", "fluid_type": "OIL"},
-            "risk_assessment": {"level": "MEDIUM"}
+            "risk_assessment": {"level": "R2"}
         }
 
         result = tool.execute(state, {
             "position": "taxiway_19",
             "fluid_type": "OIL",
-            "risk_level": "MEDIUM"
+            "risk_level": "R2"
         })
 
         assert "spatial_analysis" in result
@@ -121,13 +121,13 @@ class TestCalculateImpactZone:
 
         state = {
             "incident": {"position": "滑行道19", "fluid_type": "OIL"},
-            "risk_assessment": {"level": "MEDIUM"}
+            "risk_assessment": {"level": "R2"}
         }
 
         result = tool.execute(state, {
             "position": "滑行道19",
             "fluid_type": "OIL",
-            "risk_level": "MEDIUM"
+            "risk_level": "R2"
         })
 
         assert "spatial_analysis" in result
@@ -142,13 +142,13 @@ class TestCalculateImpactZone:
 
         state = {
             "incident": {"position": "不存在的位置", "fluid_type": "OIL"},
-            "risk_assessment": {"level": "MEDIUM"}
+            "risk_assessment": {"level": "R2"}
         }
 
         result = tool.execute(state, {
             "position": "不存在的位置",
             "fluid_type": "OIL",
-            "risk_level": "MEDIUM"
+            "risk_level": "R2"
         })
 
         assert "observation" in result
@@ -161,28 +161,28 @@ class TestCalculateImpactZone:
 
         base_state = {
             "incident": {"position": "滑行道19", "fluid_type": "FUEL"},
-            "risk_assessment": {"level": "LOW"}
+            "risk_assessment": {"level": "R1"}
         }
 
         # 低风险
         result_low = tool.execute(base_state, {
             "position": "滑行道19",
             "fluid_type": "FUEL",
-            "risk_level": "LOW"
+            "risk_level": "R1"
         })
 
         # 中等风险
         result_medium = tool.execute(base_state, {
             "position": "滑行道19",
             "fluid_type": "FUEL",
-            "risk_level": "MEDIUM"
+            "risk_level": "R2"
         })
 
         # 高风险
         result_high = tool.execute(base_state, {
             "position": "滑行道19",
             "fluid_type": "FUEL",
-            "risk_level": "HIGH"
+            "risk_level": "R3"
         })
 
         # 验证风险等级越高，影响范围越大
@@ -204,7 +204,7 @@ class TestAnalyzePositionImpact:
 
         state = {
             "incident": {"position": "runway_0", "fluid_type": "FUEL"},
-            "risk_assessment": {"level": "HIGH"}
+            "risk_assessment": {"level": "R3"}
         }
 
         result = tool.execute(state, {})
@@ -232,7 +232,7 @@ class TestAnalyzePositionImpact:
 
         state = {
             "incident": {"position": "taxiway_19", "fluid_type": "HYDRAULIC"},
-            "risk_assessment": {"level": "MEDIUM"}
+            "risk_assessment": {"level": "R2"}
         }
 
         result = tool.execute(state, {})
@@ -254,7 +254,7 @@ class TestAnalyzePositionImpact:
 
         state = {
             "incident": {"position": "corrected_stand_0", "fluid_type": "OIL"},
-            "risk_assessment": {"level": "LOW"}
+            "risk_assessment": {"level": "R1"}
         }
 
         result = tool.execute(state, {})
@@ -281,7 +281,7 @@ class TestAnalyzePositionImpact:
         for fluid_type in fluid_types:
             state = {
                 "incident": {"position": "runway_0", "fluid_type": fluid_type},
-                "risk_assessment": {"level": "MEDIUM"}
+                "risk_assessment": {"level": "R2"}
             }
             result = tool.execute(state, {})
             results[fluid_type] = result["position_impact_analysis"]["direct_impact"]["closure_time_minutes"]
@@ -298,7 +298,7 @@ class TestAnalyzePositionImpact:
 
         state = {
             "incident": {"position": "runway_0", "fluid_type": "FUEL"},
-            "risk_assessment": {"level": "HIGH"}
+            "risk_assessment": {"level": "R3"}
         }
 
         result = tool.execute(state, {})
@@ -319,7 +319,7 @@ class TestAnalyzePositionImpact:
 
         state = {
             "incident": {"position": "不存在的位置", "fluid_type": "FUEL"},
-            "risk_assessment": {"level": "MEDIUM"}
+            "risk_assessment": {"level": "R2"}
         }
 
         result = tool.execute(state, {})

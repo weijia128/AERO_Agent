@@ -34,20 +34,29 @@ settings:
 spatial_config:
   spread_rules:
     FUEL:
-      HIGH:
+      R4:
         radius: 3
         runway_impact: true
-      MEDIUM:
+      R3:
+        radius: 3
+        runway_impact: true
+      R2:
         radius: 2
         runway_impact: true
-      LOW:
+      R1:
         radius: 1
         runway_impact: false
     HYDRAULIC:
-      HIGH:
+      R4:
         radius: 2
         runway_impact: false
-      MEDIUM:
+      R3:
+        radius: 2
+        runway_impact: false
+      R2:
+        radius: 1
+        runway_impact: false
+      R1:
         radius: 1
         runway_impact: false
 
@@ -64,7 +73,8 @@ mandatory_triggers:
 
   - name: high_risk_fire_notification
     condition:
-      risk_level: HIGH
+      risk_level:
+        - R4
     action: notify_department
     params:
       department: 消防
@@ -73,7 +83,7 @@ mandatory_triggers:
 
   - name: medium_high_risk_fire_standby
     condition:
-      risk_level: MEDIUM_HIGH
+      risk_level: R3
     action: notify_department
     params:
       department: 消防
@@ -82,7 +92,7 @@ mandatory_triggers:
 
   - name: medium_risk_fire_standby
     condition:
-      risk_level: MEDIUM
+      risk_level: R2
     action: notify_department
     params:
       department: 消防
@@ -92,9 +102,9 @@ mandatory_triggers:
   - name: risk_level_maintenance_notification
     condition:
       risk_level:
-        - HIGH
-        - MEDIUM_HIGH
-        - MEDIUM
+        - R2
+        - R3
+        - R4
     action: notify_department
     params:
       department: 机务
@@ -104,9 +114,9 @@ mandatory_triggers:
   - name: risk_level_operations_notification
     condition:
       risk_level:
-        - HIGH
-        - MEDIUM_HIGH
-        - MEDIUM
+        - R2
+        - R3
+        - R4
     action: notify_department
     params:
       department: 运控
@@ -128,52 +138,52 @@ risk_rules:
       fluid_type: FUEL
       continuous: true
       engine_status: RUNNING
-    level: HIGH
+    level: R4
     score: 95
 
   - conditions:
       fluid_type: FUEL
       engine_status: RUNNING
-    level: HIGH
+    level: R4
     score: 90
 
   - conditions:
       fluid_type: FUEL
       continuous: true
-    level: HIGH
+    level: R4
     score: 85
 
   - conditions:
       fluid_type: FUEL
-    level: MEDIUM
+    level: R3
     score: 60
 
   - conditions:
       fluid_type: HYDRAULIC
-    level: LOW
+    level: R2
     score: 30
 
 immediate_actions:
-  HIGH:
+  R4:
     - "立即通知消防部门"
     - "要求机组关闭发动机"
     - "疏散周边人员"
     - "设置警戒区域"
     - "使用泡沫覆盖(航空燃油)"
     - "禁止任何火花和热源靠近"
-  MEDIUM_HIGH:
+  R3:
     - "通知消防部门待命"
     - "要求机组先泄压(液压油)"
     - "通知机务部门"
     - "准备应急物资"
     - "设置警戒区域"
-  MEDIUM:
+  R2:
     - "通知消防部门待命"
     - "通知机务部门"
     - "准备应急物资"
     - "使用吸附材料控制扩散"
     - "注意防滑处理"
-  LOW:
+  R1:
     - "通知清洗部门"
     - "持续监控"
     - "使用工业清洁剂清理"
@@ -204,7 +214,7 @@ notifications:
       content: |
         紧急事件通知
         事件类型: 机坪漏油
-        风险等级: HIGH
+        风险等级: {risk_level}
         位置: {position}
         油液类型: {fluid_type}
         持续滴漏: {continuous}

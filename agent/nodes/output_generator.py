@@ -11,7 +11,7 @@ import logging
 import re
 from datetime import datetime
 from typing import Any, Dict, List
-from agent.state import AgentState, FSMState, RiskLevel
+from agent.state import AgentState, FSMState, risk_level_rank
 from config.llm_config import get_llm_client
 from agent.nodes.template_renderer import render_report
 from scenarios.base import ScenarioRegistry
@@ -574,12 +574,12 @@ def generate_recommendations(state: AgentState) -> List[str]:
 
     # 根据风险等级生成建议
     risk_level = risk.get("level", "")
-    if risk_level == RiskLevel.HIGH.value:
+    if risk_level_rank(risk_level) >= 3:
         recommendations.append("立即执行应急响应程序")
         recommendations.append("保持与消防部门的持续联络")
         if incident.get("engine_status") == "RUNNING":
             recommendations.append("要求机组关闭发动机")
-    elif risk_level == RiskLevel.MEDIUM.value:
+    elif risk_level_rank(risk_level) == 2:
         recommendations.append("持续监控泄漏情况")
         recommendations.append("准备应急物资")
 
@@ -644,7 +644,7 @@ def generate_coordination_units(state: AgentState) -> List[Dict[str, Any]]:
     all_units = [
         {
             "name": "机务",
-            "required": risk.get("level") in [RiskLevel.MEDIUM.value, "MEDIUM_HIGH", RiskLevel.HIGH.value],
+            "required": risk_level_rank(risk.get("level")) >= 2,
             "contact": "内线8200",
             "role": "航空器故障排查与维修",
         },
@@ -656,7 +656,7 @@ def generate_coordination_units(state: AgentState) -> List[Dict[str, Any]]:
         },
         {
             "name": "消防",
-            "required": risk.get("level") == RiskLevel.HIGH.value or risk.get("level") == "MEDIUM_HIGH",
+            "required": risk_level_rank(risk.get("level")) >= 3,
             "contact": "119/内线8119",
             "role": "应急救援及火灾风险防控",
         },
@@ -738,13 +738,11 @@ def generate_notifications_summary(state: AgentState) -> Dict[str, Any]:
 
     # 根据风险等级确定应该通知的单位
     risk_level = risk.get("level", "")
-    if risk_level == RiskLevel.HIGH.value:
+    if risk_level_rank(risk_level) >= 3:
         summary["risk_based_required"] = ["消防", "塔台", "机务", "运控"]
-    elif risk_level == "MEDIUM_HIGH":
-        summary["risk_based_required"] = ["消防", "机务", "运控"]
-    elif risk_level == RiskLevel.MEDIUM.value:
+    elif risk_level_rank(risk_level) == 2:
         summary["risk_based_required"] = ["机务", "运控"]
-    elif risk_level == RiskLevel.LOW.value:
+    elif risk_level_rank(risk_level) == 1:
         summary["risk_based_required"] = ["清洗", "运控"]
 
     return summary

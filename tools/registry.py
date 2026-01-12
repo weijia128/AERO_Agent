@@ -82,6 +82,7 @@ def register_all_tools():
     from tools.spatial.analyze_position_impact import AnalyzePositionImpactTool
     from tools.knowledge.search_regulations import SearchRegulationsTool
     from tools.assessment.assess_risk import AssessRiskTool
+    from tools.assessment.assess_bird_strike_risk import AssessBirdStrikeRiskTool
     from tools.action.notify_department import NotifyDepartmentTool
     from tools.action.generate_report import GenerateReportTool
 
@@ -100,6 +101,7 @@ def register_all_tools():
     ToolRegistry.register(AnalyzePositionImpactTool(), ["oil_spill"])
     ToolRegistry.register(SearchRegulationsTool(), ["oil_spill", "common"])
     ToolRegistry.register(AssessRiskTool(), ["oil_spill"])
+    ToolRegistry.register(AssessBirdStrikeRiskTool(), ["bird_strike"])
 
 
 # 自动注册

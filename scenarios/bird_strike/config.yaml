@@ -63,37 +63,41 @@ report_template:
 risk_rules:
   - conditions:
       affected_part: ["左发", "右发", "双发", "发动机"]
-    level: HIGH
+    level: R4
     score: 85
     description: "发动机受影响=高风险，需要优先保障安全"
 
   - conditions:
       current_status: 异常
-    level: MEDIUM
+    level: R3
     score: 60
     description: "当前状态异常=中风险"
 
   - conditions:
       current_status: 返航/备降
-    level: MEDIUM
+    level: R3
     score: 55
     description: "需返航/备降=中风险"
 
   - conditions:
       current_status: 正常
-    level: LOW
+    level: R1
     score: 20
     description: "状态正常=低风险"
 
 immediate_actions:
-  HIGH:
+  R4:
     - "立即通知机务与消防"
     - "安排发动机/机体检查"
     - "评估是否需要暂停滑行或返航"
-  MEDIUM:
+  R3:
+    - "立即通知机务与消防"
+    - "安排发动机/机体检查"
+    - "评估是否需要暂停滑行或返航"
+  R2:
     - "通知机务待命"
     - "安排机组按程序检查"
     - "评估运行影响并通报运控"
-  LOW:
+  R1:
     - "持续监控，记录鸟击信息"
     - "安排停场检查或复飞后检查"

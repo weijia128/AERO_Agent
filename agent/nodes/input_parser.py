@@ -451,7 +451,7 @@ def apply_auto_enrichment(
 
     # ========== 第二阶段：依赖第一阶段结果的计算 ==========
     phase2_futures: Dict[str, concurrent.futures.Future] = {}
-    risk_level = state.get("risk_assessment", {}).get("level", "MEDIUM")
+    risk_level = state.get("risk_assessment", {}).get("level", "R2")
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         if position and not incident.get("impact_zone"):
@@ -460,7 +460,7 @@ def apply_auto_enrichment(
             )
 
         if position and incident.get("fluid_type") and not state.get("position_impact_analysis"):
-            risk_assessment = state.get("risk_assessment", {"level": "MEDIUM"})
+            risk_assessment = state.get("risk_assessment", {"level": "R2"})
             phase2_futures["position_impact"] = executor.submit(
                 _analyze_position_impact, incident, risk_assessment
             )
@@ -687,6 +687,11 @@ LLM_EXTRACT_PROMPT = """你是一个机场应急响应系统的事件信息提�
 - continuous: 是否持续泄漏（true=是, false=否）
 - leak_size: 泄漏面积（LARGE=大面积, MEDIUM=中等, SMALL=小面积, UNKNOWN=不明/不清楚）
 - flight_no: 航班号（如 CA1234、MU5678）
+- phase: 飞行阶段（PUSHBACK/TAXI/TAKEOFF_ROLL/INITIAL_CLIMB/CRUISE/DESCENT/APPROACH/LANDING_ROLL/ON_STAND/UNKNOWN）
+- evidence: 迹象强度（CONFIRMED_STRIKE_WITH_REMAINS/SYSTEM_WARNING/ABNORMAL_NOISE_VIBRATION/SUSPECTED_ONLY/NO_ABNORMALITY）
+- bird_info: 鸟类信息（LARGE_BIRD/FLOCK/MEDIUM_SMALL_SINGLE/UNKNOWN）
+- ops_impact: 运行影响（RTO_OR_RTB/BLOCKING_RUNWAY_OR_TAXIWAY/REQUEST_MAINT_CHECK/NO_OPS_IMPACT/UNKNOWN）
+- crew_request: 机组请求（自由文本，如返航/备降/检查/支援等）
 
 ## 智能提取规则：
 1. 如果用户只输入纯数字（2-3位），且问题是关于位置的 → 识别为机位号
@@ -696,7 +701,7 @@ LLM_EXTRACT_PROMPT = """你是一个机场应急响应系统的事件信息提�
 5. 只提取明确的信息，不要猜测
 
 ## 输出格式：
-{{"position": "...", "fluid_type": "FUEL", "engine_status": "RUNNING", ...}}
+{{"position": "...", "fluid_type": "FUEL", "engine_status": "RUNNING", "phase": "TAXI", ...}}
 
 如果无法提取任何有效信息，返回 {{}}
 """
@@ -717,6 +722,70 @@ SIZE_TYPE_MAP = {
     "中等": "MEDIUM", "一般": "MEDIUM", "1-5": "MEDIUM",
     "小面积": "SMALL", "少量": "SMALL", "一点": "SMALL", "<1": "SMALL",
     "不明": "UNKNOWN", "不清楚": "UNKNOWN", "不知道": "UNKNOWN", "未知": "UNKNOWN", "待确认": "UNKNOWN",
+}
+
+PHASE_TYPE_MAP = {
+    "推出": "PUSHBACK",
+    "滑行": "TAXI",
+    "起飞滑跑": "TAKEOFF_ROLL",
+    "起飞": "TAKEOFF_ROLL",
+    "爬升": "INITIAL_CLIMB",
+    "起飞后": "INITIAL_CLIMB",
+    "巡航": "CRUISE",
+    "下降": "DESCENT",
+    "进近": "APPROACH",
+    "落地滑跑": "LANDING_ROLL",
+    "着陆滑跑": "LANDING_ROLL",
+    "停机位": "ON_STAND",
+    "不明": "UNKNOWN",
+    "未知": "UNKNOWN",
+}
+
+EVIDENCE_TYPE_MAP = {
+    "残留": "CONFIRMED_STRIKE_WITH_REMAINS",
+    "羽毛": "CONFIRMED_STRIKE_WITH_REMAINS",
+    "血迹": "CONFIRMED_STRIKE_WITH_REMAINS",
+    "确认撞击": "CONFIRMED_STRIKE_WITH_REMAINS",
+    "告警": "SYSTEM_WARNING",
+    "报警": "SYSTEM_WARNING",
+    "ECAM": "SYSTEM_WARNING",
+    "EICAS": "SYSTEM_WARNING",
+    "异响": "ABNORMAL_NOISE_VIBRATION",
+    "振动": "ABNORMAL_NOISE_VIBRATION",
+    "震动": "ABNORMAL_NOISE_VIBRATION",
+    "仅怀疑": "SUSPECTED_ONLY",
+    "疑似": "SUSPECTED_ONLY",
+    "无异常": "NO_ABNORMALITY",
+    "正常": "NO_ABNORMALITY",
+}
+
+BIRD_INFO_MAP = {
+    "大型鸟": "LARGE_BIRD",
+    "大鸟": "LARGE_BIRD",
+    "鸟群": "FLOCK",
+    "群鸟": "FLOCK",
+    "中小型": "MEDIUM_SMALL_SINGLE",
+    "小型": "MEDIUM_SMALL_SINGLE",
+    "单只": "MEDIUM_SMALL_SINGLE",
+    "不明": "UNKNOWN",
+    "未知": "UNKNOWN",
+}
+
+OPS_IMPACT_MAP = {
+    "中断起飞": "RTO_OR_RTB",
+    "返航": "RTO_OR_RTB",
+    "备降": "RTO_OR_RTB",
+    "占用跑道": "BLOCKING_RUNWAY_OR_TAXIWAY",
+    "占用滑行道": "BLOCKING_RUNWAY_OR_TAXIWAY",
+    "阻塞跑道": "BLOCKING_RUNWAY_OR_TAXIWAY",
+    "阻塞滑行道": "BLOCKING_RUNWAY_OR_TAXIWAY",
+    "机务检查": "REQUEST_MAINT_CHECK",
+    "请求检查": "REQUEST_MAINT_CHECK",
+    "待检查": "REQUEST_MAINT_CHECK",
+    "不影响运行": "NO_OPS_IMPACT",
+    "无影响": "NO_OPS_IMPACT",
+    "不明": "UNKNOWN",
+    "未知": "UNKNOWN",
 }
 
 
@@ -774,7 +843,7 @@ def extract_entities(text: str, scenario_type: Optional[str] = None) -> Dict[str
             entities["fluid_type"] = value
             break
 
-    for key in ["event_type", "affected_part", "current_status"]:
+    for key in ["event_type", "affected_part", "current_status", "crew_request"]:
         for pattern, value in patterns.get(key, []):
             if re.search(pattern, text):
                 entities[key] = value
@@ -843,6 +912,50 @@ def extract_entities_llm(text: str, history: str = "") -> Dict[str, Any]:
                 entities["leak_size"] = SIZE_TYPE_MAP.get(ls, ls)
             else:
                 entities["leak_size"] = ls
+
+        if "phase" in entities and entities["phase"]:
+            phase = str(entities["phase"]).upper()
+            if phase not in [
+                "PUSHBACK", "TAXI", "TAKEOFF_ROLL", "INITIAL_CLIMB", "CRUISE",
+                "DESCENT", "APPROACH", "LANDING_ROLL", "ON_STAND", "UNKNOWN",
+            ]:
+                entities["phase"] = PHASE_TYPE_MAP.get(phase, phase)
+            else:
+                entities["phase"] = phase
+
+        if "evidence" in entities and entities["evidence"]:
+            evidence = str(entities["evidence"]).upper()
+            if evidence not in [
+                "CONFIRMED_STRIKE_WITH_REMAINS",
+                "SYSTEM_WARNING",
+                "ABNORMAL_NOISE_VIBRATION",
+                "SUSPECTED_ONLY",
+                "NO_ABNORMALITY",
+                "UNKNOWN",
+            ]:
+                entities["evidence"] = EVIDENCE_TYPE_MAP.get(evidence, evidence)
+            else:
+                entities["evidence"] = evidence
+
+        if "bird_info" in entities and entities["bird_info"]:
+            bird_info = str(entities["bird_info"]).upper()
+            if bird_info not in ["LARGE_BIRD", "FLOCK", "MEDIUM_SMALL_SINGLE", "UNKNOWN"]:
+                entities["bird_info"] = BIRD_INFO_MAP.get(bird_info, bird_info)
+            else:
+                entities["bird_info"] = bird_info
+
+        if "ops_impact" in entities and entities["ops_impact"]:
+            ops_impact = str(entities["ops_impact"]).upper()
+            if ops_impact not in [
+                "RTO_OR_RTB",
+                "BLOCKING_RUNWAY_OR_TAXIWAY",
+                "REQUEST_MAINT_CHECK",
+                "NO_OPS_IMPACT",
+                "UNKNOWN",
+            ]:
+                entities["ops_impact"] = OPS_IMPACT_MAP.get(ops_impact, ops_impact)
+            else:
+                entities["ops_impact"] = ops_impact
 
         # 清理 null 值
         return {k: v for k, v in entities.items() if v not in [None, "null", "NULL", ""]}

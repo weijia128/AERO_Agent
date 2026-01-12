@@ -6,6 +6,7 @@
 from typing import Dict, Any, List, Set, Optional
 from tools.base import BaseTool
 from tools.spatial.topology_loader import get_topology_loader
+from agent.state import risk_level_rank
 
 
 # 位置影响规则配置
@@ -109,6 +110,18 @@ EFFICIENCY_IMPACT = {
 }
 
 
+def _normalize_risk_level(level: str) -> str:
+    """将 R1-R4 映射为内部高/中/低标签。"""
+    rank = risk_level_rank(level)
+    if rank >= 3:
+        return "HIGH"
+    if rank == 2:
+        return "MEDIUM"
+    if rank == 1:
+        return "LOW"
+    return "MEDIUM"
+
+
 class AnalyzePositionImpactTool(BaseTool):
     """位置特定影响分析工具"""
 
@@ -118,7 +131,7 @@ class AnalyzePositionImpactTool(BaseTool):
 输入参数:
 - position: 事发位置（自动从状态获取）
 - fluid_type: 油液类型（自动从状态获取）
-- risk_level: 风险等级（自动从状态获取）
+- risk_level: 风险等级（自动从状态获取，R1-R4）
 
 返回信息:
 - 位置类型和影响严重程度
@@ -132,7 +145,8 @@ class AnalyzePositionImpactTool(BaseTool):
         incident = state.get("incident", {})
         position = incident.get("position", "")
         fluid_type = incident.get("fluid_type", "FUEL")
-        risk_level = state.get("risk_assessment", {}).get("level", "MEDIUM")
+        risk_level = state.get("risk_assessment", {}).get("level", "R2")
+        normalized_risk = _normalize_risk_level(risk_level)
 
         if not position:
             return {"observation": "缺少位置信息，无法进行位置影响分析"}
@@ -158,7 +172,7 @@ class AnalyzePositionImpactTool(BaseTool):
 
         # 分析直接影响
         direct_impact = self._analyze_direct_impact(
-            node_id, node_type, node_info, fluid_type, risk_level, type_rules
+            node_id, node_type, node_info, fluid_type, normalized_risk, type_rules
         )
 
         # 分析相邻影响
@@ -173,7 +187,7 @@ class AnalyzePositionImpactTool(BaseTool):
 
         # 生成处置建议
         recommendations = self._generate_recommendations(
-            node_type, fluid_type, risk_level, direct_impact, adjacent_impact
+            node_type, fluid_type, normalized_risk, direct_impact, adjacent_impact
         )
 
         # 生成观测结果

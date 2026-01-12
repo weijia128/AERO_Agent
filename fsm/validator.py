@@ -14,6 +14,8 @@ FSM 验证器
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 
+from agent.state import risk_level_rank
+
 from .states import (
     FSMStateEnum,
     StateDefinition,
@@ -226,7 +228,7 @@ class FSMValidator:
 
         # P2_IMMEDIATE_CONTROL 状态：高危情况通知消防
         elif current_state == FSMStateEnum.P2_IMMEDIATE_CONTROL.value:
-            if risk.get("level") == "HIGH" and not mandatory.get("fire_dept_notified", False):
+            if risk_level_rank(risk.get("level")) >= 3 and not mandatory.get("fire_dept_notified", False):
                 actions.append({
                     "action": "notify_department",
                     "params": {"department": "消防", "priority": "immediate"},

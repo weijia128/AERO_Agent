@@ -121,7 +121,7 @@ def test_calculate_impact_zone():
                 "fluid_type": "FUEL"
             },
             "risk_assessment": {
-                "level": "HIGH"
+                "level": "R3"
             }
         }
 
@@ -175,7 +175,7 @@ def test_predict_flight_impact():
                 "fluid_type": "FUEL"
             },
             "risk_assessment": {
-                "level": "HIGH"
+                "level": "R3"
             },
             "spatial_analysis": impact_result.get("spatial_analysis", {})
         }
@@ -236,7 +236,7 @@ def test_end_to_end_scenario():
                 "fluid_type": "FUEL"
             },
             "risk_assessment": {
-                "level": "HIGH"
+                "level": "R3"
             }
         })
 

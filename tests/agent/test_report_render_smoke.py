@@ -20,7 +20,7 @@ def _sample_state():
             "reported_by": "张三",
         },
         "risk_assessment": {
-            "level": "MEDIUM",
+            "level": "R3",
             "score": 65,
             "factors": ["发动机运转", "持续滴漏"],
         },
@@ -61,7 +61,7 @@ def _sample_state():
 def test_render_markdown_smoke(monkeypatch):
     """Render markdown via template; LLM is stubbed to keep test deterministic."""
     fake_summary = {
-        "event_description": "501机位燃油泄漏，发动机运转，评估为中风险。",
+        "event_description": "501机位燃油泄漏，发动机运转，评估为R3风险。",
         "effect_evaluation": "已完成风险评估并通知机务/消防，处置推进中。",
         "improvement_suggestions": "1. 加强滑行道巡检\n2. 完善燃油泄漏演练\n3. 优化现场警戒流程",
     }

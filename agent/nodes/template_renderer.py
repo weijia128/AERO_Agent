@@ -8,6 +8,10 @@ from config.settings import settings
 def _format_risk_level(level: str) -> str:
     """格式化风险等级为中文标签。"""
     mapping = {
+        "R4": "严重",
+        "R3": "高",
+        "R2": "中",
+        "R1": "低",
         "HIGH": "高",
         "MEDIUM_HIGH": "中高",
         "MEDIUM": "中",

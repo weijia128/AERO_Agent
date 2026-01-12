@@ -11,7 +11,7 @@ import json
 from typing import Dict, Any, Optional, Tuple
 from datetime import datetime
 
-from agent.state import AgentState, FSMState, RiskLevel
+from agent.state import AgentState, FSMState
 from agent.prompts.builder import build_prompt
 from config.llm_config import get_llm_client
 from tools.registry import get_tools_description, ToolRegistry

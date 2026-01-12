@@ -13,7 +13,7 @@ FSM 验证节点
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
-from agent.state import AgentState, FSMState, RiskLevel
+from agent.state import AgentState, FSMState, RiskLevel, risk_level_rank
 from fsm import FSMEngine, FSMValidator, FSMStateEnum
 from fsm.states import FSMTransitionRecord
 
@@ -94,7 +94,7 @@ FSM_PRECONDITIONS = {
         "requires": ["risk_assessed"],
     },
     FSMState.P3_RESOURCE_DISPATCH: {
-        "risk_level": [RiskLevel.HIGH, RiskLevel.MEDIUM],
+        "risk_level": [RiskLevel.R2, RiskLevel.R3, RiskLevel.R4],
     },
     FSMState.P4_AREA_ISOLATION: {
         "requires": ["risk_assessed"],
@@ -109,38 +109,23 @@ FSM_PRECONDITIONS = {
 MANDATORY_ACTIONS = {
     # 高风险：必须通知消防
     "high_risk_fire_notification": {
-        "condition": lambda s: s.get("risk_assessment", {}).get("level") == RiskLevel.HIGH.value,
+        "condition": lambda s: risk_level_rank(s.get("risk_assessment", {}).get("level")) >= 3,
         "action": "notify_department",
         "params": {"department": "消防"},
         "check_field": "fire_dept_notified",
         "error_message": "高危情况必须通知消防",
     },
-    # 中高风险：通知消防待命 + 通知机务
-    "medium_high_risk_fire_standby": {
-        "condition": lambda s: s.get("risk_assessment", {}).get("level") == "MEDIUM_HIGH",
-        "action": "notify_department",
-        "params": {"department": "消防", "priority": "high"},
-        "check_field": "fire_dept_notified",
-        "error_message": "中高风险必须通知消防待命",
-    },
-    "medium_high_risk_maintenance": {
-        "condition": lambda s: s.get("risk_assessment", {}).get("level") == "MEDIUM_HIGH",
-        "action": "notify_department",
-        "params": {"department": "机务"},
-        "check_field": "maintenance_notified",
-        "error_message": "中高风险必须通知机务",
-    },
-    # 中等风险：通知机务
+    # R2 及以上：通知机务
     "medium_risk_maintenance": {
-        "condition": lambda s: s.get("risk_assessment", {}).get("level") == RiskLevel.MEDIUM.value,
+        "condition": lambda s: risk_level_rank(s.get("risk_assessment", {}).get("level")) >= 2,
         "action": "notify_department",
         "params": {"department": "机务"},
         "check_field": "maintenance_notified",
-        "error_message": "中等风险必须通知机务",
+        "error_message": "中等及以上风险必须通知机务",
     },
     # 低风险：通知清洗部门
     "low_risk_cleaning": {
-        "condition": lambda s: s.get("risk_assessment", {}).get("level") == RiskLevel.LOW.value,
+        "condition": lambda s: risk_level_rank(s.get("risk_assessment", {}).get("level")) == 1,
         "action": "notify_department",
         "params": {"department": "清洗"},
         "check_field": "cleaning_notified",

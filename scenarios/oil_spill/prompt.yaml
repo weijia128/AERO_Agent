@@ -80,7 +80,7 @@ system_prompt: |
   **注意事项：**
   - 如果用户回答了部分问题，更新对应字段后继续询问剩余P1字段
   - 不要重复询问已收集的信息
-  - 如果风险已评估且为 HIGH，必须立即执行 notify_department 通知消防
+  - 如果风险已评估且为 R3/R4，必须立即执行 notify_department 通知消防
 
   ## 工作方式
   你使用 ReAct 模式，但**只输出 JSON**，由系统解析执行。
@@ -141,20 +141,23 @@ ask_prompts:
 
 # 风险等级定义
 risk_levels:
-  HIGH:
-    description: "高风险 - 需要立即通知消防和塔台"
+  R4:
+    description: "严重风险 - 需要立即通知消防和塔台"
     color: "red"
-  MEDIUM:
+  R3:
+    description: "高风险 - 需要重点监控并通知关键单位"
+    color: "orange"
+  R2:
     description: "中风险 - 需要密切关注和定期评估"
     color: "yellow"
-  LOW:
+  R1:
     description: "低风险 - 常规处置即可"
     color: "green"
 
 # 强制动作触发规则
 mandatory_actions:
   - when:
-      risk_level: HIGH
+      risk_level: R3
       fire_dept_notified: false
     action: notify_department
     params:

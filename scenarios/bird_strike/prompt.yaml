@@ -57,6 +57,10 @@ field_names:
   affected_part: 影响部位
   current_status: 当前状态
   crew_request: 机组请求
+  phase: 飞行阶段
+  evidence: 迹象强度
+  bird_info: 鸟类信息
+  ops_impact: 运行影响
 
 # 字段追问提示
 ask_prompts:
@@ -66,17 +70,24 @@ ask_prompts:
   affected_part: "请确认受影响的部位（发动机、机身、风挡、起落架或其他）？"
   current_status: "飞机当前状态如何？（正常/异常/返航/待检查等）"
   crew_request: "机组是否有具体请求？（返航/检查/支援等）"
+  phase: "鸟击发生在什么阶段？（推出/滑行/起飞/爬升/进近/落地/停机位）"
+  evidence: "是否有明确迹象？（残留/告警/异响/仅怀疑/无异常）"
+  bird_info: "鸟类规模/大小如何？（鸟群/大型鸟/中小型单只/不明）"
+  ops_impact: "运行影响如何？（返航或中断起飞/占用跑道或滑行道/请求机务检查/不影响运行）"
 
 # 风险等级定义
 risk_levels:
-  HIGH:
-    description: "高风险 - 发动机失效或起火，需要紧急响应"
+  R4:
+    description: "严重风险 - 明确安全威胁，需要紧急响应"
     color: "red"
-  MEDIUM:
-    description: "中风险 - 发动机损伤但可控制"
+  R3:
+    description: "高风险 - 关键系统或关键阶段受影响"
+    color: "orange"
+  R2:
+    description: "中风险 - 存在不确定性，需要机务检查"
     color: "yellow"
-  LOW:
-    description: "低风险 - 轻微损伤或仅机翼/机身表面"
+  R1:
+    description: "低风险 - 无明显影响，常规记录检查"
     color: "green"
 
 # 强制动作触发规则

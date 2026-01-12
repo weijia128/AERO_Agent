@@ -4,7 +4,7 @@
 import pytest
 from datetime import datetime
 
-from agent.state import create_initial_state, FSMState, RiskLevel
+from agent.state import create_initial_state, FSMState
 from agent.nodes.input_parser import input_parser_node, extract_entities, identify_scenario
 from agent.nodes.fsm_validator import (
     determine_fsm_state,
@@ -71,7 +71,7 @@ class TestRiskAssessment:
         
         result = tool.execute(state, {})
         
-        assert result["risk_assessment"]["level"] == "HIGH"
+        assert result["risk_assessment"]["level"] == "R4"
         assert result["risk_assessment"]["score"] >= 90
         assert result["mandatory_actions_done"]["risk_assessed"] == True
     
@@ -88,7 +88,7 @@ class TestRiskAssessment:
         
         result = tool.execute(state, {})
         
-        assert result["risk_assessment"]["level"] == "MEDIUM"
+        assert result["risk_assessment"]["level"] == "R3"
     
     def test_low_risk_hydraulic(self):
         """测试液压油=低危"""
@@ -102,7 +102,7 @@ class TestRiskAssessment:
         
         result = tool.execute(state, {})
         
-        assert result["risk_assessment"]["level"] == "LOW"
+        assert result["risk_assessment"]["level"] == "R2"
 
 
 class TestFSMValidator:
@@ -129,7 +129,7 @@ class TestFSMValidator:
     def test_check_mandatory_actions_high_risk(self):
         """测试高危强制动作检查"""
         state = create_initial_state(session_id="test")
-        state["risk_assessment"] = {"level": "HIGH"}
+        state["risk_assessment"] = {"level": "R3"}
         state["mandatory_actions_done"]["fire_dept_notified"] = False
         
         errors = check_mandatory_actions(state)
@@ -140,7 +140,7 @@ class TestFSMValidator:
     def test_check_mandatory_actions_fire_notified(self):
         """测试消防已通知无错误"""
         state = create_initial_state(session_id="test")
-        state["risk_assessment"] = {"level": "HIGH"}
+        state["risk_assessment"] = {"level": "R3"}
         state["mandatory_actions_done"]["fire_dept_notified"] = True
         
         errors = check_mandatory_actions(state)
@@ -158,10 +158,10 @@ class TestSpatialAnalysis:
         tool = CalculateImpactZoneTool()
         state = {
             "incident": {"position": "机位0", "fluid_type": "FUEL"},
-            "risk_assessment": {"level": "HIGH"},
+            "risk_assessment": {"level": "R4"},
         }
 
-        result = tool.execute(state, {"risk_level": "HIGH"})
+        result = tool.execute(state, {"risk_level": "R4"})
 
         spatial = result["spatial_analysis"]
         assert "corrected_stand_0" in spatial["isolated_nodes"]
@@ -173,10 +173,10 @@ class TestSpatialAnalysis:
         tool = CalculateImpactZoneTool()
         state = {
             "incident": {"position": "机位0", "fluid_type": "HYDRAULIC"},
-            "risk_assessment": {"level": "LOW"},
+            "risk_assessment": {"level": "R1"},
         }
 
-        result = tool.execute(state, {"risk_level": "LOW"})
+        result = tool.execute(state, {"risk_level": "R1"})
 
         spatial = result["spatial_analysis"]
         assert spatial["impact_radius"] <= 1
@@ -209,7 +209,7 @@ class TestIntegration:
         state["mandatory_actions_done"].update(risk_result.get("mandatory_actions_done", {}))
         
         # 验证风险评估
-        assert state["risk_assessment"]["level"] == "HIGH"
+        assert state["risk_assessment"]["level"] == "R4"
         
         # 4. FSM 验证
         fsm_result = fsm_validator_node(state)
