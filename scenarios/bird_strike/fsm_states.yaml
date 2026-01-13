@@ -8,65 +8,48 @@ fsm_states:
     name: 初始状态
     description: "接收鸟击/疑似鸟击报告，等待信息收集"
     order: 0
-    allowed_transitions:
-      - to: P1_RISK_ASSESS
-        condition: "p1_fields_partially_collected"
-        description: "部分 P1 字段已收集"
 
   # 风险评估阶段
   - id: P1_RISK_ASSESS
     name: 风险评估
     description: "确认事件类型、位置与影响部位，评估风险"
     order: 1
-    required_checklist_fields:
-      - flight_no
-      - position
-      - event_type
-      - affected_part
-      - current_status
-      - crew_request
-    required_mandatory_actions:
-      - risk_assessed
-    allowed_transitions:
-      - to: P2_IMMEDIATE_CONTROL
-        condition: "risk_assessed"
-        description: "风险已评估"
-      - to: INIT
-        condition: "more_info_needed"
-        description: "需要更多信息"
+    preconditions:
+      - checklist.flight_no
+      - checklist.position
+      - checklist.event_type
+      - checklist.affected_part
+      - checklist.current_status
+      - checklist.crew_request
 
   # 立即控制阶段
   - id: P2_IMMEDIATE_CONTROL
     name: 立即控制
     description: "执行初始安全控制措施与通知"
     order: 2
+    preconditions:
+      - mandatory.risk_assessed
     triggers:
-      - condition: "incident.current_status == 火警"
+      - condition:
+          incident.current_status: 火警
         action: notify_department
         params:
           department: 消防
           priority: immediate
-        description: "火警时通知消防"
-      - condition: "incident.affected_part contains 发动机"
+        description: "火警时强制通知消防"
+      - condition:
+          incident.affected_part: 发动机
         action: notify_department
         params:
           department: 机务
           priority: high
-        description: "发动机受损时通知机务"
-    allowed_transitions:
-      - to: P3_RESOURCE_DISPATCH
-        condition: "notifications_sent not_empty"
-        description: "已完成必要通知"
+        description: "发动机受损时强制通知机务"
 
   # 资源调度阶段
   - id: P3_RESOURCE_DISPATCH
     name: 资源调度
     description: "调度机务检查与现场保障资源"
     order: 3
-    allowed_transitions:
-      - to: P4_AREA_ISOLATION
-        condition: "maintenance_notified or fire_dept_notified"
-        description: "机务/消防已通知"
 
   # 区域隔离阶段
   - id: P4_AREA_ISOLATION
@@ -74,36 +57,25 @@ fsm_states:
     description: "评估影响区域，必要时隔离跑道/滑行道"
     order: 4
     triggers:
-      - condition: "incident.position contains 跑道"
+      - condition:
+          incident.position: 跑道
         action: notify_department
         params:
           department: 塔台
           priority: high
-        description: "发生在跑道时通知塔台"
-    allowed_transitions:
-      - to: P5_CLEANUP
-        condition: "atc_notified or incident.position not_contains 跑道"
-        description: "已完成跑道协同"
+        description: "位置涉及跑道时强制通知塔台"
 
   # 现场处置阶段
   - id: P5_CLEANUP
     name: 现场处置
     description: "安排现场清理或残留检查"
     order: 5
-    allowed_transitions:
-      - to: P6_VERIFICATION
-        condition: "notifications_sent not_empty"
-        description: "处置已启动"
 
   # 结果确认阶段
   - id: P6_VERIFICATION
     name: 结果确认
     description: "确认检查/清理结果"
     order: 6
-    allowed_transitions:
-      - to: P7_RECOVERY
-        condition: "notifications_sent not_empty"
-        description: "结果已确认"
 
   # 运行恢复阶段
   - id: P7_RECOVERY
@@ -111,35 +83,27 @@ fsm_states:
     description: "恢复受影响区域运行"
     order: 7
     triggers:
-      - condition: "notifications_sent not_empty"
+      - condition:
+          notifications_sent: not_empty
         action: notify_department
         params:
           department: 塔台
           priority: normal
         description: "恢复后通知塔台"
-    allowed_transitions:
-      - to: P8_CLOSE
-        condition: "notifications_sent not_empty"
-        description: "运行已恢复"
 
   # 关闭与报告阶段
   - id: P8_CLOSE
     name: 关闭与报告
     description: "生成报告，完成事件处置"
     order: 8
-    required_checklist_fields:
-      - flight_no
-      - position
-      - event_type
-      - affected_part
-      - current_status
-      - crew_request
-    required_mandatory_actions:
-      - risk_assessed
-    allowed_transitions:
-      - to: COMPLETED
-        condition: "report_generated"
-        description: "报告已生成"
+    preconditions:
+      - checklist.flight_no
+      - checklist.position
+      - checklist.event_type
+      - checklist.affected_part
+      - checklist.current_status
+      - checklist.crew_request
+      - mandatory.risk_assessed
 
   # 完成状态
   - id: COMPLETED

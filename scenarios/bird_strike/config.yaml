@@ -47,6 +47,29 @@ mandatory_triggers:
       department: 消防
       priority: immediate
     check_field: fire_dept_notified
+  - name: engine_damage_notify_maintenance
+    condition:
+      "incident.affected_part":
+        - 发动机
+        - 左发
+        - 右发
+        - 双发
+    action: notify_department
+    params:
+      department: 机务
+      priority: high
+    check_field: maintenance_notified
+  - name: runway_impact_notify_atc
+    condition:
+      "incident.position":
+        contains_any:
+          - 跑道
+          - RWY
+    action: notify_department
+    params:
+      department: 塔台
+      priority: high
+    check_field: atc_notified
 
 # 报告模板
 report_template:
@@ -58,32 +81,6 @@ report_template:
     - coordination_units
     - operational_impact
     - recommendations
-
-# 风险评估规则（鸟击场景）
-risk_rules:
-  - conditions:
-      affected_part: ["左发", "右发", "双发", "发动机"]
-    level: R4
-    score: 85
-    description: "发动机受影响=高风险，需要优先保障安全"
-
-  - conditions:
-      current_status: 异常
-    level: R3
-    score: 60
-    description: "当前状态异常=中风险"
-
-  - conditions:
-      current_status: 返航/备降
-    level: R3
-    score: 55
-    description: "需返航/备降=中风险"
-
-  - conditions:
-      current_status: 正常
-    level: R1
-    score: 20
-    description: "状态正常=低风险"
 
 immediate_actions:
   R4:

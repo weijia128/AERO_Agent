@@ -152,6 +152,25 @@ def build_context_summary(state: AgentState) -> str:
         if info_parts:
             parts.append("事件信息: " + ", ".join(info_parts))
 
+    # 气象信息
+    weather = state.get("weather", {})
+    if weather:
+        weather_parts = []
+        if weather.get("location"):
+            weather_parts.append(f"观测点: {weather['location']}")
+        if weather.get("temperature") is not None:
+            weather_parts.append(f"温度: {weather['temperature']:.1f}°C")
+        if weather.get("wind_speed") is not None:
+            wind_dir_str = f"{weather.get('wind_direction'):.0f}°" if weather.get('wind_direction') else "未知"
+            weather_parts.append(f"风: {wind_dir_str} {weather['wind_speed']:.1f}m/s")
+        if weather.get("qnh") is not None:
+            weather_parts.append(f"气压: {weather['qnh']:.0f}hPa")
+        if weather.get("visibility") is not None:
+            vis_km = weather['visibility'] / 1000
+            weather_parts.append(f"能见度: {vis_km:.1f}km")
+        if weather_parts:
+            parts.append("气象条件: " + ", ".join(weather_parts))
+
     # Checklist 状态
     checklist = state.get("checklist", {})
     missing = [k for k, v in checklist.items() if not v]

@@ -361,6 +361,21 @@ def _fetch_stand_location(incident: Dict[str, Any]) -> Dict[str, Any]:
     return tool.execute(incident, {})
 
 
+def _fetch_weather_info(state: Dict[str, Any]) -> Dict[str, Any]:
+    """获取气象信息（自动查询最新数据）"""
+    from tools.information.get_weather import GetWeatherTool
+    try:
+        tool = GetWeatherTool()
+        # 不指定时间，自动返回最新数据
+        # 使用 state 而不是 incident，以便工具能访问 position 信息
+        result = tool.execute(state, {"location": "推荐"})
+        logger.info(f"气象查询完成: location={result.get('weather', {}).get('location') if result.get('weather') else 'failed'}")
+        return result
+    except Exception as e:
+        logger.error(f"气象查询异常: {e}")
+        return {"observation": f"气象查询异常: {str(e)}"}
+
+
 def _calculate_impact_zone(
     incident: Dict[str, Any],
     position: str,
@@ -423,9 +438,19 @@ def apply_auto_enrichment(
                 _fetch_stand_location, incident
             )
 
+        # 自动查询气象信息（只要有位置信息）
+        if position and not state.get("weather"):
+            # 构建临时state，包含当前的incident信息
+            temp_state = {"incident": incident}
+            phase1_futures["weather_info"] = executor.submit(
+                _fetch_weather_info, temp_state
+            )
+
         # 收集第一阶段结果
         for key, future in phase1_futures.items():
-            result = _execute_future_with_timeout(future)
+            # 气象查询使用更长的超时时间（30秒），因为首次加载数据可能较慢
+            timeout = 30 if key == "weather_info" else 10
+            result = _execute_future_with_timeout(future, timeout=timeout)
             if not result:
                 continue
 
@@ -448,6 +473,17 @@ def apply_auto_enrichment(
                     observations.append(f"\n位置信息: {result['observation']}")
                 if result.get("spatial_analysis"):
                     spatial_analysis.update(result["spatial_analysis"])
+
+            elif key == "weather_info":
+                if result:
+                    if result.get("observation"):
+                        observations.append(f"\n🌤️ 气象信息: {result['observation']}")
+                    if result.get("weather"):
+                        updates["weather"] = result["weather"]
+                        logger.info(f"气象查询成功: {result['weather'].get('location')}")
+                else:
+                    # 气象查询失败或超时，记录警告但不阻塞流程
+                    logger.warning(f"气象查询超时或失败 (position={position})")
 
     # ========== 第二阶段：依赖第一阶段结果的计算 ==========
     phase2_futures: Dict[str, concurrent.futures.Future] = {}
@@ -605,6 +641,8 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
     position_impact_analysis = enrichment.get("position_impact_analysis", {})
     flight_plan_table = enrichment.get("flight_plan_table")
     flight_plan_observation = enrichment.get("flight_plan_observation")
+    weather_info = enrichment.get("weather")  # 提取气象信息
+    enrichment_observation = enrichment.get("enrichment_observation", "")  # 提取增强观察信息
 
     # 更新 checklist（保持场景字段）
     checklist = update_checklist(current_incident, checklist_template)
@@ -643,6 +681,8 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
         **({"position_impact_analysis": position_impact_analysis} if position_impact_analysis else {}),
         **({"flight_plan_table": flight_plan_table} if flight_plan_table else {}),
         **({"flight_plan_observation": flight_plan_observation} if flight_plan_observation else {}),
+        **({"weather": weather_info} if weather_info else {}),  # 添加气象信息
+        **({"enrichment_observation": enrichment_observation} if enrichment_observation else {}),  # 添加增强观察信息
         "reasoning_steps": reasoning_steps,
         "current_node": "input_parser",
         "next_node": "reasoning",

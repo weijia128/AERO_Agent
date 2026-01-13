@@ -20,6 +20,43 @@
     "8": "八",
     "9": "九"
   },
+  "letter": {
+    "A": "Alpha ",
+    "B": "Bravo",
+    "C": "Charlie",
+    "D": "Delta",
+    "E": "Echo",
+    "F": "Foxtrot",
+    "G": "Golf",
+    "H": "Hotel",
+    "I": "India",
+    "J": "Juliett",
+    "K": "Kilo",
+    "L": "Lima",
+    "M": "Mike",
+    "N": "November",
+    "O": "Oscar",
+    "P": "Papa",
+    "Q": "Quebec",
+    "R": "Romeo",
+    "S": "Sierra",
+    "T": "Tango",
+    "U": "Uniform",
+    "V": "Victor",
+    "W": "Whiskey",
+    "X": "X-ray",
+    "Y": "Yankee",
+    "Z": "Zulu"
+  },
+  "runway_rules": [
+    "跑道号码后的英文字母 L、R、C 分别表示左、右、中。 跑道（号码）〔左/右/中〕"
+  ],
+  "runway": {
+    "18L": "幺八左",
+    "18R": "幺八右",
+    "09L": "洞九左",
+    "09C": "洞九中"
+  },
   "rules_cn": [
     "数字组合的汉语读法一般根据数字的汉语发音按顺序逐位读出；整百、整千或整千整百组合的数字也可读出数字，后面加上百、千或千百。",
     "基于汉语的发音习惯，1位数或者2位数的数值中含有0、1、2、7时，按数字的标准读法分别读出。其他的数值按照日常读法读出。"

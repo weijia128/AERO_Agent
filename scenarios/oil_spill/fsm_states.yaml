@@ -1,6 +1,6 @@
 # FSM 状态定义
 # 版本: 1.0
-# 描述: 机坪漏油处置流程状态机定义
+# 描述: 机坪漏油处置流程状态机定义（低风险需通知清洗部门）
 
 fsm_states:
   # 初始状态
@@ -8,104 +8,74 @@ fsm_states:
     name: 初始状态
     description: "接收事件报告，等待信息收集"
     order: 0
-    allowed_transitions:
-      - to: P1_RISK_ASSESS
-        condition: "p1_fields_partially_collected"
-        description: "部分 P1 字段已收集"
 
   # 风险评估阶段
   - id: P1_RISK_ASSESS
     name: 风险评估
     description: "收集关键事实，评估风险等级"
     order: 1
-    required_checklist_fields:
-      - fluid_type
-      - position
-    required_mandatory_actions:
-      - risk_assessed
-    allowed_transitions:
-      - to: P2_IMMEDIATE_CONTROL
-        condition: "risk_assessed"
-        description: "风险已评估"
-      - to: INIT
-        condition: "more_info_needed"
-        description: "需要更多信息"
+    preconditions:
+      - checklist.fluid_type
+      - checklist.position
 
   # 立即控制阶段
   - id: P2_IMMEDIATE_CONTROL
     name: 立即控制
     description: "执行初始安全控制措施"
     order: 2
+    preconditions:
+      - mandatory.risk_assessed
     triggers:
-      - condition: "risk.level in [R3, R4]"
+      - condition:
+          risk_level: [R3, R4]
         action: notify_department
         params:
           department: 消防
           priority: immediate
         description: "高风险时通知消防"
-      - condition: "risk.level in [R2, R3, R4]"
+      - condition:
+          risk_level: [R2, R3, R4]
         action: notify_department
         params:
           department: 运行中心
           priority: high
         description: "中高风险时通知运行中心"
-    allowed_transitions:
-      - to: P3_RESOURCE_DISPATCH
-        condition: "controls_completed"
-        description: "控制措施已完成"
 
   # 资源调度阶段
   - id: P3_RESOURCE_DISPATCH
     name: 资源调度
     description: "调度清污人员和设备"
     order: 3
-    required_checklist_fields:
-      - leak_size
-    allowed_transitions:
-      - to: P4_AREA_ISOLATION
-        condition: "resources_ready"
-        description: "资源已就绪"
+    preconditions:
+      - checklist.leak_size
 
   # 区域隔离阶段
   - id: P4_AREA_ISOLATION
     name: 区域隔离
     description: "划定并隔离受影响区域"
     order: 4
-    required_mandatory_actions:
-      - area_isolated
+    preconditions:
+      - mandatory.risk_assessed
     triggers:
-      - condition: "spatial.affected_runways not_empty"
+      - condition:
+          affected_runways: not_empty
         action: notify_department
         params:
           department: 塔台
           priority: high
         description: "影响跑道时通知塔台"
-    allowed_transitions:
-      - to: P5_CLEANUP
-        condition: "area_isolated"
-        description: "区域已隔离"
 
   # 清污执行阶段
   - id: P5_CLEANUP
     name: 清污执行
     description: "执行清污作业"
     order: 5
-    allowed_transitions:
-      - to: P6_VERIFICATION
-        condition: "cleanup_started"
-        description: "清污已开始"
 
   # 结果确认阶段
   - id: P6_VERIFICATION
     name: 结果确认
     description: "确认清污效果，检测残留"
     order: 6
-    required_mandatory_actions:
-      - cleanup_verified
-    allowed_transitions:
-      - to: P7_RECOVERY
-        condition: "cleanup_verified"
-        description: "清污已确认"
 
   # 区域恢复阶段
   - id: P7_RECOVERY
@@ -113,32 +83,22 @@ fsm_states:
     description: "恢复区域运行"
     order: 7
     triggers:
-      - condition: "recovery_completed"
+      - condition:
+          recovery_completed: true
         action: notify_department
         params:
           department: 塔台
           priority: normal
         description: "恢复后通知塔台"
-    allowed_transitions:
-      - to: P8_CLOSE
-        condition: "recovery_completed"
-        description: "区域已恢复"
 
   # 关闭与报告阶段
   - id: P8_CLOSE
     name: 关闭与报告
     description: "生成报告，完成事件处置"
     order: 8
-    required_checklist_fields:
-      - p1_complete: true
-    required_mandatory_actions:
-      - risk_assessed: true
-    required_actions:
-      - generate_report
-    allowed_transitions:
-      - to: COMPLETED
-        condition: "report_generated"
-        description: "报告已生成"
+    preconditions:
+      - checklist.p1_complete
+      - mandatory.risk_assessed
 
   # 完成状态
   - id: COMPLETED

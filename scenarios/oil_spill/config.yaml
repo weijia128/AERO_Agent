@@ -19,6 +19,7 @@ scenario:
     - 滑油
     - 油液
     - 漏液
+    - 油
 
 # 场景设置
 settings:
@@ -131,6 +132,14 @@ mandatory_triggers:
       department: 塔台
       priority: high
     check_field: atc_notified
+  - name: low_risk_cleaning_notification
+    condition:
+      risk_level: R1
+    action: notify_department
+    params:
+      department: 清洗
+      priority: normal
+    check_field: cleaning_notified
 
 # 风险评估规则
 risk_rules:

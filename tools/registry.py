@@ -75,6 +75,7 @@ def register_all_tools():
     from tools.information.ask_for_detail import AskForDetailTool
     from tools.information.smart_ask import SmartAskTool
     from tools.information.get_aircraft_info import GetAircraftInfoTool
+    from tools.information.get_weather import GetWeatherTool
     from tools.information.flight_plan_lookup import FlightPlanLookupTool
     from tools.spatial.get_stand_location import GetStandLocationTool
     from tools.spatial.calculate_impact_zone import CalculateImpactZoneTool
@@ -90,6 +91,7 @@ def register_all_tools():
     ToolRegistry.register(AskForDetailTool(), ["common"])
     ToolRegistry.register(SmartAskTool(), ["common"])
     ToolRegistry.register(GetAircraftInfoTool(), ["common"])
+    ToolRegistry.register(GetWeatherTool(), ["common"])
     ToolRegistry.register(FlightPlanLookupTool(), ["common"])
     ToolRegistry.register(NotifyDepartmentTool(), ["common"])
     ToolRegistry.register(GenerateReportTool(), ["common"])

@@ -17,7 +17,7 @@ checklist:
       type: string
       required: true
       priority: P1
-      ask_prompt: "报告你机号"
+      ask_prompt: "报告你航班号"
       ui:
         widget: input
         placeholder: "如: CA1234, 川航3349"

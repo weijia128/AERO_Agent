@@ -61,10 +61,10 @@ ACTION_NAME_MAP = {
 # 部门通知状态映射配置
 # 格式: 部门名称 -> (mandatory_key, notified_map_keys)
 DEPT_NOTIFICATION_CONFIG = {
-    "机务": ("maintenance_notified", ["机务"]),
+    "机务": ("maintenance_notified", ["机务", "塔台"]),  # 塔台通知时也更新机务状态
     "清污/场务": ("cleaning_notified", ["清洗", "清污"]),
     "消防": ("fire_dept_notified", ["消防"]),
-    "机场运行指挥": ("operations_notified", ["运控", "运行指挥"]),
+    "机场运行指挥": ("operations_notified", ["运控", "运行指挥", "塔台"]),
     "安全监察": ("safety_notified", ["安全监察"]),
 }
 
@@ -693,7 +693,17 @@ def generate_coordination_units(state: AgentState) -> List[Dict[str, Any]]:
                     if notify_time:
                         break
 
-        # 如果有通知记录但状态未同步，尝试从通知列表获取
+            # 如果 mandatory 标记为已通知，但没找到时间，尝试从 notifications 列表中匹配
+            if is_notified and not notify_time:
+                for n in notifications:
+                    n_dept = n.get("department", "")
+                    # 检查部门名称是否在映射列表中
+                    if n_dept in map_keys:
+                        notify_time = n.get("timestamp", "")
+                        priority = n.get("priority", "normal")
+                        break
+
+        # 如果 mandatory 未标记，但通知列表中有记录，也尝试匹配
         if not is_notified:
             for n in notifications:
                 n_dept = n.get("department", "")
@@ -764,9 +774,17 @@ def _normalize_coordination_units(units: List[Dict[str, Any]]) -> List[Dict[str,
     """标准化协调单位字段，便于模板渲染。"""
     normalized = []
     for unit in units:
-        notify_time = unit.get("notify_time", "——") or "——"
-        if notify_time and len(notify_time) > 19:
-            notify_time = notify_time[11:19]
+        notify_time_raw = unit.get("notify_time", "")
+        # 处理空时间
+        if not notify_time_raw:
+            notify_time = "——"
+        # 处理 ISO 8601 格式时间 (2026-01-13T11:06:40.123456)
+        elif "T" in notify_time_raw:
+            # 提取时间部分 HH:MM:SS
+            notify_time = notify_time_raw.split("T")[1][:8]
+        else:
+            notify_time = notify_time_raw
+
         normalized.append(
             {
                 "name": unit.get("name", ""),

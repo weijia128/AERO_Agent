@@ -107,6 +107,21 @@ class MandatoryAction:
     def is_triggered(self, state: Dict[str, Any]) -> bool:
         """检查是否触发此强制动作"""
         def match_expected(actual: Any, expected_value: Any) -> bool:
+            if isinstance(expected_value, dict):
+                contains_any = expected_value.get("contains_any")
+                if contains_any is not None:
+                    if actual is None:
+                        return False
+                    if isinstance(actual, (list, tuple, set)):
+                        haystack = " ".join(str(item) for item in actual)
+                    else:
+                        haystack = str(actual)
+                    return any(str(item) in haystack for item in contains_any)
+                contains = expected_value.get("contains")
+                if contains is not None:
+                    if actual is None:
+                        return False
+                    return str(contains) in str(actual)
             if expected_value == "not_empty":
                 return bool(actual)
             if expected_value == "empty":
@@ -274,6 +289,14 @@ DEFAULT_MANDATORY_ACTIONS = [
         params={"department": "消防", "priority": "immediate"},
         check_field="fire_dept_notified",
         error_message="高危情况必须通知消防"
+    ),
+    MandatoryAction(
+        name="low_risk_cleaning_notification",
+        condition={"risk_level": "R1"},
+        action="notify_department",
+        params={"department": "清洗", "priority": "normal"},
+        check_field="cleaning_notified",
+        error_message="低风险必须通知清洗部门"
     ),
     MandatoryAction(
         name="runway_impact_atc_notification",

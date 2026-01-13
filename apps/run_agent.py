@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-机场机坪漏油应急响应 Agent - 完整交互式终端
+机场机坪特情应急响应 Agent - 完整交互式终端
 
 使用 LangGraph + LLM 的完整流程：
 - ReAct 推理循环（调用大模型）
@@ -846,6 +846,20 @@ class AgentRunner:
                     extracted.append(f"{name}={v}")
             if extracted:
                 print_info(f"已收集信息: {', '.join(extracted)}")
+
+            # 显示气象信息
+            weather = output.get("weather", {})
+            if weather:
+                weather_parts = []
+                if weather.get("location"):
+                    weather_parts.append(f"观测点: {weather['location']}")
+                if weather.get("wind_speed") is not None:
+                    wind_dir = f"{weather.get('wind_direction', 0):.0f}°" if weather.get('wind_direction') else "未知"
+                    weather_parts.append(f"风: {wind_dir} {weather['wind_speed']:.1f}m/s")
+                if weather.get("temperature") is not None:
+                    weather_parts.append(f"温度: {weather['temperature']:.1f}°C")
+                if weather_parts:
+                    print_info(f"气象条件: {', '.join(weather_parts)}")
 
             # 仅在首次获取时显示航班计划（避免重复）
             if not self.state.get("_flight_plan_displayed"):

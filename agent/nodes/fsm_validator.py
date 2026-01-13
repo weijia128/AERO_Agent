@@ -16,6 +16,7 @@ from datetime import datetime
 from agent.state import AgentState, FSMState, RiskLevel, risk_level_rank
 from fsm import FSMEngine, FSMValidator, FSMStateEnum
 from fsm.states import FSMTransitionRecord
+from scenarios.base import ScenarioRegistry
 
 
 def _build_validator_from_state(
@@ -23,7 +24,11 @@ def _build_validator_from_state(
     scenario_type: str
 ) -> FSMValidator:
     """根据当前状态构建 FSM 验证器实例"""
-    engine = FSMEngine(scenario_type=scenario_type)
+    scenario = ScenarioRegistry.get(scenario_type)
+    config_path = None
+    if scenario and scenario.fsm_states_path and scenario.fsm_states_path.exists():
+        config_path = str(scenario.fsm_states_path)
+    engine = FSMEngine(scenario_type=scenario_type, config_path=config_path)
     if state:
         current = state.get("fsm_state")
         if current:
