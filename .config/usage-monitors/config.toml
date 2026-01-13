@@ -1,0 +1,63 @@
+# AERO_Agent Claude Code Usage Monitor Configuration
+# This file configures the claude-monitor tool for real-time usage tracking
+
+[default]
+# Subscription plan (auto-detected if not specified)
+# Options: pro, max5, max20, custom
+plan = "pro"
+
+# Display view
+# Options: realtime, daily, monthly
+view = "realtime"
+
+# Visual theme
+# Options: dark, light, classic, auto
+theme = "dark"
+
+# Refresh rate in seconds (0.1 to 60)
+refresh_rate = 3
+
+# Timezone (use your local timezone)
+timezone = "Asia/Shanghai"
+
+# Daily reset hour (when usage counters reset)
+reset_hour = 9
+
+# Time format (12h or 24h)
+time_format = "24h"
+
+# Custom token limit for custom plans
+# Only used when plan = "custom"
+custom_limit_tokens = 100000
+
+# Enable verbose logging
+verbose = false
+
+# Output format (console, json, csv)
+output_format = "console"
+
+# Data retention (days)
+retention_days = 30
+
+# Alert thresholds (percentage of limit)
+[alerts]
+warning_threshold = 80
+critical_threshold = 95
+
+# Display preferences
+[display]
+show_progress_bar = true
+show_predictions = true
+show_burn_rate = true
+show_session_count = true
+
+# Color scheme for dark theme
+[colors.dark]
+primary = "#00D4AA"
+secondary = "#6366F1"
+accent = "#F59E0B"
+warning = "#F59E0B"
+critical = "#EF4444"
+success = "#10B981"
+background = "#1F2937"
+foreground = "#F9FAFB"
