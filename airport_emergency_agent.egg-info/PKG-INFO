@@ -25,6 +25,7 @@ Requires-Dist: shapely>=2.0.0
 Requires-Dist: pyyaml>=6.0.0
 Requires-Dist: python-dotenv>=1.0.0
 Requires-Dist: httpx>=0.27.0
+Requires-Dist: pandas>=2.0.0
 Provides-Extra: dev
 Requires-Dist: pytest>=8.0.0; extra == "dev"
 Requires-Dist: pytest-asyncio>=0.23.0; extra == "dev"
@@ -42,7 +43,7 @@ Requires-Dist: sentence-transformers>=2.2.0; extra == "vector"
 
 ## 项目概述
 
-本系统是一个融合 **ReAct Agent** 与 **FSM 状态机验证** 的智能应急响应系统，专门用于处理机场机坪漏油等特情事件。
+本系统是一个融合 **ReAct Agent** 与 **FSM 状态机验证** 的智能应急响应系统，专门用于处理机场机坪漏油、鸟击等特情事件。
 
 ### 对话模式 🎯
 
@@ -65,6 +66,65 @@ Requires-Dist: sentence-transformers>=2.2.0; extra == "vector"
 机坪管制: 川航3349，处置流程已完成。你还有什么需要补充的吗？
 
 机长: 天府机坪 无补充信息 完毕
+```
+
+#### 鸟击场景简要示例
+
+```
+机坪管制: 天府机坪，请讲。
+
+机长: 天府机坪，南航1234报告疑似鸟击，起飞滑跑时左发疑似受损，当前状态异常，请求检查。
+
+机坪管制: 南航1234，鸟击发生在什么阶段？是否有明确迹象（残留/告警/异响/仅怀疑/无异常）？
+```
+
+#### 鸟击场景完整对话示例
+
+```
+机坪管制: 天府机坪，请讲。
+
+机长: 天府机坪，南航1234报告疑似鸟击，起飞滑跑时左发疑似受损，当前状态异常，请求检查。
+
+机坪管制: 南航1234，确认鸟击发生位置（跑道/滑行道/机位）？
+
+机长: 天府机坪，跑道27L。
+
+机坪管制: 南航1234，鸟击发生在什么阶段？
+
+机长: 起飞滑跑阶段。
+
+机坪管制: 南航1234，是否有明确迹象（残留/告警/异响/仅怀疑/无异常）？
+
+机长: 有异响和振动。
+
+机坪管制: 南航1234，鸟类规模/大小如何？（鸟群/大型鸟/中小型单只/不明）
+
+机长: 鸟群，具体数量不清。
+
+机坪管制: 南航1234，运行影响如何？（返航或中断起飞/占用跑道或滑行道/请求机务检查/不影响运行）
+
+机长: 中断起飞，请求机务检查。
+
+机坪管制: 南航1234，处置流程已完成。你还有什么需要补充的吗？
+
+机长: 天府机坪，无补充信息，完毕。
+```
+
+#### 鸟击风险评估示例（BSRC）
+
+```
+输入：
+phase=TAKEOFF_ROLL
+affected_part=左发
+event_type=疑似鸟击
+current_status=异常
+evidence=ABNORMAL_NOISE_VIBRATION
+bird_info=FLOCK
+ops_impact=RTO_OR_RTB
+
+输出：
+risk_level=R4, score=86.5
+guardrails.requires_human_approval=true
 ```
 
 #### 交互流程解析
@@ -168,6 +228,12 @@ python test_dialogue_example.py --llm
 | FSM 验证 | 可审计、流程合规、状态追踪 |
 | 规则引擎 | 确定性风险评估 |
 | Graph 算法 | 确定性空间推理 |
+
+## 鸟击场景改进要点
+
+- 新增鸟击风险评估工具 `assess_bird_strike_risk`，基于 `BSRC.json` 规则集输出 R1-R4 风险等级与管控建议。
+- 鸟击场景补充字段：`phase`、`evidence`、`bird_info`、`ops_impact`，用于提升风险评估准确度。
+- 新增场景字段契约表：`docs/SCENARIO_FIELD_CONTRACTS.md`，对齐工具输出与 FSM/约束使用字段。
 
 ## 项目成熟度评估
 
@@ -844,6 +910,7 @@ scenarios/
 - [部署指南](./docs/DEPLOYMENT_GUIDE.md) - Docker、K8s、监控配置
 - [工具开发指南](./docs/TOOL_DEVELOPMENT_GUIDE.md) - 创建新工具教程
 - [场景开发指南](./scenarios/SCENARIO_GUIDE.md) - 添加新场景说明
+- [场景字段契约表](./docs/SCENARIO_FIELD_CONTRACTS.md) - 工具输出与FSM/约束字段对齐
 
 ## License
 

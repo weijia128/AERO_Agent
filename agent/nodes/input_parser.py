@@ -569,8 +569,24 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
 
     normalized_message = normalize_radiotelephony_text(user_message)
 
+    # ========== 新增: 航空读法深度规范化 (LLM + RAG) ==========
+    from tools.information.radiotelephony_normalizer import RadiotelephonyNormalizerTool
+
+    normalizer = RadiotelephonyNormalizerTool()
+    normalization_result = normalizer.execute(state, {"text": normalized_message})
+
+    # 使用增强后的文本 (Fallback: 如果失败使用原文本)
+    enhanced_message = normalization_result.get("normalized_text", normalized_message)
+    pre_extracted_entities = normalization_result.get("entities", {})
+    normalization_confidence = normalization_result.get("confidence", 0.5)
+
+    logger.info(f"航空读法规范化: {normalized_message} → {enhanced_message} (置信度: {normalization_confidence:.2f})")
+    if pre_extracted_entities:
+        logger.info(f"预提取实体: {pre_extracted_entities}")
+    # ================================================================
+
     # 识别场景类型（保留已有场景优先级，避免降级）
-    detected_scenario = identify_scenario(normalized_message)
+    detected_scenario = identify_scenario(enhanced_message)
     scenario_type = _select_scenario(state.get("scenario_type", ""), detected_scenario)
 
     # 构建对话历史上下文
@@ -629,9 +645,19 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
         }
     else:
         # 提取实体（混合方案：正则 + LLM，更灵活）
-        extracted = extract_entities_hybrid(normalized_message, history, scenario_type)
+        extracted = extract_entities_hybrid(enhanced_message, history, scenario_type)
+
+        # 合并预提取的实体 (规范化工具的结果优先级最高，因为是LLM+RAG处理过的)
+        # 先使用常规提取的结果
         for key, value in extracted.items():
             if value is not None:
+                current_incident[key] = value
+
+        # 然后用规范化工具的结果覆盖（如果有的话）
+        for key, value in pre_extracted_entities.items():
+            if value:
+                if key in current_incident and current_incident[key] != value:
+                    logger.info(f"规范化工具覆盖 {key}: {current_incident[key]} → {value}")
                 current_incident[key] = value
 
     # 自动补充信息（航班、位置、影响分析等）
@@ -654,7 +680,14 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
         ]
 
     # 记录解析结果
-    observation_parts = [f"提取实体: {extracted}"]
+    observation_parts = []
+
+    # 添加规范化信息
+    if normalization_confidence > 0.7:
+        observation_parts.append(f"航空读法规范化: {normalized_message} → {enhanced_message}")
+
+    observation_parts.append(f"提取实体: {extracted}")
+
     if semantic_understanding:
         observation_parts.append(f"语义理解: {semantic_understanding.get('conversation_summary', '')}")
     if enrichment.get("enrichment_observation"):
@@ -683,6 +716,7 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
         **({"flight_plan_observation": flight_plan_observation} if flight_plan_observation else {}),
         **({"weather": weather_info} if weather_info else {}),  # 添加气象信息
         **({"enrichment_observation": enrichment_observation} if enrichment_observation else {}),  # 添加增强观察信息
+        **({"normalization_result": normalization_result} if normalization_confidence > 0.7 else {}),  # 添加规范化结果
         "reasoning_steps": reasoning_steps,
         "current_node": "input_parser",
         "next_node": "reasoning",

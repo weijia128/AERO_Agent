@@ -46,10 +46,13 @@ tools/action/notify_department.py
 tools/assessment/__init__.py
 tools/assessment/assess_bird_strike_risk.py
 tools/assessment/assess_oil_spill_risk.py
+tools/assessment/assess_risk.py
 tools/information/__init__.py
 tools/information/ask_for_detail.py
 tools/information/flight_plan_lookup.py
 tools/information/get_aircraft_info.py
+tools/information/get_weather.py
+tools/information/radiotelephony_normalizer.py
 tools/information/smart_ask.py
 tools/knowledge/__init__.py
 tools/knowledge/search_regulations.py

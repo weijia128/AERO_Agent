@@ -86,5 +86,102 @@
     "滑行道": "滑行道",
     "跑道": "跑道",
     "机位": "机位"
-  }
+  },
+  "normalization_rules": {
+    "runway_formats": {
+      "description": "跑道格式标准化规则",
+      "pattern": "跑道(\\d{2})([左右中LRC])?",
+      "standard_format": "{digits}{direction}",
+      "direction_map": {
+        "左": "L",
+        "右": "R",
+        "中": "C"
+      },
+      "examples": [
+        {"input": "跑道洞两左", "output": "02L"},
+        {"input": "跑道幺八右", "output": "18R"},
+        {"input": "跑道洞九中", "output": "09C"},
+        {"input": "跑道两洞", "output": "20"}
+      ]
+    },
+    "taxiway_formats": {
+      "description": "滑行道格式标准化规则",
+      "pattern": "滑行道([A-Z]?\\d+)",
+      "standard_format": "{letters}{digits}",
+      "examples": [
+        {"input": "滑行道A三", "output": "A3"},
+        {"input": "滑行道W两", "output": "W2"},
+        {"input": "滑行道幺九", "output": "19"},
+        {"input": "滑行道洞一", "output": "01"}
+      ]
+    },
+    "stand_formats": {
+      "description": "机位格式标准化规则",
+      "pattern": "(\\d{2,3})(?:号)?(?:机位|停机位)?",
+      "standard_format": "{digits}",
+      "examples": [
+        {"input": "五洞幺机位", "output": "501"},
+        {"input": "三两号机位", "output": "32"},
+        {"input": "两三四停机位", "output": "234"},
+        {"input": "幺洞一", "output": "101"}
+      ]
+    },
+    "flight_formats": {
+      "description": "航班号格式标准化规则",
+      "airline_codes": {
+        "川航": "3U",
+        "国航": "CA",
+        "东航": "MU",
+        "南航": "CZ",
+        "海航": "HU",
+        "厦航": "MF",
+        "深航": "ZH",
+        "山航": "SC",
+        "昆航": "KY"
+      },
+      "examples": [
+        {"input": "川航三幺拐拐", "output": "3U3177"},
+        {"input": "国航幺两三四", "output": "CA1234"},
+        {"input": "东航八五六拐", "output": "MU8567"},
+        {"input": "CA洞八五六", "output": "CA0856"}
+      ]
+    }
+  },
+  "normalization_examples": [
+    {
+      "input": "川航三幺拐拐 五洞幺机位 报告燃油泄漏",
+      "normalized": "川航3U3177 501机位 报告燃油泄漏",
+      "extracted": {
+        "flight_no": "3U3177",
+        "position": "501",
+        "fluid_type": "FUEL"
+      }
+    },
+    {
+      "input": "跑道洞两左 疑似鸟击",
+      "normalized": "跑道02L 疑似鸟击",
+      "extracted": {
+        "position": "02L",
+        "event_type": "bird_strike"
+      }
+    },
+    {
+      "input": "滑行道A三 液压油泄漏 发动机关闭",
+      "normalized": "滑行道A3 液压油泄漏 发动机关闭",
+      "extracted": {
+        "position": "A3",
+        "fluid_type": "HYDRAULIC",
+        "engine_status": "STOPPED"
+      }
+    },
+    {
+      "input": "国航幺两三四 三两机位 滑油泄漏",
+      "normalized": "国航CA1234 32机位 滑油泄漏",
+      "extracted": {
+        "flight_no": "CA1234",
+        "position": "32",
+        "fluid_type": "OIL"
+      }
+    }
+  ]
 }
