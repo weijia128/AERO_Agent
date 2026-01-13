@@ -157,10 +157,18 @@ def normalize_radiotelephony_text(text: str) -> str:
 
         normalized = re.sub(r"(?<=[A-Z0-9])\s+(?=[A-Z0-9])", "", normalized)
 
-    # 规范“数字+滑行道/跑道/机位”顺序为“滑行道12”形式
+    # 规范"数字+滑行道/跑道/机位"顺序为"滑行道12"形式
     normalized = re.sub(
         r"\b(\d{1,3})\s*(滑行道|跑道|机位)",
         lambda m: f"{m.group(2)}{m.group(1)}",
+        normalized,
+    )
+
+    # 将"跑道27左/右/中"转换为标准ICAO格式"跑道27L/R/C"
+    # 避免后续"左发/右发"误匹配（如"跑道27左发生鸟击"中的"左"应属于跑道编号）
+    normalized = re.sub(
+        r"(跑道\d{1,2})(左|右|中)",
+        lambda m: f"{m.group(1)}{'L' if m.group(2) == '左' else 'R' if m.group(2) == '右' else 'C'}",
         normalized,
     )
 
@@ -172,7 +180,7 @@ def _extract_entities_legacy(text: str) -> Dict[str, Any]:
     entities = {}
 
     # 提取位置 - 增强模式
-    for pattern in PATTERNS["position"]:
+    for pattern in BASE_PATTERNS["position"]:
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
             # 如果有两个捕获组（如滑行道、跑道），组合完整位置
@@ -213,47 +221,47 @@ def _extract_entities_legacy(text: str) -> Dict[str, Any]:
                     entities["position"] = match.group(1)
 
     # 提取油液类型
-    for pattern, value in PATTERNS["fluid_type"]:
+    for pattern, value in BASE_PATTERNS["fluid_type"]:
         if re.search(pattern, text):
             entities["fluid_type"] = value
             break
 
     # 鸟击场景特有字段
-    for pattern, value in PATTERNS.get("event_type", []):
+    for pattern, value in BASE_PATTERNS.get("event_type", []):
         if re.search(pattern, text):
             entities["event_type"] = value
             break
 
-    for pattern, value in PATTERNS.get("affected_part", []):
+    for pattern, value in BASE_PATTERNS.get("affected_part", []):
         if re.search(pattern, text):
             entities["affected_part"] = value
             break
 
-    for pattern, value in PATTERNS.get("current_status", []):
+    for pattern, value in BASE_PATTERNS.get("current_status", []):
         if re.search(pattern, text):
             entities["current_status"] = value
             break
 
     # 提取发动机状态
-    for pattern, value in PATTERNS["engine_status"]:
+    for pattern, value in BASE_PATTERNS["engine_status"]:
         if re.search(pattern, text):
             entities["engine_status"] = value
             break
 
     # 提取是否持续
-    for pattern, value in PATTERNS["continuous"]:
+    for pattern, value in BASE_PATTERNS["continuous"]:
         if re.search(pattern, text):
             entities["continuous"] = value
             break
 
     # 提取面积大小
-    for pattern, value in PATTERNS["leak_size"]:
+    for pattern, value in BASE_PATTERNS["leak_size"]:
         if re.search(pattern, text):
             entities["leak_size"] = value
             break
 
     # 提取航班号（不再提取机号）
-    for pattern in PATTERNS["aircraft"]:
+    for pattern in BASE_PATTERNS["aircraft"]:
         match = re.search(pattern, text)
         if match:
             value = match.group(1)
