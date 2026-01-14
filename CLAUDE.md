@@ -64,7 +64,9 @@ airport-emergency-agent/
 ├── config/          # Configuration files
 ├── data/            # Data files
 ├── outputs/         # Generated reports
-└── scripts/         # Data processing scripts (offline)
+├── scripts/         # Data processing scripts (offline)
+├── Radiotelephony_ATC.json  # Aviation radio telephony normalization rules
+└── BSRC.json        # Bird strike risk classification rules
 ```
 
 ## Environment Setup
@@ -96,8 +98,28 @@ User Input → Input Parser → ReAct Reasoning Loop → FSM Validation → Outp
 
 User Input (Chinese text)
     ↓
-normalize_radiotelephony_text()
-    # Handle ATC phonetic alphabet (e.g., "洞洞" → "00")
+┌─────────────────────────────────────────────────────┐
+│ 1. normalize_radiotelephony_text()                  │
+│    基础规范化: 洞→0, 幺→1, 拐→7                      │
+│    跑道方向标识: 跑道27左→跑道27L (ICAO格式)         │
+│    从 Radiotelephony_ATC.json 加载规则              │
+└─────────────────────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────────────────────┐
+│ 2. RadiotelephonyNormalizer (LLM + 规则检索)         │
+│    ├─ retrieve_examples()                           │
+│    │  # 关键词匹配检索 Few-shot 示例                 │
+│    │  # 提取: runway, taxiway, stand, flight        │
+│    ├─ _build_prompt()                               │
+│    │  # 构建 Few-shot 提示词                         │
+│    ├─ LLM.invoke()                                  │
+│    │  # 语义规范化 (5秒超时)                         │
+│    └─ 返回 {                                        │
+│          normalized_text,                           │
+│          entities {flight_no, position, ...},       │
+│          confidence                                 │
+│       }                                             │
+└─────────────────────────────────────────────────────┘
     ↓
 identify_scenario()
     # Match keywords against ScenarioRegistry
@@ -112,7 +134,7 @@ extract_entities_hybrid()
     ├─ Flex path: LLM semantic extraction
     │  # Handles ambiguous natural language
     │  # Example: "右侧发动机漏油" → {side: "right", fluid_type: "OIL"}
-    └─ Merge: LLM overrides regex results
+    └─ Merge: Normalizer entities > Regex > LLM
     ↓
 Optional: understand_conversation() [if ENABLE_SEMANTIC_UNDERSTANDING=true]
     ├─ Extract facts from conversation context
@@ -351,7 +373,10 @@ tool_executor_node() [if generate_report action]
 - `create_initial_state()` factory function
 
 **Node Implementations** (`agent/nodes/`):
-- `input_parser.py`: Entity extraction from Chinese text (position, fluid type, engine status). Automatically retrieves flight info from `data/raw/航班计划/Log_*.txt` and performs topology analysis from `scripts/data_processing/topology_clustering_based.json`.
+- `input_parser.py`: Entity extraction from Chinese text (position, fluid type, engine status). Implements **two-stage radiotelephony normalization**:
+  1. Basic rule-based conversion (洞→0, 幺→1, 拐→7)
+  2. LLM + rule-based Few-shot retrieval (not vector RAG)
+  Automatically retrieves flight info from `data/raw/航班计划/Log_*.txt` and performs topology analysis from `scripts/data_processing/topology_clustering_based.json`.
 - `reasoning.py`: ReAct loop with `build_scenario_prompt()` for dynamic prompt loading. Displays flight information (airline, stand, runway, flight type) and topology analysis results (impact zone, affected taxiways/runways) in context summary.
 - `tool_executor.py`: Executes tools from registry
 - `fsm_validator.py`: Validates state transitions and mandatory actions
@@ -393,7 +418,7 @@ ask_prompts:           # 各字段的追问提示
 - `ToolRegistry.get_by_scenario()` returns scenario-specific tools
 
 **Tool Categories**:
-- `information/`: `ask_for_detail`, `get_aircraft_info` (automatically called when flight number is detected)
+- `information/`: `ask_for_detail`, `get_aircraft_info` (automatically called when flight number is detected), `radiotelephony_normalizer` (ATC phonetic normalization)
 - `spatial/`: `get_stand_location`, `calculate_impact_zone` (graph-based BFS diffusion, automatically called when position is detected)
 - `knowledge/`: `search_regulations` (RAG-style retrieval)
 - `assessment/`: `assess_risk` (rule-based deterministic scoring)
@@ -456,6 +481,165 @@ ask_prompts:           # 各字段的追问提示
 | FUEL | LOW | 1 hop | No |
 | HYDRAULIC | HIGH/MEDIUM | 2 hops | No |
 | OIL | HIGH/MEDIUM | 1 hop | No |
+
+### Radiotelephony Normalization
+
+**Overview**: Converts aviation radio telephony (ATC phonetic alphabet) to standard format using a two-stage approach.
+
+**Implementation** (`tools/information/radiotelephony_normalizer.py`):
+
+```python
+# Stage 1: Basic rule-based normalization (agent/nodes/input_parser.py:135-175)
+def normalize_radiotelephony_text(text: str) -> str:
+    """
+    基础规范化: 数字和字母读法转换
+    - 洞→0, 幺→1, 两→2, 三→3, 拐→7, 八→8, 九→9
+    - 阿尔法→A, 布拉沃→B, 查理→C
+    - 规范化位置顺序: "12滑行道" → "滑行道12"
+    - 跑道方向标识转换: "跑道27左" → "跑道27L" (ICAO格式)
+      # 避免"跑道27左发生鸟击"被误解析为"跑道27"+"左发"
+    """
+    # 从 Radiotelephony_ATC.json 加载规则
+    digits_map = {"洞": "0", "幺": "1", "拐": "7", ...}
+    letters_map = {"阿尔法": "A", "布拉沃": "B", ...}
+    # ... 执行替换
+
+    # 跑道方向标识转换 (左→L, 右→R, 中→C)
+    normalized = re.sub(
+        r"(跑道\d{1,2})(左|右|中)",
+        lambda m: f"{m.group(1)}{'L' if m.group(2) == '左' else 'R' if m.group(2) == '右' else 'C'}",
+        normalized,
+    )
+```
+
+```python
+# Stage 2: LLM + Rule-based Few-shot retrieval (tools/information/radiotelephony_normalizer.py:31-238)
+class RadiotelephonyNormalizer:
+    """
+    航空读法规范化引擎 (LLM + 规则检索，非向量 RAG)
+
+    工作流程:
+    1. retrieve_examples(input_text)
+       - 关键词匹配: 提取 runway/taxiway/stand/flight/oil_spill/bird_strike
+       - 规则相似度: 基于关键词重叠度打分 (非向量相似度)
+       - 返回 top-3 最相似示例
+
+    2. _build_prompt(text, examples)
+       - 加载转换规则从 Radiotelephony_ATC.json
+       - 构建 Few-shot 提示词
+
+    3. normalize_with_llm(text, timeout=5)
+       - 调用 LLM 进行语义规范化
+       - 返回标准化实体和置信度
+
+    注意: 当前实现使用关键词匹配，不是真正的向量 RAG
+    """
+
+    def retrieve_examples(self, input_text: str, top_k: int = 3):
+        """检索最相似的规范化示例 (基于关键词，非向量)"""
+        keywords = self._extract_keywords(input_text)
+        # 关键词: ["runway", "taxiway", "stand", "flight", "oil_spill", "bird_strike"]
+
+        for example in examples:
+            score = self._calculate_similarity(keywords, example["input"])
+            # 规则打分: 关键词命中 +1 分
+        return top_k_examples
+
+    def normalize_with_llm(self, text: str, timeout: int = 5):
+        """使用 LLM 进行语义规范化"""
+        examples = self.retrieve_examples(text, top_k=3)
+        prompt = self._build_prompt(text, examples)
+
+        response = self.llm.invoke(prompt, timeout=timeout)
+        result = self._parse_llm_response(response.content)
+
+        return {
+            "normalized_text": "川航3U3177 跑道02L 报告鸟击",
+            "entities": {
+                "flight_no": "3U3177",
+                "position": "02L",
+                "event_type": "bird_strike"
+            },
+            "confidence": 0.95
+        }
+```
+
+**Knowledge Base** (`Radiotelephony_ATC.json`):
+
+```json
+{
+  "digits": {
+    "0": "洞", "1": "幺", "2": "两", "7": "拐", ...
+  },
+  "letters": {
+    "A": "阿尔法", "B": "布拉沃", "C": "查理", ...
+  },
+  "normalization_rules": {
+    "runway_formats": {
+      "examples": [
+        {"input": "跑道洞两左", "output": "02L"},
+        {"input": "跑道幺八右", "output": "18R"}
+      ]
+    },
+    "flight_formats": {
+      "airline_codes": {
+        "川航": "3U", "国航": "CA", "东航": "MU", ...
+      }
+    }
+  }
+}
+```
+
+**Integration in Input Parser** (`agent/nodes/input_parser.py:570-586`):
+
+```python
+# 步骤 1: 基础规范化
+normalized_message = normalize_radiotelephony_text(user_message)
+# "川航三幺拐拐 跑道洞两左" → "川航3U3177 跑道02L"
+
+# 步骤 2: LLM + 规则深度规范化
+normalizer = RadiotelephonyNormalizerTool()
+normalization_result = normalizer.execute(state, {"text": normalized_message})
+enhanced_message = normalization_result["normalized_text"]
+pre_extracted_entities = normalization_result["entities"]
+# {
+#   "flight_no": "3U3177",
+#   "position": "02L",
+#   "event_type": "bird_strike"
+# }
+
+# 步骤 3: 合并到实体提取结果
+extracted = extract_entities_hybrid(enhanced_message, history, scenario_type)
+extracted.update(pre_extracted_entities)  # Normalizer entities 优先级最高
+```
+
+**Design Notes**:
+
+- **Current Implementation**: Rule-based keyword matching (not vector RAG)
+  - ✅ Fast, no external dependencies
+  - ✅ Sufficient for structured aviation data
+  - ⚠️ Requires manual rule updates for new patterns
+
+- **Runway Direction Disambiguation** (跑道方向标识转换):
+  - 问题: "跑道两拐左发生鸟击" 会被误解析为 position="跑道27" + affected_part="左发"
+  - 解决: 在 Stage 1 预处理时将 "跑道XX左/右/中" 转换为 ICAO 格式 "跑道XXL/R/C"
+  - 效果: "跑道27L发生鸟击" 中的 "L" 不再与 "左发" 正则冲突
+
+- **Future Enhancement**: True vector-based RAG
+  - Requires: embedding model (e.g., sentence-transformers) + vector DB (Chroma/FAISS)
+  - Pros: Better semantic understanding, automatic pattern learning
+  - Cons: Additional dependencies, higher latency
+  - Decision: Defer until rule coverage proves insufficient
+
+**Examples**:
+
+| Input | Output | Entities |
+|-------|--------|----------|
+| 川航三幺拐拐 跑道洞两左 报告鸟击 | 川航3U3177 跑道02L 报告鸟击 | {flight_no: "3U3177", position: "02L", event_type: "bird_strike"} |
+| 跑道两拐左发生确认鸟击 | 跑道27L发生确认鸟击 | {position: "跑道27L", event_type: "确认鸟击"} |
+| 跑道27L发生鸟击 左发受损 | 跑道27L发生鸟击 左发受损 | {position: "跑道27L", affected_part: "左发"} |
+| 五洞幺机位发现燃油泄漏 | 501机位发现燃油泄漏 | {position: "501", fluid_type: "FUEL"} |
+| 滑行道A三有液压油 | 滑行道A3有液压油 | {position: "A3", fluid_type: "HYDRAULIC"} |
 
 ### LLM Configuration
 
@@ -614,6 +798,7 @@ Tools are organized by category:
 - **information/**: Query tools that gather data
   - `ask_for_detail`: Ask user for specific field
   - `get_aircraft_info`: Retrieve flight information
+  - `radiotelephony_normalizer`: Convert ATC phonetic alphabet to standard format (e.g., "洞"→"0", "幺"→"1", "拐"→"7")
   - `smart_ask`: Intelligently ask multiple questions
 
 - **spatial/**: Topology and geography analysis

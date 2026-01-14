@@ -50,10 +50,11 @@ mandatory_triggers:
   - name: engine_damage_notify_maintenance
     condition:
       "incident.affected_part":
-        - 发动机
-        - 左发
-        - 右发
-        - 双发
+        contains_any:
+          - 发动机
+          - 左发
+          - 右发
+          - 双发
     action: notify_department
     params:
       department: 机务
