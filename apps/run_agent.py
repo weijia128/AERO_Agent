@@ -500,16 +500,21 @@ class AgentRunner:
     def start_session(self, initial_message: str) -> bool:
         """开始新会话"""
         from agent.state import create_initial_state
+        from agent.nodes.input_parser import identify_scenario
+
+        # 自动识别场景类型（基于初始消息）
+        detected_scenario = identify_scenario(initial_message)
 
         session_id = f"session-{datetime.now().strftime('%Y%m%d%H%M%S')}"
         self.state = create_initial_state(
             session_id=session_id,
-            scenario_type="oil_spill",
+            scenario_type=detected_scenario,
             initial_message=initial_message,
         )
         self.state["awaiting_user"] = False
 
         print_info(f"会话 ID: {session_id}")
+        print_info(f"识别场景: {detected_scenario}")
         return True
 
     def _parse_pending_field_value(self, message: str, field: str) -> Optional[str]:
@@ -1135,7 +1140,7 @@ def save_report(state: Dict[str, Any], report: Dict[str, Any], answer: str = "")
 
 def main():
     """主函数"""
-    print_header("机场机坪漏油应急响应 Agent")
+    print_header("机场机坪特情应急响应 Agent")
     print_info(f"启动时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print()
     print_info("使用 ReAct + FSM 融合架构")
