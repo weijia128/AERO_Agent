@@ -25,13 +25,9 @@ import json
 from datetime import datetime
 from typing import Dict, Any, Optional
 
-# 改进的输入处理（支持更好的终端编辑体验）
-try:
-    from prompt_toolkit import PromptSession
-    from prompt_toolkit.history import InMemoryHistory
-    PROMPT_TOOLKIT_AVAILABLE = True
-except ImportError:
-    PROMPT_TOOLKIT_AVAILABLE = False
+# 改进的输入处理（使用标准 input，prompt_toolkit 可选）
+# 如果需要更好的编辑体验，可以安装: pip install prompt_toolkit
+PROMPT_TOOLKIT_AVAILABLE = False  # 设为 True 并安装 prompt_toolkit 以启用增强输入
 
 # 添加项目路径
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -253,16 +249,9 @@ def apply_readout_for_processing(text: str, is_first_contact: bool) -> str:
 
 
 def get_user_input(prompt: str = "机长") -> str:
-    """获取用户输入，支持更好的终端编辑体验"""
+    """获取用户输入"""
     try:
-        if PROMPT_TOOLKIT_AVAILABLE:
-            # 使用 prompt_toolkit 提供更好的编辑体验
-            # 支持 Delete/Backspace、方向键移动、命令历史等功能
-            session = PromptSession(history=InMemoryHistory())
-            user_input = session.prompt(f"\n{prompt}: ")
-        else:
-            # 回退到内置 input()（如果 prompt_toolkit 不可用）
-            user_input = input(f"\n{prompt}: ")
+        user_input = input(f"\n{prompt}: ")
         return user_input.strip()
     except (KeyboardInterrupt, EOFError):
         print("\n")
