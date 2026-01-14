@@ -87,6 +87,7 @@ def tool_executor_node(state: AgentState) -> Dict[str, Any]:
             "checklist",
             "risk_assessment",
             "spatial_analysis",
+            "weather",
             "mandatory_actions_done",
             "notifications_sent",
             "messages",
@@ -103,6 +104,10 @@ def tool_executor_node(state: AgentState) -> Dict[str, Any]:
                     updates[key] = {**state.get(key, {}), **result[key]}
                 else:
                     updates[key] = result[key]
+
+        if action == "get_weather":
+            updates["weather_last_position"] = state.get("incident", {}).get("position")
+            updates["weather_queried"] = True
         
         # 报告生成后等待用户确认，避免继续推理导致重复询问
         if result.get("report_generated"):

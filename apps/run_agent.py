@@ -832,7 +832,10 @@ class AgentRunner:
             for k, v in incident.items():
                 if v is not None and k in field_names:
                     name = field_names.get(k, k)
-                    extracted.append(f"{name}={v}")
+                    if k == "position" and incident.get("position_display"):
+                        extracted.append(f"{name}={incident['position_display']}")
+                    else:
+                        extracted.append(f"{name}={v}")
             if extracted:
                 print_info(f"已收集信息: {', '.join(extracted)}")
 

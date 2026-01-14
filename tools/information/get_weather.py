@@ -7,6 +7,7 @@ import pandas as pd
 from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
+import re
 from tools.base import BaseTool
 
 
@@ -54,6 +55,16 @@ def get_weather_data() -> Optional[pd.DataFrame]:
     return load_weather_data()
 
 
+def normalize_location(location: str) -> str:
+    """规范化位置输入为观测点编号"""
+    if not location:
+        return ""
+    loc = location.strip().upper()
+    # 兼容 "跑道27L"/"RWY27L"/"RUNWAY27L"
+    loc = re.sub(r"^(RUNWAY|RWY|跑道)\s*", "", loc)
+    return loc
+
+
 def find_nearest_record(df: pd.DataFrame, location: str, timestamp: datetime) -> Optional[pd.Series]:
     """
     查找最接近指定时间和位置的气象记录
@@ -84,6 +95,64 @@ def find_nearest_record(df: pd.DataFrame, location: str, timestamp: datetime) ->
         return None
 
     return nearest
+
+
+def _is_runway_location(location: str) -> bool:
+    return bool(re.fullmatch(r"\d{2}[LRC]?", location))
+
+
+def _runway_number(location: str) -> Optional[int]:
+    match = re.fullmatch(r"(\d{2})[LRC]?", location)
+    if not match:
+        return None
+    return int(match.group(1))
+
+
+def _runway_side(location: str) -> Optional[str]:
+    match = re.fullmatch(r"\d{2}([LRC])", location)
+    if not match:
+        return None
+    return match.group(1)
+
+
+def _find_fallback_record(
+    df: pd.DataFrame,
+    requested_location: str,
+    timestamp: datetime,
+) -> tuple[Optional[str], Optional[pd.Series]]:
+    available = sorted(df["location_id"].dropna().unique().tolist())
+    if not available:
+        return None, None
+
+    ordered_candidates: list[str] = []
+    if _is_runway_location(requested_location):
+        req_num = _runway_number(requested_location)
+        req_side = _runway_side(requested_location)
+        runway_candidates = [loc for loc in available if _is_runway_location(loc)]
+        if req_num is not None and runway_candidates:
+            runway_candidates.sort(
+                key=lambda loc: (
+                    abs((_runway_number(loc) or 0) - req_num),
+                    0 if req_side and _runway_side(loc) == req_side else 1,
+                    loc,
+                )
+            )
+            ordered_candidates.extend(runway_candidates)
+    else:
+        for pref in ["NORTH", "SOUTH"]:
+            if pref in available:
+                ordered_candidates.append(pref)
+
+    for loc in available:
+        if loc not in ordered_candidates:
+            ordered_candidates.append(loc)
+
+    for loc in ordered_candidates:
+        record = find_nearest_record(df, loc, timestamp)
+        if record is not None:
+            return loc, record
+
+    return None, None
 
 
 def format_weather_info(record: pd.Series, location: str, timestamp: datetime = None) -> str:
@@ -190,25 +259,18 @@ class GetWeatherTool(BaseTool):
             }
 
         # 处理"推荐"位置
+        requested_location = location
         if location == "推荐" or location.lower() in ["推荐", "recommend", "auto"]:
-            # 根据事件位置自动选择观测点
             incident_position = state.get("incident", {}).get("position", "")
-
             if not incident_position:
                 return {
                     "observation": "❌ 无法自动选择观测点：未提供事件位置信息"
                 }
+            location = incident_position
+            requested_location = incident_position
 
-            # 映射规则：根据事件位置选择最近的观测点
-            position_to_sensor = {
-                # 05号跑道一端 -> 05L
-                "501": "05L",
-                # 06号跑道一端 -> 06L
-                "601": "06L",
-                # 其他情况默认用NORTH
-            }
-
-            location = position_to_sensor.get(incident_position, "NORTH")
+        location = normalize_location(location)
+        requested_location = normalize_location(requested_location)
 
         # 解析时间参数
         timestamp = None
@@ -226,23 +288,29 @@ class GetWeatherTool(BaseTool):
         # 查找气象记录
         record = find_nearest_record(df, location, timestamp)
 
+        fallback_note = ""
         if record is None:
-            # 位置不存在
-            available_locations = ", ".join(sorted(df['location_id'].unique()))
-            return {
-                "observation": f"❌ 未找到位置 '{location}' 的气象数据\n"
-                             f"可用的位置: {available_locations}\n"
-                             f"或者使用 location='推荐' 自动选择观测点"
-            }
+            fallback_location, fallback_record = _find_fallback_record(df, location, timestamp)
+            if fallback_record is None:
+                available_locations = ", ".join(sorted(df['location_id'].unique()))
+                return {
+                    "observation": f"❌ 未找到位置 '{location}' 的气象数据\n"
+                                 f"可用的位置: {available_locations}\n"
+                                 f"或者使用 location='推荐' 自动选择观测点"
+                }
+            record = fallback_record
+            fallback_note = f"⚠️ 位置 {location} 无气象数据，改用就近观测点 {fallback_location}\n"
+            location = fallback_location
 
         # 格式化输出
-        observation = format_weather_info(record, location, timestamp)
+        observation = fallback_note + format_weather_info(record, location, timestamp)
 
         # 构建返回结果
         result = {
             "observation": observation,
             "weather": {
                 "location": location,
+                **({"requested_location": requested_location} if requested_location else {}),
                 "timestamp": record['timestamp'].strftime('%Y-%m-%d %H:%M:%S'),
                 "temperature": float(record['temperature']) if pd.notna(record.get('temperature')) else None,
                 "dew_point": float(record['dew_point']) if pd.notna(record.get('dew_point')) else None,

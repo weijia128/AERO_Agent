@@ -175,6 +175,18 @@ def normalize_radiotelephony_text(text: str) -> str:
     return normalized
 
 
+def _format_position_display(position: str, raw_text: str) -> str:
+    """生成用于展示的位置文本（尽量保留跑道语义）"""
+    if not position:
+        return position
+    pos = position.strip()
+    if "跑道" in pos:
+        return pos
+    if re.search(r"(跑道|RWY|RUNWAY)", raw_text, re.IGNORECASE) and re.fullmatch(r"\d{2}[LRC]?", pos):
+        return f"跑道{pos}"
+    return pos
+
+
 def _extract_entities_legacy(text: str) -> Dict[str, Any]:
     """从文本中提取实体（旧版，兼容保留）"""
     entities = {}
@@ -369,21 +381,6 @@ def _fetch_stand_location(incident: Dict[str, Any]) -> Dict[str, Any]:
     return tool.execute(incident, {})
 
 
-def _fetch_weather_info(state: Dict[str, Any]) -> Dict[str, Any]:
-    """获取气象信息（自动查询最新数据）"""
-    from tools.information.get_weather import GetWeatherTool
-    try:
-        tool = GetWeatherTool()
-        # 不指定时间，自动返回最新数据
-        # 使用 state 而不是 incident，以便工具能访问 position 信息
-        result = tool.execute(state, {"location": "推荐"})
-        logger.info(f"气象查询完成: location={result.get('weather', {}).get('location') if result.get('weather') else 'failed'}")
-        return result
-    except Exception as e:
-        logger.error(f"气象查询异常: {e}")
-        return {"observation": f"气象查询异常: {str(e)}"}
-
-
 def _calculate_impact_zone(
     incident: Dict[str, Any],
     position: str,
@@ -446,19 +443,9 @@ def apply_auto_enrichment(
                 _fetch_stand_location, incident
             )
 
-        # 自动查询气象信息（只要有位置信息）
-        if position and not state.get("weather"):
-            # 构建临时state，包含当前的incident信息
-            temp_state = {"incident": incident}
-            phase1_futures["weather_info"] = executor.submit(
-                _fetch_weather_info, temp_state
-            )
-
         # 收集第一阶段结果
         for key, future in phase1_futures.items():
-            # 气象查询使用更长的超时时间（30秒），因为首次加载数据可能较慢
-            timeout = 30 if key == "weather_info" else 10
-            result = _execute_future_with_timeout(future, timeout=timeout)
+            result = _execute_future_with_timeout(future)
             if not result:
                 continue
 
@@ -481,17 +468,6 @@ def apply_auto_enrichment(
                     observations.append(f"\n位置信息: {result['observation']}")
                 if result.get("spatial_analysis"):
                     spatial_analysis.update(result["spatial_analysis"])
-
-            elif key == "weather_info":
-                if result:
-                    if result.get("observation"):
-                        observations.append(f"\n🌤️ 气象信息: {result['observation']}")
-                    if result.get("weather"):
-                        updates["weather"] = result["weather"]
-                        logger.info(f"气象查询成功: {result['weather'].get('location')}")
-                else:
-                    # 气象查询失败或超时，记录警告但不阻塞流程
-                    logger.warning(f"气象查询超时或失败 (position={position})")
 
     # ========== 第二阶段：依赖第一阶段结果的计算 ==========
     phase2_futures: Dict[str, concurrent.futures.Future] = {}
@@ -667,6 +643,12 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
                 if key in current_incident and current_incident[key] != value:
                     logger.info(f"规范化工具覆盖 {key}: {current_incident[key]} → {value}")
                 current_incident[key] = value
+
+    if current_incident.get("position"):
+        current_incident["position_display"] = _format_position_display(
+            current_incident.get("position", ""),
+            user_message,
+        )
 
     # 自动补充信息（航班、位置、影响分析等）
     enrichment = apply_auto_enrichment(state, current_incident)

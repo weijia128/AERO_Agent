@@ -113,6 +113,25 @@ def check_immediate_triggers(state: AgentState) -> Optional[Dict[str, Any]]:
     }
 
 
+def check_auto_weather_trigger(state: AgentState) -> Optional[Dict[str, Any]]:
+    """检测是否需要触发自动气象查询"""
+    incident = state.get("incident", {})
+    position = incident.get("position")
+    if not position:
+        return None
+    if state.get("weather"):
+        return None
+    if state.get("current_action") == "get_weather":
+        return None
+    if state.get("weather_queried") and state.get("weather_last_position") == position:
+        return None
+    return {
+        "forced_action": "get_weather",
+        "forced_input": {"location": position},
+        "reason": "自动查询气象信息",
+    }
+
+
 def build_context_summary(state: AgentState) -> str:
     """构建上下文摘要"""
     parts = []
@@ -139,8 +158,8 @@ def build_context_summary(state: AgentState) -> str:
     # 事件信息
     if incident:
         info_parts = []
-        if incident.get("position"):
-            info_parts.append(f"位置: {incident['position']}")
+        if incident.get("position_display") or incident.get("position"):
+            info_parts.append(f"位置: {incident.get('position_display') or incident.get('position')}")
         if incident.get("fluid_type"):
             info_parts.append(f"油液类型: {incident['fluid_type']}")
         if incident.get("engine_status"):
@@ -254,6 +273,41 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
     # 检查迭代次数
     iteration = state.get("iteration_count", 0) + 1
 
+    # 检查强制触发
+    forced = check_immediate_triggers(state)
+    if forced:
+        return {
+            "current_thought": forced["reason"],
+            "current_action": forced["forced_action"],
+            "current_action_input": forced["forced_input"],
+            "next_node": "tool_executor",
+            "iteration_count": iteration,
+            "reasoning_steps": state.get("reasoning_steps", []) + [{
+                "step": iteration,
+                "thought": f"[强制触发] {forced['reason']}",
+                "action": forced["forced_action"],
+                "action_input": forced["forced_input"],
+                "timestamp": datetime.now().isoformat(),
+            }],
+        }
+
+    auto_weather = check_auto_weather_trigger(state)
+    if auto_weather:
+        return {
+            "current_thought": auto_weather["reason"],
+            "current_action": auto_weather["forced_action"],
+            "current_action_input": auto_weather["forced_input"],
+            "next_node": "tool_executor",
+            "iteration_count": iteration,
+            "reasoning_steps": state.get("reasoning_steps", []) + [{
+                "step": iteration,
+                "thought": f"[自动触发] {auto_weather['reason']}",
+                "action": auto_weather["forced_action"],
+                "action_input": auto_weather["forced_input"],
+                "timestamp": datetime.now().isoformat(),
+            }],
+        }
+
     # 优先处理语义验证的补问需求
     semantic_validation = state.get("semantic_validation", {})
     if semantic_validation and not state.get("awaiting_user"):
@@ -279,24 +333,6 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
                 "iteration_count": iteration,
                 "reasoning_steps": reasoning_steps + [new_step],
             }
-    
-    # 检查强制触发
-    forced = check_immediate_triggers(state)
-    if forced:
-        return {
-            "current_thought": forced["reason"],
-            "current_action": forced["forced_action"],
-            "current_action_input": forced["forced_input"],
-            "next_node": "tool_executor",
-            "iteration_count": iteration,
-            "reasoning_steps": state.get("reasoning_steps", []) + [{
-                "step": iteration,
-                "thought": f"[强制触发] {forced['reason']}",
-                "action": forced["forced_action"],
-                "action_input": forced["forced_input"],
-                "timestamp": datetime.now().isoformat(),
-            }],
-        }
     
     # 构建上下文
     context = build_context_summary(state)

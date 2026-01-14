@@ -16,7 +16,18 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from agent.nodes.input_parser import input_parser_node
-from agent.nodes.reasoning import build_context_summary
+from agent.nodes.reasoning import build_context_summary, reasoning_node
+from agent.nodes.tool_executor import tool_executor_node
+
+
+def run_weather_pipeline(state: dict) -> dict:
+    """运行 input_parser -> reasoning -> tool_executor 的自动气象流程"""
+    parsed = input_parser_node(state)
+    reasoning = reasoning_node({**state, **parsed})
+    if reasoning.get("next_node") == "tool_executor":
+        executed = tool_executor_node({**state, **parsed, **reasoning})
+        return {**state, **parsed, **reasoning, **executed}
+    return {**state, **parsed, **reasoning}
 
 
 def test_auto_weather_query():
@@ -29,7 +40,7 @@ def test_auto_weather_query():
     # 模拟初始状态
     state = {
         "messages": [
-            {"role": "user", "content": "501机位发生燃油泄漏，发动机运转中"}
+            {"role": "user", "content": "跑道05L发生燃油泄漏"}
         ],
         "scenario_type": "oil_spill",
         "incident": {},
@@ -37,12 +48,12 @@ def test_auto_weather_query():
         "iteration_count": 0,
     }
 
-    print("📍 用户输入: 501机位发生燃油泄漏，发动机运转中")
+    print("📍 用户输入: 跑道05L发生燃油泄漏")
     print()
 
     # 调用 input_parser_node
     print("⏳ 调用 input_parser_node...")
-    result = input_parser_node(state)
+    result = run_weather_pipeline(state)
 
     # 检查结果
     print("\n" + "=" * 80)
@@ -121,7 +132,7 @@ def test_without_position():
     print()
 
     print("⏳ 调用 input_parser_node...")
-    result = input_parser_node(state)
+    result = run_weather_pipeline(state)
 
     weather = result.get("weather")
     if weather:
@@ -139,7 +150,7 @@ def test_with_specific_location():
     print("=" * 80)
     print()
 
-    test_positions = ["501", "601", "跑道23R"]
+    test_positions = ["跑道05L", "跑道06L", "跑道23R"]
 
     for position in test_positions:
         state = {
@@ -154,7 +165,7 @@ def test_with_specific_location():
 
         print(f"📍 测试位置: {position}")
 
-        result = input_parser_node(state)
+        result = run_weather_pipeline(state)
 
         position_extracted = result.get("incident", {}).get("position")
         weather = result.get("weather")

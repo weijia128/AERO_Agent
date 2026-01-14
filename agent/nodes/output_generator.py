@@ -429,8 +429,8 @@ def generate_event_summary(state: AgentState) -> str:
     
     # 时间和位置
     parts.append(f"事件时间: {incident.get('report_time', '未知')}")
-    if incident.get("position"):
-        parts.append(f"事件位置: {incident['position']}")
+    if incident.get("position_display") or incident.get("position"):
+        parts.append(f"事件位置: {incident.get('position_display') or incident.get('position')}")
     
     # 航班信息
     if incident.get("flight_no"):
