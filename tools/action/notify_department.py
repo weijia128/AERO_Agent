@@ -68,18 +68,35 @@ class NotifyDepartmentTool(BaseTool):
         if not dept_info:
             return {"observation": f"未知部门: {department}"}
         
-        # 生成通知内容
+        # 生成通知内容（根据场景类型）
         if not message:
             incident = state.get("incident", {})
+            scenario_type = state.get("scenario_type", "oil_spill")
             position = incident.get("position", "未知位置")
-            fluid_type = incident.get("fluid_type", "")
-            fluid_map = {"FUEL": "燃油", "HYDRAULIC": "液压油", "OIL": "滑油"}
-            fluid_name = fluid_map.get(fluid_type, "油液")
-            
+
+            # 根据场景类型生成不同消息
+            if scenario_type == "bird_strike":
+                # 鸟击场景：使用 event_type, affected_part 等字段
+                event_type = incident.get("event_type", "鸟击")
+                affected_part = incident.get("affected_part", "")
+                current_status = incident.get("current_status", "")
+
+                message = f"{position}发生{event_type}"
+                if affected_part:
+                    message += f"，影响部位：{affected_part}"
+                if current_status:
+                    message += f"，当前状态：{current_status}"
+            else:
+                # 漏油场景（oil_spill）或默认：使用 fluid_type 字段
+                fluid_type = incident.get("fluid_type", "")
+                fluid_map = {"FUEL": "燃油", "HYDRAULIC": "液压油", "OIL": "滑油"}
+                fluid_name = fluid_map.get(fluid_type, "油液")
+
+                message = f"{position}发生{fluid_name}泄漏"
+
+            # 添加风险等级（所有场景通用）
             risk = state.get("risk_assessment", {})
             risk_level = risk.get("level", "")
-            
-            message = f"{position}发生{fluid_name}泄漏"
             if risk_level:
                 message += f"，风险等级: {risk_level}"
         
