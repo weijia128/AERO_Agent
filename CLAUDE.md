@@ -102,7 +102,7 @@ User Input (Chinese text)
 │ 1. normalize_radiotelephony_text()                  │
 │    基础规范化: 洞→0, 幺→1, 拐→7                      │
 │    跑道方向标识: 跑道27左→跑道27L (ICAO格式)         │
-│    从 Radiotelephony_ATC.json 加载规则              │
+│    从 data/raw/Radiotelephony_ATC.json 加载规则     │
 └─────────────────────────────────────────────────────┘
     ↓
 ┌─────────────────────────────────────────────────────┐
@@ -125,22 +125,14 @@ identify_scenario()
     # Match keywords against ScenarioRegistry
     # Returns: "oil_spill", "bird_strike", etc.
     ↓
-extract_entities_hybrid()
-    ├─ Fast path: Regex patterns
-    │  # Extracts: position, fluid_type, engine_status, flight_no
-    │  # Bird strike adds: event_type, affected_part, current_status,
-    │  # phase, evidence, bird_info, ops_impact (from manifest regex)
-    │  # Patterns: r'[A-Z]{2,3}\d{3,4}', r'(燃油|滑油|液压油)', etc.
-    ├─ Flex path: LLM semantic extraction
-    │  # Handles ambiguous natural language
-    │  # Example: "右侧发动机漏油" → {side: "right", fluid_type: "OIL"}
-    └─ Merge: Normalizer entities > Regex > LLM
-    ↓
-Optional: understand_conversation() [if ENABLE_SEMANTIC_UNDERSTANDING=true]
-    ├─ Extract facts from conversation context
-    ├─ Confidence scoring per entity
-    ├─ Split into accepted/low-confidence
-    └─ Detect semantic issues (conflicts, ambiguities)
+Entity extraction (depends on ENABLE_SEMANTIC_UNDERSTANDING)
+    ├─ If enabled:
+    │  ├─ understand_conversation() → LLM + history extraction
+    │  ├─ split_by_confidence() → accepted vs low-confidence
+    │  └─ deterministic extract_entities() → regex补充
+    └─ If disabled:
+       ├─ extract_entities_hybrid() → regex + LLM
+       └─ Merge: Normalizer entities > Hybrid extraction
     ↓
 apply_auto_enrichment()  # 🔄 Parallel execution
     ├─ Phase 1: Independent queries (ThreadPoolExecutor, max 3 workers)
@@ -166,6 +158,20 @@ Output: Updated AgentState
     ├─ spatial_analysis: {affected_taxiways, affected_runways, ...}
     ├─ flight_plan_table: flight schedule data
     └─ observations: enrichment process records
+
+### Automatic Weather Query (Tool Executor)
+
+```
+Position known → reasoning_node auto trigger → tool_executor(get_weather)
+    ↓
+get_weather(location=incident.position)
+    ├─ Normalize location (e.g., 跑道27L → 27L)
+    ├─ Query latest record from data/processed/awos_weather_*.csv
+    └─ If missing: fallback to nearest observation point with warning
+```
+
+- Weather is queried once per position (repeat only if position changes).
+- If input text indicates a runway, `position_display` keeps the "跑道" prefix for UI/report output.
 
 ### Bird Strike Checklist Fields
 

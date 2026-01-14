@@ -438,10 +438,9 @@ cp .env.example .env
 │   ↓                                                          │
 │ identify_scenario() ─→ 场景识别（油液泄漏/鸟击等）             │
 │   ↓                                                          │
-│ extract_entities_hybrid()                                    │
-│   ├─ 快速路径：正则表达式提取（航班号、位置、液体类型）          │
-│   ├─ 灵活路径：LLM语义提取（处理模糊表述）                      │
-│   └─ 合并：LLM结果覆盖正则结果                                 │
+│ 实体提取（受 ENABLE_SEMANTIC_UNDERSTANDING 影响）              │
+│   ├─ 开启：LLM对话理解 + 规则提取（extract_entities）           │
+│   └─ 关闭：extract_entities_hybrid（正则 + LLM）               │
 │   ↓                                                          │
 │ apply_auto_enrichment() ──→ 🔄 并行自动增强                   │
 │   ├─ Phase 1（并行执行 ThreadPoolExecutor）：                 │
@@ -502,6 +501,8 @@ cp .env.example .env
 │   │     (OIL) → LOW (25分)                                   │
 │   ├─ calculate_impact_zone → BFS图扩散                       │
 │   │  └─ 规则：FUEL HIGH=3跳, MEDIUM=2跳                      │
+│   ├─ get_weather → 查询最新气象记录                           │
+│   │  └─ 位置无数据时回退到就近观测点，并提示                   │
 │   ├─ notify_department → 通知相关部门                        │
 │   └─ generate_report → 触发报告生成                          │
 │   ↓                                                          │
@@ -516,6 +517,35 @@ cp .env.example .env
 │   │  fsm_validator（触发验证）                                │
 │   └─ 其他工具 → reasoning（继续推理）                          │
 └─────────────────────────────────────────────────────────────┘
+
+自动气象查询：
+- 当 position 已知时由 reasoning 触发 `get_weather`，使用 `incident.position`。
+- 位置无数据会自动回退到就近观测点并提示。
+- 同一位置只查询一次，位置变化才会再次查询。
+
+## 实体抽取流程（当前实现）
+
+1. 文本规范化：`normalize_radiotelephony_text()` 将口语数字与跑道方位规范化（如“跑道27左→跑道27L”）。
+2. 航空读法规范化：`RadiotelephonyNormalizer`（LLM + 规则检索）生成 `normalized_text` 与候选 `entities`。
+3. 场景识别：`identify_scenario()` 判定油液/鸟击等场景。
+4. 实体抽取路径（受 `ENABLE_SEMANTIC_UNDERSTANDING` 影响）：
+   - 开启：`understand_conversation()`（对话语义理解）→ `extract_entities()`（规则补充）→ 合并。
+   - 关闭：`extract_entities_hybrid()`（正则 + LLM）→ 用 `RadiotelephonyNormalizer` 的 `entities` 覆盖。
+5. 自动补全：`apply_auto_enrichment()` 并行补航班信息/航班计划/位置拓扑；气象查询改由 `reasoning -> tool_executor(get_weather)` 触发。
+
+## 实体抽取方案优缺点
+
+优点：
+- 双层规范化提升航班号/位置解析稳定性（无线电口语→标准格式）。
+- 语义理解可开关，复杂语句有更高覆盖率，关闭时更可控更快。
+- 正则兜底保证弱网/LLM失败时仍可提取关键字段。
+- 抽取与补全解耦，补全并行执行、可降级。
+
+缺点：
+- 开启/关闭语义理解时抽取路径不同，行为差异明显。
+- 规则库覆盖有限，机场本地化表达容易漏。
+- 规范化依赖 LLM，网络异常会降级影响质量。
+- 多源合并存在冲突风险，需要人工确认。
 
 ┌─────────────────────────────────────────────────────────────┐
 │ 4. FSM 验证 (fsm_validator_node)                             │
