@@ -1,0 +1,152 @@
+# 外来物入侵（FOD）场景 Checklist
+
+checklist:
+  done_condition:
+    type: all_required
+    level: P1
+    description: "所有 P1 字段必须收集完成"
+
+  p1_fields:
+    - field: location_area
+      key: location_area
+      label: 位置类别
+      type: enum
+      required: true
+      priority: P1
+      options:
+        - value: RUNWAY
+          label: 跑道
+        - value: TAXIWAY
+          label: 滑行道
+        - value: APRON
+          label: 机坪
+        - value: UNKNOWN
+          label: 不明
+      ask_prompt: "请确认 FOD 出现的位置类别（跑道/滑行道/机坪）？"
+      ui:
+        widget: select
+
+    - field: position
+      key: position
+      label: 具体位置
+      type: airport_node
+      required: true
+      priority: P1
+      ask_prompt: "请报告 FOD 的具体位置（如跑道号、滑行道号或机坪区域）？"
+      ui:
+        widget: airport_selector
+
+    - field: fod_type
+      key: fod_type
+      label: FOD 种类
+      type: enum
+      required: true
+      priority: P1
+      options:
+        - value: METAL
+          label: 金属类
+        - value: PLASTIC_RUBBER
+          label: 塑料/橡胶
+        - value: STONE_GRAVEL
+          label: 石块/砂石
+        - value: LIQUID
+          label: 油液/液体异物
+        - value: UNKNOWN
+          label: 不明
+      ask_prompt: "请确认 FOD 种类（金属/塑料橡胶/石块砂石/液体/不明）？"
+      ui:
+        widget: select
+
+    - field: presence
+      key: presence
+      label: 是否仍在道面
+      type: enum
+      required: true
+      priority: P1
+      options:
+        - value: ON_SURFACE
+          label: 仍在道面
+        - value: REMOVED
+          label: 已移除
+        - value: MOVING_BLOWING
+          label: 被风吹动/移动
+        - value: UNKNOWN
+          label: 不明
+      ask_prompt: "FOD 是否仍在道面？（仍在/已移除/被风吹动）"
+      ui:
+        widget: select
+
+    - field: report_time
+      key: report_time
+      label: 汇报时间
+      type: string
+      required: true
+      priority: P1
+      ask_prompt: "请提供事件汇报时间（如 14:32 或 14点32分）？"
+      ui:
+        widget: input
+        placeholder: "如: 14:32"
+
+    - field: fod_size
+      key: fod_size
+      label: FOD 尺寸
+      type: string
+      required: true
+      priority: P1
+      ask_prompt: "请描述 FOD 尺寸（SMALL/MEDIUM/LARGE 或描述如螺母/瓶盖/工具）？"
+      ui:
+        widget: input
+        placeholder: "如: SMALL / MEDIUM / LARGE / 螺母"
+
+  p2_fields:
+    - field: ops_impact
+      key: ops_impact
+      label: 运行即时影响
+      type: enum
+      required: false
+      priority: P2
+      options:
+        - value: RUNWAY_CLOSED
+          label: 跑道关闭
+        - value: TAXIWAY_BLOCKED
+          label: 滑行道封闭
+        - value: APRON_RESTRICTED
+          label: 机坪限制
+        - value: MINOR_IMPACT
+          label: 轻微影响
+        - value: NO_IMPACT
+          label: 不影响运行
+        - value: UNKNOWN
+          label: 不明
+      ask_prompt: "对运行的即时影响如何？"
+      ui:
+        widget: select
+
+    - field: related_event
+      key: related_event
+      label: 是否与前序事件有关
+      type: enum
+      required: false
+      priority: P2
+      options:
+        - value: YES
+          label: 是
+        - value: NO
+          label: 否
+        - value: UNKNOWN
+          label: 不明
+      ask_prompt: "是否与前序事件有关？（是/否/不明）"
+      ui:
+        widget: select
+
+# UI 表单布局配置
+form_layout:
+  sections:
+    - id: critical_facts
+      title: FOD 关键信息（必填）
+      order: 1
+      fields: [location_area, position, fod_type, presence, report_time, fod_size]
+    - id: supplementary
+      title: 补充信息
+      order: 2
+      fields: [ops_impact, related_event]

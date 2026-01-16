@@ -1,0 +1,92 @@
+scenario:
+  name: fod
+  priority: 15
+paths:
+  config: config.yaml
+  checklist: checklist.yaml
+  fsm_states: fsm_states.yaml
+  prompt: prompt.yaml
+tools:
+  - ask_for_detail
+  - assess_fod_risk
+  - notify_department
+  - generate_report
+prompts:
+  summary:
+    template: |
+      你是机场 FOD 应急响应专家，请生成简洁、可落地的事件总结。请使用提供的信息，不要编造未提供的单位/时间/数字。
+
+      事件信息（供参考）：
+      - 位置类别：{location_area}
+      - 具体位置：{position}
+      - FOD 种类：{fod_type}
+      - 是否仍在道面：{presence}
+      - 汇报时间：{report_time}
+      - 风险等级：{risk_level}（风险分数：{risk_score}）
+      - 已通知单位：{notified_units}
+      {knowledge_ref}
+
+      输出要求（严格遵守，不要添加字段）：
+      1) 事件经过简述：1-2 句话，包含位置/类型/是否仍在道面/风险等级。
+      2) 处置效果评估：1-2 句话，基于已执行的动作（通知/清除/复检等）。
+      3) 后续改进建议：正好 3 条，针对 FOD 预防与巡检。
+
+      请严格输出以下 JSON：
+      ```json
+      {
+        "event_description": "事件经过简述内容，限 120 字内",
+        "effect_evaluation": "处置效果评估内容，限 120 字内",
+        "improvement_suggestions": "1. 建议一\\n2. 建议二\\n3. 建议三"
+      }
+      ```
+    fallback:
+      event_description: "{position}发现 FOD，位置类别：{location_area}，类型：{fod_type}，状态：{presence}。"
+      effect_evaluation: "已完成事件确认，已通知：{notified_units}。"
+      improvement_suggestions: |
+        1. 增加巡检频次，重点关注跑道/滑行道入口。
+        2. 完善地面保障与通报流程，缩短清除响应时间。
+        3. 建立 FOD 来源排查机制，降低重复发生概率。
+regex:
+  location_area:
+    - pattern: "跑道|runway|rwy"
+      value: "RUNWAY"
+    - pattern: "滑行道|taxiway|twy"
+      value: "TAXIWAY"
+    - pattern: "机坪|停机坪|apron"
+      value: "APRON"
+  fod_type:
+    - pattern: "金属|螺母|螺栓|钉|工具"
+      value: "METAL"
+    - pattern: "塑料|橡胶|轮胎|rubber|plastic"
+      value: "PLASTIC_RUBBER"
+    - pattern: "石块|砂石|碎石|gravel"
+      value: "STONE_GRAVEL"
+    - pattern: "液体|油液|油污"
+      value: "LIQUID"
+    - pattern: "不明|未知"
+      value: "UNKNOWN"
+  presence:
+    - pattern: "仍在|在道面|未移除"
+      value: "ON_SURFACE"
+    - pattern: "已移除|已清理|已处理"
+      value: "REMOVED"
+    - pattern: "被风吹动|移动|滚动"
+      value: "MOVING_BLOWING"
+    - pattern: "不明|未知"
+      value: "UNKNOWN"
+  fod_size:
+    - pattern: "小|<5cm|小于5"
+      value: "SMALL"
+    - pattern: "中|5-15cm|5~15"
+      value: "MEDIUM"
+    - pattern: "大|>15cm|大于15"
+      value: "LARGE"
+    - pattern: "不明|未知"
+      value: "UNKNOWN"
+  related_event:
+    - pattern: "有关|相关|是"
+      value: "YES"
+    - pattern: "无关|不是|否"
+      value: "NO"
+    - pattern: "不明|未知"
+      value: "UNKNOWN"

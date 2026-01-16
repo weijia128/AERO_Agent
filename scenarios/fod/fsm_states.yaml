@@ -1,0 +1,128 @@
+# FSM 状态定义
+# 版本: 1.0
+# 描述: FOD 应急处置流程状态机定义
+
+fsm_states:
+  - id: INIT
+    name: 初始状态
+    description: "接收 FOD 报告，等待信息收集"
+    order: 0
+
+  - id: P1_RISK_ASSESS
+    name: 风险评估
+    description: "确认位置、类别、FOD 类型与状态，评估风险"
+    order: 1
+    preconditions:
+      - checklist.location_area
+      - checklist.position
+      - checklist.fod_type
+      - checklist.presence
+      - checklist.report_time
+      - checklist.fod_size
+
+  - id: P2_IMMEDIATE_CONTROL
+    name: 立即控制
+    description: "采取运行限制与控制措施"
+    order: 2
+    preconditions:
+      - mandatory.risk_assessed
+    triggers:
+      - condition:
+          incident.presence: MOVING_BLOWING
+        action: notify_department
+        params:
+          department: 塔台
+          priority: immediate
+        description: "FOD 被风吹动时立即通知塔台"
+      - condition:
+          incident.location_area: RUNWAY
+        action: notify_department
+        params:
+          department: 塔台
+          priority: immediate
+        description: "跑道 FOD 强制通知塔台"
+      - condition:
+          incident.location_area: TAXIWAY
+        action: notify_department
+        params:
+          department: 塔台
+          priority: high
+        description: "滑行道 FOD 通知塔台"
+
+  - id: P3_REMOVAL_ACTION
+    name: 清除处置
+    description: "组织清除 FOD 并控制现场"
+    order: 3
+
+  - id: P4_VERIFICATION
+    name: 复检确认
+    description: "复检确认道面清洁与安全"
+    order: 4
+
+  - id: P5_RECOVERY
+    name: 运行恢复
+    description: "恢复受影响区域运行"
+    order: 5
+    triggers:
+      - condition:
+          notifications_sent: not_empty
+        action: notify_department
+        params:
+          department: 塔台
+          priority: normal
+        description: "恢复后通知塔台"
+
+  - id: P6_CLOSE
+    name: 关闭与报告
+    description: "生成报告，完成事件处置"
+    order: 6
+    preconditions:
+      - checklist.location_area
+      - checklist.position
+      - checklist.fod_type
+      - checklist.presence
+      - checklist.report_time
+      - checklist.fod_size
+      - mandatory.risk_assessed
+
+  - id: COMPLETED
+    name: 完成
+    description: "事件处置完成"
+    order: 7
+    is_terminal: true
+
+transitions:
+  - from: INIT
+    to: P1_RISK_ASSESS
+    trigger: start_risk_assessment
+    guard: "position is not None"
+
+  - from: P1_RISK_ASSESS
+    to: P2_IMMEDIATE_CONTROL
+    trigger: complete_risk_assessment
+    guard: "risk.level is not None"
+
+  - from: P2_IMMEDIATE_CONTROL
+    to: P3_REMOVAL_ACTION
+    trigger: control_complete
+    guard: "notifications_sent not_empty"
+
+  - from: P3_REMOVAL_ACTION
+    to: P4_VERIFICATION
+    trigger: removal_complete
+    guard: "notifications_sent not_empty"
+
+  - from: P4_VERIFICATION
+    to: P5_RECOVERY
+    trigger: verification_passed
+    guard: "notifications_sent not_empty"
+
+  - from: P5_RECOVERY
+    to: P6_CLOSE
+    trigger: recovery_complete
+    guard: "notifications_sent not_empty"
+
+  - from: P6_CLOSE
+    to: COMPLETED
+    trigger: finish
+    guard: "report_generated"

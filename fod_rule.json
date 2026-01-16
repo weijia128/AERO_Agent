@@ -1,0 +1,407 @@
+{
+  "engine": {
+    "name": "airport-ops-rule-engine",
+    "version": "1.0.0",
+    "timezone": "+08:00",
+    "description": "FOD rules: risk scoring (location/type/size), report completion + follow-up, and linkage with fuel leak / tire burst."
+  },
+  "event_type": "FOD",
+  "schema": {
+    "input": {
+      "required_any_of": [
+        "location_area",
+        "position",
+        "location.identifier",
+        "location.detail"
+      ],
+      "fields": {
+        "event_id": { "type": "string" },
+        "report_time": { "type": "string" },
+        "reported_time": { "type": "string", "format": "date-time" },
+        "reporter_role": {
+          "type": "string",
+          "enum": ["ATC", "PILOT", "OPS", "SECURITY", "OTHER", "UNKNOWN"]
+        },
+        "location_area": {
+          "type": "string",
+          "enum": ["RUNWAY", "RAPID_EXIT", "TAXIWAY", "TAXIWAY_MAIN", "TAXIWAY_LINK", "APRON", "UNKNOWN"]
+        },
+        "position": { "type": "string" },
+        "location": {
+          "type": "object",
+          "fields": {
+            "area_type": {
+              "type": "string",
+              "enum": ["RUNWAY", "RAPID_EXIT", "TAXIWAY", "TAXIWAY_MAIN", "TAXIWAY_LINK", "APRON", "UNKNOWN"]
+            },
+            "identifier": { "type": "string" },
+            "detail": { "type": "string" },
+            "centerline_offset_m": { "type": "number" },
+            "segment": {
+              "type": "string",
+              "enum": ["TOUCHDOWN", "MID", "END", "UNKNOWN"]
+            }
+          }
+        },
+        "fod_type": {
+          "type": "string",
+          "enum": ["METAL", "STONE_GRAVEL", "PLASTIC_RUBBER", "LIQUID", "UNKNOWN"]
+        },
+        "presence": {
+          "type": "string",
+          "enum": ["ON_SURFACE", "REMOVED", "MOVING_BLOWING", "UNKNOWN"]
+        },
+        "fod_size": {
+          "type": "string",
+          "enum": ["SMALL", "MEDIUM", "LARGE", "UNKNOWN"]
+        },
+        "impact_note": { "type": "string" },
+        "evidence": {
+          "type": "object",
+          "fields": {
+            "image_urls": { "type": "array", "items": { "type": "string" } },
+            "video_urls": { "type": "array", "items": { "type": "string" } },
+            "capture_time": { "type": "string", "format": "date-time" },
+            "source": { "type": "string" }
+          }
+        },
+        "traffic_context": {
+          "type": "object",
+          "fields": {
+            "runway_in_use": { "type": "string" },
+            "departure_sequence_active": { "type": "boolean" },
+            "arrival_sequence_active": { "type": "boolean" }
+          }
+        },
+        "related_events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "fields": {
+              "event_type": { "type": "string" },
+              "event_id": { "type": "string" },
+              "time": { "type": "string", "format": "date-time" },
+              "location_identifier": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "config": {
+    "scoring": {
+      "weights": {
+        "location": 0.5,
+        "type": 0.3,
+        "size": 0.2
+      },
+      "location_score_map": {
+        "RUNWAY": 100,
+        "RAPID_EXIT": 85,
+        "TAXIWAY": 70,
+        "TAXIWAY_MAIN": 70,
+        "TAXIWAY_LINK": 50,
+        "APRON": 30,
+        "UNKNOWN": 70
+      },
+      "type_score_map": {
+        "METAL": 100,
+        "STONE_GRAVEL": 85,
+        "PLASTIC_RUBBER": 60,
+        "LIQUID": 70,
+        "UNKNOWN": 90
+      },
+      "size_score_map": {
+        "LARGE": 100,
+        "MEDIUM": 70,
+        "SMALL": 40,
+        "UNKNOWN": 80
+      },
+      "location_modifiers": [
+        {
+          "when": { "all": [{ "eq": ["location_area", "RUNWAY"] }, { "eq": ["location.segment", "TOUCHDOWN"] }] },
+          "add": 10,
+          "reason": "Runway touchdown zone"
+        },
+        {
+          "when": { "all": [{ "eq": ["location_area", "RUNWAY"] }, { "eq": ["location.segment", "MID"] }] },
+          "add": 10,
+          "reason": "Runway mid section"
+        },
+        {
+          "when": {
+            "all": [
+              { "eq": ["location_area", "RUNWAY"] },
+              { "exists": "location.centerline_offset_m" },
+              { "lte": ["abs(location.centerline_offset_m)", 3] }
+            ]
+          },
+          "add": 10,
+          "reason": "Near runway centerline (±3m)"
+        }
+      ],
+      "confidence_modifiers": [
+        {
+          "when": { "any": [{ "missing_or_empty": "evidence.image_urls" }, { "missing_or_empty": "evidence.video_urls" }] },
+          "set": { "confidence_penalty": 0.1 },
+          "reason": "No visual evidence"
+        },
+        {
+          "when": { "all": [{ "not_missing_or_empty": "evidence.image_urls" }] },
+          "set": { "confidence_bonus": 0.1 },
+          "reason": "Has photo evidence"
+        }
+      ],
+      "risk_level_thresholds": [
+        { "level": "R4", "gte": 85 },
+        { "level": "R3", "gte": 65 },
+        { "level": "R2", "gte": 40 },
+        { "level": "R1", "gte": 0 }
+      ]
+    },
+    "linkage": {
+      "time_window_minutes": 30,
+      "location_match_mode": "SAME_IDENTIFIER_OR_SAME_AREA_TYPE",
+      "rules_enabled": {
+        "fuel_leak_linkage": true,
+        "tire_burst_linkage": true
+      }
+    }
+  },
+  "rules": [
+    {
+      "id": "fod.validate.must_fields",
+      "type": "validation",
+      "priority": 1000,
+      "when": { "eq": ["event_type", "FOD"] },
+      "then": {
+        "required_fields": ["report_time", "location_area", "position", "presence", "fod_type", "fod_size"],
+        "on_missing": {
+          "action": "BLOCK",
+          "message": "FOD关键字段缺失，需补齐后才能评估风险（时间/位置类别与具体位置/是否仍在道面/异物种类/尺寸）。"
+        }
+      }
+    },
+
+    {
+      "id": "fod.autofill.defaults",
+      "type": "enrichment",
+      "priority": 900,
+      "when": { "eq": ["event_type", "FOD"] },
+      "then": {
+        "set_if_missing": {
+          "fod_size": "UNKNOWN",
+          "fod_type": "UNKNOWN",
+          "presence": "UNKNOWN",
+          "reporter_role": "UNKNOWN"
+        },
+        "notes": "缺失字段采用保守默认值（UNKNOWN通常偏高风险）。"
+      }
+    },
+
+    {
+      "id": "fod.score.compute",
+      "type": "scoring",
+      "priority": 600,
+      "when": { "eq": ["event_type", "FOD"] },
+      "then": {
+        "compute": {
+          "location_base": { "map": ["location_area", "config.scoring.location_score_map"] },
+          "type_base": { "map": ["fod_type", "config.scoring.type_score_map"] },
+          "size_base": { "map": ["fod_size", "config.scoring.size_score_map"] },
+          "location_modifier_sum": { "sum_if": ["config.scoring.location_modifiers"] },
+          "location_score": { "clamp": [{ "add": ["location_base", "location_modifier_sum"] }, 0, 120] },
+          "risk_score": {
+            "add": [
+              { "mul": ["location_score", "config.scoring.weights.location"] },
+              { "mul": ["type_base", "config.scoring.weights.type"] },
+              { "mul": ["size_base", "config.scoring.weights.size"] }
+            ]
+          }
+        },
+        "outputs": {
+          "risk_score_field": "assessment.risk_score",
+          "risk_level_field": "assessment.risk_level",
+          "explain_field": "assessment.explain"
+        }
+      }
+    },
+
+    {
+      "id": "fod.presence.removed.downgrade",
+      "type": "adjustment",
+      "priority": 580,
+      "when": { "eq": ["presence", "REMOVED"] },
+      "then": {
+        "adjust": {
+          "assessment.risk_score": { "mul": 0.6 }
+        },
+        "append_explain": "Presence=REMOVED, risk_score * 0.6"
+      }
+    },
+
+    {
+      "id": "fod.presence.moving.upgrade",
+      "type": "adjustment",
+      "priority": 575,
+      "when": { "eq": ["presence", "MOVING_BLOWING"] },
+      "then": {
+        "adjust": {
+          "assessment.risk_score": { "add": 10 }
+        },
+        "append_explain": "Presence=MOVING_BLOWING, +10"
+      }
+    },
+
+    {
+      "id": "fod.level.map",
+      "type": "mapping",
+      "priority": 560,
+      "when": { "exists": "assessment.risk_score" },
+      "then": {
+        "map_thresholds": {
+          "value": "assessment.risk_score",
+          "thresholds_ref": "config.scoring.risk_level_thresholds",
+          "set_to": "assessment.risk_level"
+        }
+      }
+    },
+
+    {
+      "id": "fod.action.recommend",
+      "type": "recommendation",
+      "priority": 500,
+      "when": { "exists": "assessment.risk_level" },
+      "then": {
+        "by_level": {
+          "R4": {
+            "recommendations": [
+              {
+                "code": "CLOSE_AREA_IMMEDIATELY",
+                "text": "建议立即封闭相关道面/区段并组织清除（建议不越权，执行需人确认）。"
+              },
+              {
+                "code": "DISPATCH_FOD_TEAM_NOW",
+                "text": "建议立即派场务/清障力量到场核查与处置。"
+              },
+              {
+                "code": "ATC_TRAFFIC_HOLD",
+                "text": "建议对受影响航班采取等待/绕行，避免通过疑似污染区。"
+              }
+            ]
+          },
+          "R3": {
+            "recommendations": [
+              { "code": "RESTRICT_OPERATION", "text": "建议限制运行（减小通过该区段的流量/条件放行）。" },
+              { "code": "DISPATCH_FOD_TEAM_FAST", "text": "建议尽快派员清除并反馈结果。" }
+            ]
+          },
+          "R2": {
+            "recommendations": [
+              { "code": "CONDITIONAL_OPERATION", "text": "建议条件运行并尽快安排清除/复核。" },
+              { "code": "MONITOR_REPORTS", "text": "建议关注机组/场务后续反馈，必要时升级。" }
+            ]
+          },
+          "R1": {
+            "recommendations": [
+              { "code": "ROUTINE_HANDLE", "text": "建议纳入例行处置与巡查记录。" }
+            ]
+          }
+        }
+      }
+    },
+
+    {
+      "id": "fod.linkage.fuel_leak",
+      "type": "linkage",
+      "priority": 450,
+      "when": {
+        "all": [
+          { "eq": ["config.linkage.rules_enabled.fuel_leak_linkage", true] },
+          {
+            "any": [
+              { "eq": ["fod_type", "LIQUID"] },
+              { "all": [{ "eq": ["fod_type", "UNKNOWN"] }, { "contains_any": ["impact_note", ["反光", "油味", "渗漏", "油污", "slick"]] }] }
+            ]
+          }
+        ]
+      },
+      "then": {
+        "link_to": {
+          "event_types": ["FUEL_LEAK"],
+          "time_window_minutes": "config.linkage.time_window_minutes",
+          "location_match_mode": "config.linkage.location_match_mode",
+          "set_field": "assessment.linkages.fuel_leak"
+        },
+        "recommendations": [
+          { "code": "UPGRADE_TO_SURFACE_CONTAMINATION", "text": "建议按道面污损/疑似漏油联动处置：评估摩擦/湿滑风险并限制运行。" }
+        ],
+        "append_explain": "Potential linkage: FOD(liquid/unknown) -> Fuel leak"
+      }
+    },
+
+    {
+      "id": "fod.linkage.tire_burst",
+      "type": "linkage",
+      "priority": 440,
+      "when": {
+        "all": [
+          { "eq": ["config.linkage.rules_enabled.tire_burst_linkage", true] },
+          { "any": [{ "eq": ["fod_type", "PLASTIC_RUBBER"] }, { "eq": ["fod_type", "METAL"] }] },
+          { "any": [{ "eq": ["fod_size", "MEDIUM"] }, { "eq": ["fod_size", "LARGE"] }, { "eq": ["fod_size", "UNKNOWN"] }] },
+          { "any": [{ "eq": ["location_area", "RUNWAY"] }, { "eq": ["location_area", "RAPID_EXIT"] }] }
+        ]
+      },
+      "then": {
+        "link_to": {
+          "event_types": ["TIRE_BURST", "AIRCRAFT_ANOMALY"],
+          "time_window_minutes": "config.linkage.time_window_minutes",
+          "location_match_mode": "config.linkage.location_match_mode",
+          "set_field": "assessment.linkages.tire_burst"
+        },
+        "recommendations": [
+          { "code": "FLAG_POTENTIAL_AIRCRAFT_FAULT", "text": "建议标记潜在轮胎/部件异常来源，关注相关航班技术检查与同型机风险提示。" }
+        ],
+        "append_explain": "Potential linkage: FOD(rubber/metal) near runway/rapid-exit -> Tire burst/aircraft anomaly"
+      }
+    },
+
+    {
+      "id": "fod.audit.bundle",
+      "type": "audit",
+      "priority": 100,
+      "when": { "exists": "assessment.risk_level" },
+      "then": {
+        "audit_fields": [
+          "event_id",
+          "report_time",
+          "reporter_role",
+          "location_area",
+          "position",
+          "fod_type",
+          "fod_size",
+          "presence",
+          "assessment.risk_score",
+          "assessment.risk_level",
+          "assessment.explain",
+          "assessment.linkages",
+          "evidence"
+        ],
+        "append_explain": "Audit bundle prepared for traceability"
+      }
+    }
+  ],
+  "output_contract": {
+    "assessment": {
+      "risk_score": "number",
+      "risk_level": "string",
+      "explain": "string",
+      "linkages": "object"
+    },
+    "actions": {
+      "recommendations": "array",
+      "follow_ups": "array",
+      "blocking": "boolean"
+    }
+  }
+}

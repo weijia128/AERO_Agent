@@ -1,0 +1,105 @@
+# 外来物入侵（FOD）场景主配置文件
+
+scenario:
+  name: fod
+  version: "1.0"
+  description: "机场外来物入侵（FOD）应急响应场景"
+  priority: 15
+  keywords:
+    - 外来物
+    - 异物
+    - FOD
+    - 跑道异物
+    - 滑行道异物
+    - 机坪异物
+    - 道面异物
+
+settings:
+  max_iterations: 20
+  allow_checklist_skip: false
+  default_response_timeout: 30
+  risk_required: true
+
+# 强制动作规则
+mandatory_triggers:
+  - name: fod_on_surface_notify_atc
+    condition:
+      "incident.presence":
+        - ON_SURFACE
+        - MOVING_BLOWING
+    action: notify_department
+    params:
+      department: 塔台
+      priority: immediate
+    check_field: atc_notified
+
+  - name: fod_runway_notify_atc
+    condition:
+      "incident.location_area": RUNWAY
+    action: notify_department
+    params:
+      department: 塔台
+      priority: immediate
+    check_field: atc_notified
+
+  - name: fod_taxiway_notify_atc
+    condition:
+      "incident.location_area": TAXIWAY
+    action: notify_department
+    params:
+      department: 塔台
+      priority: high
+    check_field: atc_notified
+
+  - name: fod_apron_notify_ops
+    condition:
+      "incident.location_area": APRON
+    action: notify_department
+    params:
+      department: 运控
+      priority: normal
+    check_field: operations_notified
+
+# 风险评估规则由 fod_rule.json 提供（包含完整的评分规则和条件判断）
+# 详细规则请参考项目根目录下的 fod_rule.json 文件
+# 该文件包含：位置评分、FOD类型评分、尺寸评分、动态修正规则、R1-R4等级映射
+
+immediate_actions:
+  R4:
+    - "立即通知塔台，封闭受影响区域"
+    - "组织地面保障力量清除 FOD"
+    - "完成复检前禁止运行"
+  R3:
+    - "通知塔台限制运行"
+    - "安排清除与复检"
+  R2:
+    - "安排现场清扫"
+    - "评估运行影响并通报运控"
+  R1:
+    - "记录并监控"
+    - "必要时安排例行检查"
+
+notifications:
+  departments:
+    - id: atc
+      name: 塔台
+      priority: immediate
+      contact: "内线8001"
+    - id: ops
+      name: 运行指挥中心
+      priority: high
+      contact: "内线8000"
+    - id: ground
+      name: 地面保障
+      priority: high
+      contact: "内线8300"
+
+report_template:
+  sections:
+    - event_summary
+    - risk_assessment
+    - handling_process
+    - checklist_items
+    - coordination_units
+    - operational_impact
+    - recommendations
