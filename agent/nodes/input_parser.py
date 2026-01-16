@@ -746,6 +746,12 @@ LLM_EXTRACT_PROMPT = """你是一个机场应急响应系统的事件信息提�
 
 ## 需要提取的字段：
 - position: 事发位置（如 501、A3、01L 等，可只填数字表示机位号）
+- location_area: 位置类别（RUNWAY=跑道, TAXIWAY=滑行道, APRON=机坪, UNKNOWN=不明）
+- fod_type: FOD 种类（METAL=金属类, PLASTIC_RUBBER=塑料/橡胶, STONE_GRAVEL=石块/砂石, LIQUID=油液/液体, UNKNOWN=不明）
+- presence: 是否仍在道面（ON_SURFACE=仍在道面, REMOVED=已移除, MOVING_BLOWING=被风吹动, UNKNOWN=不明）
+- report_time: 汇报时间（自由文本，如 14:32）
+- fod_size: FOD 尺寸（SMALL=<5cm, MEDIUM=5-15cm, LARGE=>15cm, UNKNOWN=不明，可返回描述）
+- related_event: 是否与前序事件有关（YES/NO/UNKNOWN）
 - fluid_type: 油液类型（FUEL=燃油, HYDRAULIC=液压油, OIL=滑油）
 - engine_status: 发动机状态（RUNNING=运转中, STOPPED=已停止）
 - continuous: 是否持续泄漏（true=是, false=否）
@@ -754,7 +760,7 @@ LLM_EXTRACT_PROMPT = """你是一个机场应急响应系统的事件信息提�
 - phase: 飞行阶段（PUSHBACK/TAXI/TAKEOFF_ROLL/INITIAL_CLIMB/CRUISE/DESCENT/APPROACH/LANDING_ROLL/ON_STAND/UNKNOWN）
 - evidence: 迹象强度（CONFIRMED_STRIKE_WITH_REMAINS/SYSTEM_WARNING/ABNORMAL_NOISE_VIBRATION/SUSPECTED_ONLY/NO_ABNORMALITY）
 - bird_info: 鸟类信息（LARGE_BIRD/FLOCK/MEDIUM_SMALL_SINGLE/UNKNOWN）
-- ops_impact: 运行影响（RTO_OR_RTB/BLOCKING_RUNWAY_OR_TAXIWAY/REQUEST_MAINT_CHECK/NO_OPS_IMPACT/UNKNOWN）
+- ops_impact: 运行影响（RTO_OR_RTB/BLOCKING_RUNWAY_OR_TAXIWAY/REQUEST_MAINT_CHECK/NO_OPS_IMPACT/RUNWAY_CLOSED/TAXIWAY_BLOCKED/APRON_RESTRICTED/MINOR_IMPACT/NO_IMPACT/UNKNOWN）
 - crew_request: 机组请求（自由文本，如返航/备降/检查/支援等）
 
 ## 智能提取规则：
@@ -786,6 +792,42 @@ SIZE_TYPE_MAP = {
     "中等": "MEDIUM", "一般": "MEDIUM", "1-5": "MEDIUM",
     "小面积": "SMALL", "少量": "SMALL", "一点": "SMALL", "<1": "SMALL",
     "不明": "UNKNOWN", "不清楚": "UNKNOWN", "不知道": "UNKNOWN", "未知": "UNKNOWN", "待确认": "UNKNOWN",
+}
+
+LOCATION_AREA_MAP = {
+    "跑道": "RUNWAY", "RUNWAY": "RUNWAY", "RWY": "RUNWAY",
+    "滑行道": "TAXIWAY", "TAXIWAY": "TAXIWAY", "TWY": "TAXIWAY",
+    "机坪": "APRON", "停机坪": "APRON", "APRON": "APRON",
+    "不明": "UNKNOWN", "未知": "UNKNOWN",
+}
+
+FOD_TYPE_MAP = {
+    "金属": "METAL", "螺母": "METAL", "螺栓": "METAL", "钉": "METAL", "工具": "METAL",
+    "塑料": "PLASTIC_RUBBER", "橡胶": "PLASTIC_RUBBER", "轮胎": "PLASTIC_RUBBER",
+    "PLASTIC": "PLASTIC_RUBBER", "RUBBER": "PLASTIC_RUBBER",
+    "石块": "STONE_GRAVEL", "砂石": "STONE_GRAVEL", "碎石": "STONE_GRAVEL", "GRAVEL": "STONE_GRAVEL",
+    "液体": "LIQUID", "油液": "LIQUID", "液体异物": "LIQUID",
+    "不明": "UNKNOWN", "未知": "UNKNOWN",
+}
+
+PRESENCE_TYPE_MAP = {
+    "仍在": "ON_SURFACE", "在道面": "ON_SURFACE", "未移除": "ON_SURFACE",
+    "已移除": "REMOVED", "已清理": "REMOVED", "已处理": "REMOVED",
+    "被风吹动": "MOVING_BLOWING", "移动": "MOVING_BLOWING", "滚动": "MOVING_BLOWING",
+    "不明": "UNKNOWN", "未知": "UNKNOWN",
+}
+
+FOD_SIZE_MAP = {
+    "小": "SMALL", "<5CM": "SMALL", "小于5": "SMALL",
+    "中": "MEDIUM", "5-15CM": "MEDIUM", "5~15": "MEDIUM",
+    "大": "LARGE", ">15CM": "LARGE", "大于15": "LARGE",
+    "不明": "UNKNOWN", "未知": "UNKNOWN",
+}
+
+RELATED_EVENT_MAP = {
+    "是": "YES", "有关": "YES", "相关": "YES",
+    "否": "NO", "无关": "NO", "不是": "NO",
+    "不明": "UNKNOWN", "未知": "UNKNOWN",
 }
 
 PHASE_TYPE_MAP = {
@@ -848,6 +890,11 @@ OPS_IMPACT_MAP = {
     "待检查": "REQUEST_MAINT_CHECK",
     "不影响运行": "NO_OPS_IMPACT",
     "无影响": "NO_OPS_IMPACT",
+    "跑道关闭": "RUNWAY_CLOSED",
+    "滑行道封闭": "TAXIWAY_BLOCKED",
+    "机坪限制": "APRON_RESTRICTED",
+    "轻微影响": "MINOR_IMPACT",
+    "不影响": "NO_IMPACT",
     "不明": "UNKNOWN",
     "未知": "UNKNOWN",
 }
@@ -945,6 +992,29 @@ def extract_entities(text: str, scenario_type: Optional[str] = None) -> Dict[str
                 entities["flight_no"] = value
             break
 
+    handled_keys = {
+        "position",
+        "fluid_type",
+        "event_type",
+        "affected_part",
+        "current_status",
+        "crew_request",
+        "engine_status",
+        "continuous",
+        "leak_size",
+        "aircraft",
+    }
+
+    for key, items in patterns.items():
+        if key in handled_keys or key in entities:
+            continue
+        if not isinstance(items, list):
+            continue
+        for pattern, value in items:
+            if re.search(pattern, text, re.IGNORECASE):
+                entities[key] = value
+                break
+
     return entities
 
 
@@ -1015,11 +1085,63 @@ def extract_entities_llm(text: str, history: str = "") -> Dict[str, Any]:
                 "BLOCKING_RUNWAY_OR_TAXIWAY",
                 "REQUEST_MAINT_CHECK",
                 "NO_OPS_IMPACT",
+                "RUNWAY_CLOSED",
+                "TAXIWAY_BLOCKED",
+                "APRON_RESTRICTED",
+                "MINOR_IMPACT",
+                "NO_IMPACT",
                 "UNKNOWN",
             ]:
                 entities["ops_impact"] = OPS_IMPACT_MAP.get(ops_impact, ops_impact)
             else:
                 entities["ops_impact"] = ops_impact
+
+        if "location_area" in entities and entities["location_area"]:
+            location_area = str(entities["location_area"]).upper()
+            if location_area not in ["RUNWAY", "TAXIWAY", "APRON", "UNKNOWN", "NULL"]:
+                entities["location_area"] = LOCATION_AREA_MAP.get(location_area, location_area)
+            else:
+                entities["location_area"] = location_area
+
+        if "fod_type" in entities and entities["fod_type"]:
+            fod_type = str(entities["fod_type"]).upper()
+            if fod_type not in [
+                "METAL",
+                "PLASTIC_RUBBER",
+                "STONE_GRAVEL",
+                "LIQUID",
+                "UNKNOWN",
+                "NULL",
+            ]:
+                entities["fod_type"] = FOD_TYPE_MAP.get(fod_type, fod_type)
+            else:
+                entities["fod_type"] = fod_type
+
+        if "presence" in entities and entities["presence"]:
+            presence = str(entities["presence"]).upper()
+            if presence not in ["ON_SURFACE", "REMOVED", "MOVING_BLOWING", "UNKNOWN", "NULL"]:
+                entities["presence"] = PRESENCE_TYPE_MAP.get(presence, presence)
+            else:
+                entities["presence"] = presence
+
+        if "fod_size" in entities and entities["fod_size"]:
+            raw_size = str(entities["fod_size"]).strip()
+            size_upper = raw_size.upper()
+            if size_upper in ["SMALL", "MEDIUM", "LARGE", "UNKNOWN", "NULL"]:
+                entities["fod_size"] = size_upper
+            else:
+                entities["fod_size"] = FOD_SIZE_MAP.get(size_upper, raw_size)
+
+        if "related_event" in entities and entities["related_event"] is not None:
+            related_event = entities["related_event"]
+            if isinstance(related_event, bool):
+                entities["related_event"] = "YES" if related_event else "NO"
+            else:
+                related_event_str = str(related_event).upper()
+                if related_event_str not in ["YES", "NO", "UNKNOWN", "NULL"]:
+                    entities["related_event"] = RELATED_EVENT_MAP.get(related_event_str, related_event)
+                else:
+                    entities["related_event"] = related_event_str
 
         # 清理 null 值
         return {k: v for k, v in entities.items() if v not in [None, "null", "NULL", ""]}

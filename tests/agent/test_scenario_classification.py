@@ -17,6 +17,11 @@ def test_identify_default_to_oil():
     assert identify_scenario(text) == "oil_spill"
 
 
+def test_identify_fod():
+    text = "跑道发现异物，疑似FOD"
+    assert identify_scenario(text) == "fod"
+
+
 def test_position_normalization_for_taxiway():
     text = "当前在 12 滑行道滑行"
     normalized = normalize_radiotelephony_text(text)

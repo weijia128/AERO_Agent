@@ -9,6 +9,12 @@ from config.llm_config import get_llm_client
 DEFAULT_CONFIDENCE_THRESHOLDS = {
     "flight_no": 0.75,
     "position": 0.8,
+    "location_area": 0.75,
+    "fod_type": 0.75,
+    "presence": 0.75,
+    "report_time": 0.7,
+    "fod_size": 0.7,
+    "related_event": 0.6,
     "fluid_type": 0.8,
     "engine_status": 0.8,
     "continuous": 0.7,
@@ -42,6 +48,34 @@ UNDERSTAND_INCIDENT_SCHEMA = {
                         "type": "string",
                         "description": "事发位置，如 501、A3、跑道01L、滑行道19",
                     },
+                    "location_area": {
+                        "type": "string",
+                        "enum": ["RUNWAY", "TAXIWAY", "APRON", "UNKNOWN"],
+                        "description": "位置类别",
+                    },
+                    "fod_type": {
+                        "type": "string",
+                        "enum": ["METAL", "PLASTIC_RUBBER", "STONE_GRAVEL", "LIQUID", "UNKNOWN"],
+                        "description": "FOD 种类",
+                    },
+                    "presence": {
+                        "type": "string",
+                        "enum": ["ON_SURFACE", "REMOVED", "MOVING_BLOWING", "UNKNOWN"],
+                        "description": "是否仍在道面",
+                    },
+                    "report_time": {
+                        "type": "string",
+                        "description": "汇报时间",
+                    },
+                    "fod_size": {
+                        "type": "string",
+                        "description": "FOD 尺寸或描述",
+                    },
+                    "related_event": {
+                        "type": "string",
+                        "enum": ["YES", "NO", "UNKNOWN"],
+                        "description": "是否与前序事件有关",
+                    },
                     "fluid_type": {
                         "type": "string",
                         "enum": ["FUEL", "HYDRAULIC", "OIL", "UNKNOWN"],
@@ -74,6 +108,12 @@ UNDERSTAND_INCIDENT_SCHEMA = {
                     "flight_no": {"type": "number"},
                     "flight_no_display": {"type": "number"},
                     "position": {"type": "number"},
+                    "location_area": {"type": "number"},
+                    "fod_type": {"type": "number"},
+                    "presence": {"type": "number"},
+                    "report_time": {"type": "number"},
+                    "fod_size": {"type": "number"},
+                    "related_event": {"type": "number"},
                     "fluid_type": {"type": "number"},
                     "engine_status": {"type": "number"},
                     "continuous": {"type": "number"},
@@ -244,6 +284,33 @@ def _normalize_extracted_facts(extracted: Dict[str, Any]) -> Dict[str, Any]:
         {"燃油": "FUEL", "航油": "FUEL", "液压油": "HYDRAULIC", "滑油": "OIL"},
         ["FUEL", "HYDRAULIC", "OIL", "UNKNOWN"],
     )
+    normalized["location_area"] = _normalize_enum(
+        normalized.get("location_area"),
+        {"跑道": "RUNWAY", "滑行道": "TAXIWAY", "机坪": "APRON"},
+        ["RUNWAY", "TAXIWAY", "APRON", "UNKNOWN"],
+    )
+    normalized["fod_type"] = _normalize_enum(
+        normalized.get("fod_type"),
+        {
+            "金属": "METAL",
+            "塑料": "PLASTIC_RUBBER",
+            "橡胶": "PLASTIC_RUBBER",
+            "石块": "STONE_GRAVEL",
+            "砂石": "STONE_GRAVEL",
+            "液体": "LIQUID",
+        },
+        ["METAL", "PLASTIC_RUBBER", "STONE_GRAVEL", "LIQUID", "UNKNOWN"],
+    )
+    normalized["presence"] = _normalize_enum(
+        normalized.get("presence"),
+        {"仍在": "ON_SURFACE", "已移除": "REMOVED", "被风吹动": "MOVING_BLOWING"},
+        ["ON_SURFACE", "REMOVED", "MOVING_BLOWING", "UNKNOWN"],
+    )
+    normalized["related_event"] = _normalize_enum(
+        normalized.get("related_event"),
+        {"是": "YES", "否": "NO"},
+        ["YES", "NO", "UNKNOWN"],
+    )
     normalized["engine_status"] = _normalize_enum(
         normalized.get("engine_status"),
         {"运转": "RUNNING", "运行": "RUNNING", "关闭": "STOPPED", "关车": "STOPPED"},
@@ -251,6 +318,11 @@ def _normalize_extracted_facts(extracted: Dict[str, Any]) -> Dict[str, Any]:
     )
     normalized["leak_size"] = _normalize_enum(
         normalized.get("leak_size"),
+        {"大": "LARGE", "中": "MEDIUM", "小": "SMALL"},
+        ["LARGE", "MEDIUM", "SMALL", "UNKNOWN"],
+    )
+    normalized["fod_size"] = _normalize_enum(
+        normalized.get("fod_size"),
         {"大": "LARGE", "中": "MEDIUM", "小": "SMALL"},
         ["LARGE", "MEDIUM", "SMALL", "UNKNOWN"],
     )

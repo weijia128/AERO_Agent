@@ -1074,7 +1074,21 @@ def save_report(state: Dict[str, Any], report: Dict[str, Any], answer: str = "")
     """保存报告到文件（Markdown格式）"""
     import json
 
-    reports_dir = os.path.join(PROJECT_ROOT, "outputs", "reports")
+    # 获取场景类型，用于按场景分类存储
+    scenario_type = state.get("scenario_type", "oil_spill")
+
+    # 根据场景类型创建对应的文件夹路径
+    scenario_folder_map = {
+        "oil_spill": "oil_spill",
+        "bird_strike": "bird_strike",
+        "fod": "fod"
+    }
+
+    # 获取场景文件夹名称，默认为 "other"
+    scenario_folder = scenario_folder_map.get(scenario_type, "other")
+
+    # 创建按场景分类的报告目录
+    reports_dir = os.path.join(PROJECT_ROOT, "outputs", "reports", scenario_folder)
     os.makedirs(reports_dir, exist_ok=True)
 
     session_id = state.get("session_id", "unknown")

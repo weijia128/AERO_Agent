@@ -86,6 +86,38 @@ class NotifyDepartmentTool(BaseTool):
                     message += f"，影响部位：{affected_part}"
                 if current_status:
                     message += f"，当前状态：{current_status}"
+            elif scenario_type == "fod":
+                # FOD 场景：使用 fod_type/presence/location_area 等字段
+                fod_type = incident.get("fod_type", "")
+                presence = incident.get("presence", "")
+                location_area = incident.get("location_area", "")
+                type_map = {
+                    "METAL": "金属异物",
+                    "PLASTIC_RUBBER": "塑料/橡胶异物",
+                    "STONE_GRAVEL": "石块/砂石异物",
+                    "LIQUID": "液体异物",
+                    "UNKNOWN": "不明异物",
+                }
+                presence_map = {
+                    "ON_SURFACE": "仍在道面",
+                    "REMOVED": "已移除",
+                    "MOVING_BLOWING": "被风吹动",
+                    "UNKNOWN": "状态不明",
+                }
+                area_map = {
+                    "RUNWAY": "跑道",
+                    "TAXIWAY": "滑行道",
+                    "APRON": "机坪",
+                    "UNKNOWN": "区域",
+                }
+                type_label = type_map.get(fod_type, "异物")
+                presence_label = presence_map.get(presence, "")
+                area_label = area_map.get(location_area, "")
+                message = f"{position}发现{type_label}"
+                if area_label:
+                    message += f"（{area_label}）"
+                if presence_label:
+                    message += f"，{presence_label}"
             else:
                 # 漏油场景（oil_spill）或默认：使用 fluid_type 字段
                 fluid_type = incident.get("fluid_type", "")
