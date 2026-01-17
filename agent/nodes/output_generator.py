@@ -818,6 +818,64 @@ def _build_render_context(
     discovery_method = incident.get("discovery_method", "巡查") or "巡查"
     reported_by = incident.get("reported_by", "——") or "——"
     position = incident.get("position", "——") or "——"
+    fod_type_map = {
+        "METAL": "金属类",
+        "PLASTIC_RUBBER": "塑料/橡胶",
+        "STONE_GRAVEL": "石块/砂石",
+        "LIQUID": "油液/液体异物",
+        "UNKNOWN": "不明",
+    }
+    presence_map = {
+        "ON_SURFACE": "仍在道面",
+        "REMOVED": "已移除",
+        "MOVING_BLOWING": "被风吹动",
+        "UNKNOWN": "不明",
+    }
+    area_map = {
+        "RUNWAY": "跑道",
+        "TAXIWAY": "滑行道",
+        "APRON": "机坪",
+        "UNKNOWN": "不明",
+    }
+    size_map = {
+        "SMALL": "小（<5cm）",
+        "MEDIUM": "中（5-15cm）",
+        "LARGE": "大（>15cm）",
+        "UNKNOWN": "不明",
+    }
+    phase_map = {
+        "PUSHBACK": "推出",
+        "TAXI": "滑行",
+        "TAKEOFF_ROLL": "起飞滑跑",
+        "INITIAL_CLIMB": "起飞后爬升",
+        "CRUISE": "巡航",
+        "DESCENT": "下降",
+        "APPROACH": "进近",
+        "LANDING_ROLL": "落地滑跑",
+        "ON_STAND": "停机位",
+        "UNKNOWN": "不明",
+    }
+    evidence_map = {
+        "CONFIRMED_STRIKE_WITH_REMAINS": "确认撞击有残留",
+        "SYSTEM_WARNING": "系统告警",
+        "ABNORMAL_NOISE_VIBRATION": "异响/振动",
+        "SUSPECTED_ONLY": "仅怀疑",
+        "NO_ABNORMALITY": "无异常",
+        "UNKNOWN": "不明",
+    }
+    bird_info_map = {
+        "LARGE_BIRD": "大型鸟类",
+        "FLOCK": "鸟群",
+        "MEDIUM_SMALL_SINGLE": "中小型单只",
+        "UNKNOWN": "不明",
+    }
+    bird_ops_impact_map = {
+        "RTO_OR_RTB": "中断起飞/返航",
+        "BLOCKING_RUNWAY_OR_TAXIWAY": "占用跑道/滑行道",
+        "REQUEST_MAINT_CHECK": "请求机务检查",
+        "NO_OPS_IMPACT": "不影响运行",
+        "UNKNOWN": "不明",
+    }
 
     # 运行影响
     affected_area_text = _build_affected_areas_text(spatial, separator=", ") or "——"
@@ -870,6 +928,19 @@ def _build_render_context(
         "effect_text": event_summary.get("effect_evaluation", "——"),
         "improvement_suggestions": event_summary.get("improvement_suggestions", "——"),
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "location_area": area_map.get(incident.get("location_area"), "——"),
+        "fod_type": fod_type_map.get(incident.get("fod_type"), incident.get("fod_type", "——") or "——"),
+        "presence": presence_map.get(incident.get("presence"), "——"),
+        "fod_size": size_map.get(incident.get("fod_size"), incident.get("fod_size", "——") or "——"),
+        "ops_impact": incident.get("ops_impact", "——") or "——",
+        "related_event": incident.get("related_event", "——") or "——",
+        "bird_phase": phase_map.get(incident.get("phase"), incident.get("phase", "——") or "——"),
+        "bird_evidence": evidence_map.get(incident.get("evidence"), incident.get("evidence", "——") or "——"),
+        "bird_info": bird_info_map.get(incident.get("bird_info"), incident.get("bird_info", "——") or "——"),
+        "bird_ops_impact": bird_ops_impact_map.get(
+            incident.get("ops_impact"),
+            incident.get("ops_impact", "——") or "——",
+        ),
         # 鸟击等场景特有字段，默认占位
         "event_type": incident.get("event_type", "鸟击（确认/疑似）") or "鸟击（确认/疑似）",
         "tail_no": incident.get("tail_no", "——") or "——",
