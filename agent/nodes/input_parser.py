@@ -554,24 +554,49 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
     normalized_message = normalize_radiotelephony_text(user_message)
 
     # ========== 新增: 航空读法深度规范化 (LLM + RAG) ==========
+    # 只对包含航空读法特征的输入进行LLM规范化，避免简短回答被错误处理
     from tools.information.radiotelephony_normalizer import RadiotelephonyNormalizerTool
 
-    normalizer = RadiotelephonyNormalizerTool()
-    normalization_result = normalizer.execute(state, {"text": normalized_message})
+    # 检查是否需要LLM规范化（包含航空读法词 OR 航空关键词且非简短回答）
+    radiotelephony_keywords = ["洞", "幺", "两", "拐", "五"]
+    aviation_keywords = ["跑道", "机位", "滑行道", "川航", "国航", "东航", "南航", "海航", "厦航"]
 
-    # 使用增强后的文本 (Fallback: 如果失败使用原文本)
-    enhanced_message = normalization_result.get("normalized_text", normalized_message)
-    pre_extracted_entities = normalization_result.get("entities", {})
-    normalization_confidence = normalization_result.get("confidence", 0.5)
+    has_radiotelephony = any(kw in normalized_message for kw in radiotelephony_keywords)
+    has_aviation_context = any(kw in normalized_message for kw in aviation_keywords)
 
-    logger.info(f"航空读法规范化: {normalized_message} → {enhanced_message} (置信度: {normalization_confidence:.2f})")
-    if pre_extracted_entities:
-        logger.info(f"预提取实体: {pre_extracted_entities}")
+    needs_normalization = has_radiotelephony or (has_aviation_context and len(normalized_message) > 5)
+
+    enhanced_message = normalized_message
+    pre_extracted_entities = {}
+    normalization_confidence = 0.0
+
+    if needs_normalization:
+        normalizer = RadiotelephonyNormalizerTool()
+        normalization_result = normalizer.execute(state, {"text": normalized_message})
+
+        # 使用增强后的文本 (Fallback: 如果失败使用原文本)
+        enhanced_message = normalization_result.get("normalized_text", normalized_message)
+        pre_extracted_entities = normalization_result.get("entities", {})
+        normalization_confidence = normalization_result.get("confidence", 0.5)
+
+        logger.info(f"航空读法规范化: {normalized_message} → {enhanced_message} (置信度: {normalization_confidence:.2f})")
+        if pre_extracted_entities:
+            logger.info(f"预提取实体: {pre_extracted_entities}")
+    else:
+        logger.debug(f"跳过LLM规范化（简短回答）: {normalized_message}")
     # ================================================================
 
-    # 识别场景类型（保留已有场景优先级，避免降级）
-    detected_scenario = identify_scenario(enhanced_message)
-    scenario_type = _select_scenario(state.get("scenario_type", ""), detected_scenario)
+    # 识别场景类型（一旦确定，完全锁定）
+    current_scenario = state.get("scenario_type", "")
+    if current_scenario:
+        # 场景已锁定，不再重新识别
+        scenario_type = current_scenario
+        logger.info(f"场景已锁定: {scenario_type}")
+    else:
+        # 首次识别场景
+        detected_scenario = identify_scenario(enhanced_message)
+        scenario_type = detected_scenario
+        logger.info(f"首次识别场景: {scenario_type}")
 
     # 构建对话历史上下文
     history = build_history_context(messages)
@@ -579,9 +604,16 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
     # 基于场景模板重建 incident/checklist，保留已知字段
     incident_template, checklist_template = _build_incident_and_checklist_templates(scenario_type)
     current_incident = incident_template
+    allowed_field_keys = _get_scenario_field_keys(scenario_type)
+
+    # 只复制属于当前场景的字段
     for key, value in state.get("incident", {}).items():
-        if key in current_incident and value not in [None, ""]:
+        if value in [None, ""]:
+            continue
+        if key in allowed_field_keys and key in current_incident:
             current_incident[key] = value
+        else:
+            logger.debug(f"从旧state过滤掉不属于场景 {scenario_type} 的字段: {key}")
     semantic_understanding: Dict[str, Any] = {}
     semantic_validation: Dict[str, Any] = {}
     extracted: Dict[str, Any] = {}
@@ -608,11 +640,16 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
         # 合并信息并记录潜在冲突
         semantic_issues = list(semantic_understanding.get("semantic_issues", []))
         for key, value in extracted.items():
+            if value is None:
+                continue
+            if key not in allowed_field_keys:
+                logger.warning(f"语义理解提取的字段 {key} 不属于场景 {scenario_type}，已忽略")
+                continue
+
             previous_value = current_incident.get(key)
-            if previous_value not in [None, ""] and value is not None and previous_value != value:
+            if previous_value not in [None, ""] and previous_value != value:
                 semantic_issues.append(f"{key} 与已知信息不一致，请确认")
-            if value is not None:
-                current_incident[key] = value
+            current_incident[key] = value
 
         # 语义验证结果（缺失/低置信度/矛盾）
         scenario = ScenarioRegistry.get(scenario_type)
@@ -631,18 +668,23 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
         # 提取实体（混合方案：正则 + LLM，更灵活）
         extracted = extract_entities_hybrid(enhanced_message, history, scenario_type)
 
-        # 合并预提取的实体 (规范化工具的结果优先级最高，因为是LLM+RAG处理过的)
-        # 先使用常规提取的结果
+        # 先使用常规提取的结果，再用规范化工具覆盖
         for key, value in extracted.items():
-            if value is not None:
+            if value is not None and key in allowed_field_keys:
                 current_incident[key] = value
+            elif value is not None:
+                logger.warning(f"字段 {key} 不属于场景 {scenario_type}，已忽略")
 
-        # 然后用规范化工具的结果覆盖（如果有的话）
+        # 规范化工具的结果优先级最高（LLM+RAG处理过）
         for key, value in pre_extracted_entities.items():
-            if value:
-                if key in current_incident and current_incident[key] != value:
-                    logger.info(f"规范化工具覆盖 {key}: {current_incident[key]} → {value}")
-                current_incident[key] = value
+            if not value:
+                continue
+            if key not in allowed_field_keys:
+                logger.warning(f"规范化工具提取的字段 {key} 不属于场景 {scenario_type}，已忽略")
+                continue
+            if key in current_incident and current_incident[key] != value:
+                logger.info(f"规范化工具覆盖 {key}: {current_incident[key]} → {value}")
+            current_incident[key] = value
 
     if current_incident.get("position"):
         current_incident["position_display"] = _format_position_display(
@@ -668,6 +710,27 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
         semantic_validation["missing_fields"] = [
             field for field in required_fields if not checklist.get(field, False)
         ]
+
+    if not current_incident.get("reported_by"):
+        reporter = ""
+        reporter_keywords = [
+            ("机坪管制", ["机坪管制", "机坪管制员"]),
+            ("塔台", ["塔台", "管制", "ATC"]),
+            ("场务", ["场务", "场务巡查", "巡查"]),
+            ("机组", ["机组", "机长", "副驾驶", "飞行员"]),
+            ("机务", ["机务", "维修", "航线"]),
+            ("地服", ["地服", "地面保障", "保障单位"]),
+            ("运控", ["运控", "运行指挥", "运行中心"]),
+            ("安全监察", ["安全监察", "安监"]),
+            ("安保", ["安保", "警卫", "公安"]),
+            ("施工单位", ["施工", "外包", "承包商"]),
+        ]
+        for label, keywords in reporter_keywords:
+            if any(k in user_message for k in keywords):
+                reporter = label
+                break
+        flight_no_display = current_incident.get("flight_no_display") or current_incident.get("flight_no")
+        current_incident["reported_by"] = reporter or flight_no_display or "——"
 
     # 记录解析结果
     observation_parts = []
@@ -776,128 +839,278 @@ LLM_EXTRACT_PROMPT = """你是一个机场应急响应系统的事件信息提�
 如果无法提取任何有效信息，返回 {{}}
 """
 
-POS_TYPE_MAP = {
-    "燃油": "FUEL", "航油": "FUEL", "航空燃油": "FUEL", "jet": "FUEL", "fuel": "FUEL",
-    "液压油": "HYDRAULIC", "液压": "HYDRAULIC", "hydraulic": "HYDRAULIC",
-    "滑油": "OIL", "机油": "OIL", "润滑油": "OIL", "oil": "OIL",
+# 枚举值映射表
+ENUM_VALUE_MAPS = {
+    "fluid_type": {
+        "valid_values": {"FUEL", "HYDRAULIC", "OIL", "UNKNOWN"},
+        "mappings": {
+            "燃油": "FUEL", "航油": "FUEL", "航空燃油": "FUEL", "jet": "FUEL", "fuel": "FUEL",
+            "液压油": "HYDRAULIC", "液压": "HYDRAULIC", "hydraulic": "HYDRAULIC",
+            "滑油": "OIL", "机油": "OIL", "润滑油": "OIL", "oil": "OIL",
+        }
+    },
+    "engine_status": {
+        "valid_values": {"RUNNING", "STOPPED", "UNKNOWN"},
+        "mappings": {
+            "运转": "RUNNING", "运行": "RUNNING", "在转": "RUNNING", "启动": "RUNNING",
+            "停止": "STOPPED", "关闭": "STOPPED", "关车": "STOPPED", "熄火": "STOPPED",
+        }
+    },
+    "leak_size": {
+        "valid_values": {"LARGE", "MEDIUM", "SMALL", "UNKNOWN"},
+        "mappings": {
+            "大面积": "LARGE", "很大": "LARGE", "大量": "LARGE", ">5": "LARGE", "5㎡": "LARGE",
+            "中等": "MEDIUM", "一般": "MEDIUM", "1-5": "MEDIUM",
+            "小面积": "SMALL", "少量": "SMALL", "一点": "SMALL", "<1": "SMALL",
+            "不明": "UNKNOWN", "不清楚": "UNKNOWN", "不知道": "UNKNOWN", "未知": "UNKNOWN", "待确认": "UNKNOWN",
+        }
+    },
+
+    "location_area": {
+        "valid_values": {"RUNWAY", "TAXIWAY", "APRON", "UNKNOWN"},
+        "mappings": {
+            "跑道": "RUNWAY", "RUNWAY": "RUNWAY", "RWY": "RUNWAY",
+            "滑行道": "TAXIWAY", "TAXIWAY": "TAXIWAY", "TWY": "TAXIWAY",
+            "机坪": "APRON", "停机坪": "APRON", "APRON": "APRON",
+            "不明": "UNKNOWN", "未知": "UNKNOWN",
+        }
+    },
+    "fod_type": {
+        "valid_values": {"METAL", "PLASTIC_RUBBER", "STONE_GRAVEL", "LIQUID", "UNKNOWN"},
+        "mappings": {
+            "金属": "METAL", "螺母": "METAL", "螺栓": "METAL", "钉": "METAL", "工具": "METAL",
+            "塑料": "PLASTIC_RUBBER", "橡胶": "PLASTIC_RUBBER", "轮胎": "PLASTIC_RUBBER",
+            "PLASTIC": "PLASTIC_RUBBER", "RUBBER": "PLASTIC_RUBBER",
+            "石块": "STONE_GRAVEL", "砂石": "STONE_GRAVEL", "碎石": "STONE_GRAVEL", "GRAVEL": "STONE_GRAVEL",
+            "液体": "LIQUID", "油液": "LIQUID", "液体异物": "LIQUID",
+            "不明": "UNKNOWN", "未知": "UNKNOWN",
+        }
+    },
+    "presence": {
+        "valid_values": {"ON_SURFACE", "REMOVED", "MOVING_BLOWING", "UNKNOWN"},
+        "mappings": {
+            "仍在": "ON_SURFACE", "在道面": "ON_SURFACE", "未移除": "ON_SURFACE",
+            "已移除": "REMOVED", "已清理": "REMOVED", "已处理": "REMOVED",
+            "被风吹动": "MOVING_BLOWING", "移动": "MOVING_BLOWING", "滚动": "MOVING_BLOWING",
+            "不明": "UNKNOWN", "未知": "UNKNOWN",
+        }
+    },
+    "fod_size": {
+        "valid_values": {"SMALL", "MEDIUM", "LARGE", "UNKNOWN"},
+        "mappings": {
+            "小": "SMALL", "<5CM": "SMALL", "小于5": "SMALL",
+            "中": "MEDIUM", "5-15CM": "MEDIUM", "5~15": "MEDIUM",
+            "大": "LARGE", ">15CM": "LARGE", "大于15": "LARGE",
+            "不明": "UNKNOWN", "未知": "UNKNOWN",
+        }
+    },
+    "related_event": {
+        "valid_values": {"YES", "NO", "UNKNOWN"},
+        "mappings": {
+            "是": "YES", "有关": "YES", "相关": "YES",
+            "否": "NO", "无关": "NO", "不是": "NO",
+            "不明": "UNKNOWN", "未知": "UNKNOWN",
+        }
+    },
+    "phase": {
+        "valid_values": {"PUSHBACK", "TAXI", "TAKEOFF_ROLL", "INITIAL_CLIMB", "CRUISE", "DESCENT", "APPROACH", "LANDING_ROLL", "ON_STAND", "UNKNOWN"},
+        "mappings": {
+            "推出": "PUSHBACK",
+            "滑行": "TAXI",
+            "起飞滑跑": "TAKEOFF_ROLL",
+            "起飞": "TAKEOFF_ROLL",
+            "爬升": "INITIAL_CLIMB",
+            "起飞后": "INITIAL_CLIMB",
+            "巡航": "CRUISE",
+            "下降": "DESCENT",
+            "进近": "APPROACH",
+            "落地滑跑": "LANDING_ROLL",
+            "着陆滑跑": "LANDING_ROLL",
+            "停机位": "ON_STAND",
+            "不明": "UNKNOWN",
+            "未知": "UNKNOWN",
+        }
+    },
+    "evidence": {
+        "valid_values": {"CONFIRMED_STRIKE_WITH_REMAINS", "SYSTEM_WARNING", "ABNORMAL_NOISE_VIBRATION", "SUSPECTED_ONLY", "NO_ABNORMALITY", "UNKNOWN"},
+        "mappings": {
+            "残留": "CONFIRMED_STRIKE_WITH_REMAINS",
+            "羽毛": "CONFIRMED_STRIKE_WITH_REMAINS",
+            "血迹": "CONFIRMED_STRIKE_WITH_REMAINS",
+            "确认撞击": "CONFIRMED_STRIKE_WITH_REMAINS",
+            "告警": "SYSTEM_WARNING",
+            "报警": "SYSTEM_WARNING",
+            "ECAM": "SYSTEM_WARNING",
+            "EICAS": "SYSTEM_WARNING",
+            "异响": "ABNORMAL_NOISE_VIBRATION",
+            "振动": "ABNORMAL_NOISE_VIBRATION",
+            "震动": "ABNORMAL_NOISE_VIBRATION",
+            "仅怀疑": "SUSPECTED_ONLY",
+            "疑似": "SUSPECTED_ONLY",
+            "无异常": "NO_ABNORMALITY",
+            "正常": "NO_ABNORMALITY",
+        }
+    },
+    "bird_info": {
+        "valid_values": {"LARGE_BIRD", "FLOCK", "MEDIUM_SMALL_SINGLE", "UNKNOWN"},
+        "mappings": {
+            "大型鸟": "LARGE_BIRD",
+            "大鸟": "LARGE_BIRD",
+            "鸟群": "FLOCK",
+            "群鸟": "FLOCK",
+            "中小型": "MEDIUM_SMALL_SINGLE",
+            "小型": "MEDIUM_SMALL_SINGLE",
+            "单只": "MEDIUM_SMALL_SINGLE",
+            "不明": "UNKNOWN",
+            "未知": "UNKNOWN",
+        }
+    },
+    "ops_impact": {
+        "valid_values": {"RTO_OR_RTB", "BLOCKING_RUNWAY_OR_TAXIWAY", "REQUEST_MAINT_CHECK", "NO_OPS_IMPACT", "RUNWAY_CLOSED", "TAXIWAY_BLOCKED", "APRON_RESTRICTED", "MINOR_IMPACT", "NO_IMPACT", "UNKNOWN"},
+        "mappings": {
+            "中断起飞": "RTO_OR_RTB",
+            "返航": "RTO_OR_RTB",
+            "备降": "RTO_OR_RTB",
+            "占用跑道": "BLOCKING_RUNWAY_OR_TAXIWAY",
+            "占用滑行道": "BLOCKING_RUNWAY_OR_TAXIWAY",
+            "阻塞跑道": "BLOCKING_RUNWAY_OR_TAXIWAY",
+            "阻塞滑行道": "BLOCKING_RUNWAY_OR_TAXIWAY",
+            "机务检查": "REQUEST_MAINT_CHECK",
+            "请求检查": "REQUEST_MAINT_CHECK",
+            "待检查": "REQUEST_MAINT_CHECK",
+            "不影响运行": "NO_OPS_IMPACT",
+            "无影响": "NO_OPS_IMPACT",
+            "跑道关闭": "RUNWAY_CLOSED",
+            "滑行道封闭": "TAXIWAY_BLOCKED",
+            "机坪限制": "APRON_RESTRICTED",
+            "轻微影响": "MINOR_IMPACT",
+            "不影响": "NO_IMPACT",
+            "不明": "UNKNOWN",
+            "未知": "UNKNOWN",
+        }
+    },
 }
 
-ENG_TYPE_MAP = {
-    "运转": "RUNNING", "运行": "RUNNING", "在转": "RUNNING", "启动": "RUNNING",
-    "停止": "STOPPED", "关闭": "STOPPED", "关车": "STOPPED", "熄火": "STOPPED",
-}
 
-SIZE_TYPE_MAP = {
-    "大面积": "LARGE", "很大": "LARGE", "大量": "LARGE", ">5": "LARGE", "5㎡": "LARGE",
-    "中等": "MEDIUM", "一般": "MEDIUM", "1-5": "MEDIUM",
-    "小面积": "SMALL", "少量": "SMALL", "一点": "SMALL", "<1": "SMALL",
-    "不明": "UNKNOWN", "不清楚": "UNKNOWN", "不知道": "UNKNOWN", "未知": "UNKNOWN", "待确认": "UNKNOWN",
-}
+def _normalize_enum_value(field_name: str, value: Any) -> Any:
+    """统一的枚举值规范化函数"""
+    if field_name not in ENUM_VALUE_MAPS:
+        return value
 
-LOCATION_AREA_MAP = {
-    "跑道": "RUNWAY", "RUNWAY": "RUNWAY", "RWY": "RUNWAY",
-    "滑行道": "TAXIWAY", "TAXIWAY": "TAXIWAY", "TWY": "TAXIWAY",
-    "机坪": "APRON", "停机坪": "APRON", "APRON": "APRON",
-    "不明": "UNKNOWN", "未知": "UNKNOWN",
-}
+    # 处理空值
+    if value is None or value == "":
+        return value
 
-FOD_TYPE_MAP = {
-    "金属": "METAL", "螺母": "METAL", "螺栓": "METAL", "钉": "METAL", "工具": "METAL",
-    "塑料": "PLASTIC_RUBBER", "橡胶": "PLASTIC_RUBBER", "轮胎": "PLASTIC_RUBBER",
-    "PLASTIC": "PLASTIC_RUBBER", "RUBBER": "PLASTIC_RUBBER",
-    "石块": "STONE_GRAVEL", "砂石": "STONE_GRAVEL", "碎石": "STONE_GRAVEL", "GRAVEL": "STONE_GRAVEL",
-    "液体": "LIQUID", "油液": "LIQUID", "液体异物": "LIQUID",
-    "不明": "UNKNOWN", "未知": "UNKNOWN",
-}
+    config = ENUM_VALUE_MAPS[field_name]
+    valid_values = config["valid_values"]
+    mappings = config["mappings"]
 
-PRESENCE_TYPE_MAP = {
-    "仍在": "ON_SURFACE", "在道面": "ON_SURFACE", "未移除": "ON_SURFACE",
-    "已移除": "REMOVED", "已清理": "REMOVED", "已处理": "REMOVED",
-    "被风吹动": "MOVING_BLOWING", "移动": "MOVING_BLOWING", "滚动": "MOVING_BLOWING",
-    "不明": "UNKNOWN", "未知": "UNKNOWN",
-}
+    # 处理布尔值（related_event字段）
+    if field_name == "related_event" and isinstance(value, bool):
+        return "YES" if value else "NO"
 
-FOD_SIZE_MAP = {
-    "小": "SMALL", "<5CM": "SMALL", "小于5": "SMALL",
-    "中": "MEDIUM", "5-15CM": "MEDIUM", "5~15": "MEDIUM",
-    "大": "LARGE", ">15CM": "LARGE", "大于15": "LARGE",
-    "不明": "UNKNOWN", "未知": "UNKNOWN",
-}
+    # 处理字符串值
+    value_str = str(value).strip().upper()
 
-RELATED_EVENT_MAP = {
-    "是": "YES", "有关": "YES", "相关": "YES",
-    "否": "NO", "无关": "NO", "不是": "NO",
-    "不明": "UNKNOWN", "未知": "UNKNOWN",
-}
+    # 如果已经是有效值，直接返回
+    if value_str in valid_values or value_str in {"NULL"}:
+        return value_str if value_str != "NULL" else None
 
-PHASE_TYPE_MAP = {
-    "推出": "PUSHBACK",
-    "滑行": "TAXI",
-    "起飞滑跑": "TAKEOFF_ROLL",
-    "起飞": "TAKEOFF_ROLL",
-    "爬升": "INITIAL_CLIMB",
-    "起飞后": "INITIAL_CLIMB",
-    "巡航": "CRUISE",
-    "下降": "DESCENT",
-    "进近": "APPROACH",
-    "落地滑跑": "LANDING_ROLL",
-    "着陆滑跑": "LANDING_ROLL",
-    "停机位": "ON_STAND",
-    "不明": "UNKNOWN",
-    "未知": "UNKNOWN",
-}
+    # 尝试映射
+    mapped = mappings.get(value_str)
+    if mapped:
+        return mapped
 
-EVIDENCE_TYPE_MAP = {
-    "残留": "CONFIRMED_STRIKE_WITH_REMAINS",
-    "羽毛": "CONFIRMED_STRIKE_WITH_REMAINS",
-    "血迹": "CONFIRMED_STRIKE_WITH_REMAINS",
-    "确认撞击": "CONFIRMED_STRIKE_WITH_REMAINS",
-    "告警": "SYSTEM_WARNING",
-    "报警": "SYSTEM_WARNING",
-    "ECAM": "SYSTEM_WARNING",
-    "EICAS": "SYSTEM_WARNING",
-    "异响": "ABNORMAL_NOISE_VIBRATION",
-    "振动": "ABNORMAL_NOISE_VIBRATION",
-    "震动": "ABNORMAL_NOISE_VIBRATION",
-    "仅怀疑": "SUSPECTED_ONLY",
-    "疑似": "SUSPECTED_ONLY",
-    "无异常": "NO_ABNORMALITY",
-    "正常": "NO_ABNORMALITY",
-}
+    # fod_size可能是自由文本描述，保留原值
+    if field_name == "fod_size":
+        return value
 
-BIRD_INFO_MAP = {
-    "大型鸟": "LARGE_BIRD",
-    "大鸟": "LARGE_BIRD",
-    "鸟群": "FLOCK",
-    "群鸟": "FLOCK",
-    "中小型": "MEDIUM_SMALL_SINGLE",
-    "小型": "MEDIUM_SMALL_SINGLE",
-    "单只": "MEDIUM_SMALL_SINGLE",
-    "不明": "UNKNOWN",
-    "未知": "UNKNOWN",
-}
+    return value
 
-OPS_IMPACT_MAP = {
-    "中断起飞": "RTO_OR_RTB",
-    "返航": "RTO_OR_RTB",
-    "备降": "RTO_OR_RTB",
-    "占用跑道": "BLOCKING_RUNWAY_OR_TAXIWAY",
-    "占用滑行道": "BLOCKING_RUNWAY_OR_TAXIWAY",
-    "阻塞跑道": "BLOCKING_RUNWAY_OR_TAXIWAY",
-    "阻塞滑行道": "BLOCKING_RUNWAY_OR_TAXIWAY",
-    "机务检查": "REQUEST_MAINT_CHECK",
-    "请求检查": "REQUEST_MAINT_CHECK",
-    "待检查": "REQUEST_MAINT_CHECK",
-    "不影响运行": "NO_OPS_IMPACT",
-    "无影响": "NO_OPS_IMPACT",
-    "跑道关闭": "RUNWAY_CLOSED",
-    "滑行道封闭": "TAXIWAY_BLOCKED",
-    "机坪限制": "APRON_RESTRICTED",
-    "轻微影响": "MINOR_IMPACT",
-    "不影响": "NO_IMPACT",
-    "不明": "UNKNOWN",
-    "未知": "UNKNOWN",
-}
+
+def _get_scenario_field_keys(scenario_type: Optional[str]) -> set[str]:
+    """获取场景的所有字段key集合（包含通用字段）"""
+    # 通用字段总是允许
+    common_fields = {'flight_no', 'flight_no_display', 'position', 'position_display', 'report_time', 'reported_by'}
+
+    if not scenario_type:
+        return common_fields
+
+    scenario = ScenarioRegistry.get(scenario_type)
+    if not scenario:
+        return common_fields
+
+    # 收集场景特定字段
+    scenario_fields = {
+        field.get("key")
+        for field in scenario.p1_fields + scenario.p2_fields
+        if field.get("key")
+    }
+
+    return common_fields | scenario_fields
+
+
+def _build_field_descriptions_for_llm(scenario_type: Optional[str]) -> str:
+    """根据场景类型构建字段描述（用于LLM prompt）"""
+    if not scenario_type:
+        return "- position: 事发位置\n- flight_no: 航班号"
+
+    scenario = ScenarioRegistry.get(scenario_type)
+    if not scenario:
+        return "- position: 事发位置\n- flight_no: 航班号"
+
+    field_descriptions = []
+    for field in scenario.p1_fields + scenario.p2_fields:
+        key = field.get("key")
+        if not key:
+            continue
+
+        label = field.get("label", key)
+        field_type = field.get("type")
+
+        # 枚举类型列出选项
+        if field_type == "enum" and field.get("options"):
+            option_strs = [
+                f"{opt.get('value')}={opt.get('label', opt.get('value'))}"
+                for opt in field.get("options", [])
+            ]
+            field_descriptions.append(f"- {key}: {label}（{', '.join(option_strs)}）")
+        else:
+            field_descriptions.append(f"- {key}: {label}")
+
+    return "\n".join(field_descriptions)
+
+
+def _build_llm_extract_prompt(scenario_type: Optional[str]) -> str:
+    """根据场景类型动态构建LLM提取prompt"""
+    field_descriptions = _build_field_descriptions_for_llm(scenario_type)
+
+    return f"""你是一个机场应急响应系统的事件信息提取助手。
+
+根据对话历史和当前用户输入，提取事件信息。输出 JSON 格式：
+
+## 对话历史：
+{{history}}
+
+## 当前用户输入：
+{{user_input}}
+
+## 需要提取的字段（仅提取以下字段，不要提取其他字段）：
+{field_descriptions}
+
+## 智能提取规则：
+1. 如果用户只输入纯数字（2-3位），且问题是关于位置的 → 识别为机位号
+2. 如果用户输入航班号格式（2字母+3-4数字） → 识别为 flight_no
+3. 如果用户回答"是/否/不知道"等，且没有明确信息 → 返回空 {{}}
+4. **重要**：如果用户明确表示某个信息"不明"、"不清楚"、"不知道"，提取为 UNKNOWN（不要返回空）
+5. 只提取明确的信息，不要猜测
+6. **关键**：只能提取上述列出的字段，严禁提取其他场景的字段
+
+## 输出格式：
+{{"position": "...", "field1": "...", "field2": "...", ...}}
+
+如果无法提取任何有效信息，返回 {{}}
+"""
 
 
 def _merge_patterns(scenario_type: str) -> Dict[str, Any]:
@@ -1018,11 +1231,13 @@ def extract_entities(text: str, scenario_type: Optional[str] = None) -> Dict[str
     return entities
 
 
-def extract_entities_llm(text: str, history: str = "") -> Dict[str, Any]:
-    """使用 LLM 提取实体（更灵活）"""
+def extract_entities_llm(text: str, history: str = "", scenario_type: Optional[str] = None) -> Dict[str, Any]:
+    """使用 LLM 提取实体（更灵活，根据场景类型动态构建prompt）"""
     try:
         llm = get_llm_client()
-        prompt = LLM_EXTRACT_PROMPT.format(history=history, user_input=text)
+        # 使用动态构建的prompt
+        prompt_template = _build_llm_extract_prompt(scenario_type)
+        prompt = prompt_template.format(history=history, user_input=text)
         response = llm.invoke(prompt)
         content = response.content if hasattr(response, 'content') else str(response)
 
@@ -1030,118 +1245,25 @@ def extract_entities_llm(text: str, history: str = "") -> Dict[str, Any]:
         import json
         entities = json.loads(content)
 
-        # 翻译中文值为代码值
-        if "fluid_type" in entities and entities["fluid_type"]:
-            ft = str(entities["fluid_type"]).upper()
-            entities["fluid_type"] = POS_TYPE_MAP.get(ft, ft) if ft not in ["FUEL", "HYDRAULIC", "OIL", "UNKNOWN", "NULL", None] else ft
+        # 过滤：只保留当前场景的字段
+        if scenario_type:
+            allowed_fields = _get_scenario_field_keys(scenario_type)
 
-        if "engine_status" in entities and entities["engine_status"]:
-            es = str(entities["engine_status"]).upper()
-            entities["engine_status"] = ENG_TYPE_MAP.get(es, es) if es not in ["RUNNING", "STOPPED", "UNKNOWN", "NULL", None] else es
+            logger.info(f"场景类型: {scenario_type}")
+            logger.info(f"允许的字段: {allowed_fields}")
+            logger.info(f"LLM提取的字段: {set(entities.keys())}")
 
-        if "leak_size" in entities and entities["leak_size"]:
-            ls = str(entities["leak_size"]).upper()
-            # 如果是中文表达，尝试映射；如果已经是标准值，保持不变
-            if ls not in ["LARGE", "MEDIUM", "SMALL", "UNKNOWN", "NULL"]:
-                entities["leak_size"] = SIZE_TYPE_MAP.get(ls, ls)
-            else:
-                entities["leak_size"] = ls
+            filtered_entities = {k: v for k, v in entities.items() if k in allowed_fields}
+            removed_fields = set(entities.keys()) - set(filtered_entities.keys())
+            if removed_fields:
+                logger.info(f"已过滤掉的字段: {removed_fields}")
 
-        if "phase" in entities and entities["phase"]:
-            phase = str(entities["phase"]).upper()
-            if phase not in [
-                "PUSHBACK", "TAXI", "TAKEOFF_ROLL", "INITIAL_CLIMB", "CRUISE",
-                "DESCENT", "APPROACH", "LANDING_ROLL", "ON_STAND", "UNKNOWN",
-            ]:
-                entities["phase"] = PHASE_TYPE_MAP.get(phase, phase)
-            else:
-                entities["phase"] = phase
+            entities = filtered_entities
 
-        if "evidence" in entities and entities["evidence"]:
-            evidence = str(entities["evidence"]).upper()
-            if evidence not in [
-                "CONFIRMED_STRIKE_WITH_REMAINS",
-                "SYSTEM_WARNING",
-                "ABNORMAL_NOISE_VIBRATION",
-                "SUSPECTED_ONLY",
-                "NO_ABNORMALITY",
-                "UNKNOWN",
-            ]:
-                entities["evidence"] = EVIDENCE_TYPE_MAP.get(evidence, evidence)
-            else:
-                entities["evidence"] = evidence
-
-        if "bird_info" in entities and entities["bird_info"]:
-            bird_info = str(entities["bird_info"]).upper()
-            if bird_info not in ["LARGE_BIRD", "FLOCK", "MEDIUM_SMALL_SINGLE", "UNKNOWN"]:
-                entities["bird_info"] = BIRD_INFO_MAP.get(bird_info, bird_info)
-            else:
-                entities["bird_info"] = bird_info
-
-        if "ops_impact" in entities and entities["ops_impact"]:
-            ops_impact = str(entities["ops_impact"]).upper()
-            if ops_impact not in [
-                "RTO_OR_RTB",
-                "BLOCKING_RUNWAY_OR_TAXIWAY",
-                "REQUEST_MAINT_CHECK",
-                "NO_OPS_IMPACT",
-                "RUNWAY_CLOSED",
-                "TAXIWAY_BLOCKED",
-                "APRON_RESTRICTED",
-                "MINOR_IMPACT",
-                "NO_IMPACT",
-                "UNKNOWN",
-            ]:
-                entities["ops_impact"] = OPS_IMPACT_MAP.get(ops_impact, ops_impact)
-            else:
-                entities["ops_impact"] = ops_impact
-
-        if "location_area" in entities and entities["location_area"]:
-            location_area = str(entities["location_area"]).upper()
-            if location_area not in ["RUNWAY", "TAXIWAY", "APRON", "UNKNOWN", "NULL"]:
-                entities["location_area"] = LOCATION_AREA_MAP.get(location_area, location_area)
-            else:
-                entities["location_area"] = location_area
-
-        if "fod_type" in entities and entities["fod_type"]:
-            fod_type = str(entities["fod_type"]).upper()
-            if fod_type not in [
-                "METAL",
-                "PLASTIC_RUBBER",
-                "STONE_GRAVEL",
-                "LIQUID",
-                "UNKNOWN",
-                "NULL",
-            ]:
-                entities["fod_type"] = FOD_TYPE_MAP.get(fod_type, fod_type)
-            else:
-                entities["fod_type"] = fod_type
-
-        if "presence" in entities and entities["presence"]:
-            presence = str(entities["presence"]).upper()
-            if presence not in ["ON_SURFACE", "REMOVED", "MOVING_BLOWING", "UNKNOWN", "NULL"]:
-                entities["presence"] = PRESENCE_TYPE_MAP.get(presence, presence)
-            else:
-                entities["presence"] = presence
-
-        if "fod_size" in entities and entities["fod_size"]:
-            raw_size = str(entities["fod_size"]).strip()
-            size_upper = raw_size.upper()
-            if size_upper in ["SMALL", "MEDIUM", "LARGE", "UNKNOWN", "NULL"]:
-                entities["fod_size"] = size_upper
-            else:
-                entities["fod_size"] = FOD_SIZE_MAP.get(size_upper, raw_size)
-
-        if "related_event" in entities and entities["related_event"] is not None:
-            related_event = entities["related_event"]
-            if isinstance(related_event, bool):
-                entities["related_event"] = "YES" if related_event else "NO"
-            else:
-                related_event_str = str(related_event).upper()
-                if related_event_str not in ["YES", "NO", "UNKNOWN", "NULL"]:
-                    entities["related_event"] = RELATED_EVENT_MAP.get(related_event_str, related_event)
-                else:
-                    entities["related_event"] = related_event_str
+        # 统一规范化所有枚举值
+        for field_name in list(entities.keys()):
+            if entities[field_name] is not None:
+                entities[field_name] = _normalize_enum_value(field_name, entities[field_name])
 
         # 清理 null 值
         return {k: v for k, v in entities.items() if v not in [None, "null", "NULL", ""]}
@@ -1160,16 +1282,20 @@ def extract_entities_hybrid(text: str, history: str = "", scenario_type: Optiona
     """
     # 第一步：正则提取（快速、确定性）
     entities = extract_entities(text, scenario_type)
+    logger.debug(f"[Hybrid Extract] 正则提取结果: {entities}")
 
-    # 第二步：LLM 补充（处理模糊表达）
-    llm_entities = extract_entities_llm(text, history)
+    # 第二步：LLM 补充（处理模糊表达），传递场景类型
+    llm_entities = extract_entities_llm(text, history, scenario_type)
+    logger.debug(f"[Hybrid Extract] LLM提取结果: {llm_entities}")
 
-    # 合并结果：LLM 结果覆盖正则结果（更智能）
+    # 合并结果：LLM 结果补充正则结果（正则优先，LLM补充）
+    # 修改策略：优先保留正则提取的结果，LLM只补充正则未提取到的字段
     for key, value in llm_entities.items():
-        # 如果 LLM 提取了正则没提取到的，或者 LLM 明确说了某个值
-        if key not in entities or (value is not None and value != "null"):
+        # 只在正则没有提取到该字段时，才使用LLM结果
+        if key not in entities and value is not None and value != "null":
             entities[key] = value
 
+    logger.debug(f"[Hybrid Extract] 合并后结果: {entities}")
     return entities
 
 
