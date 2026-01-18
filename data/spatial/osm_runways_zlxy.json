@@ -1,0 +1,30 @@
+{
+  "source": "OpenStreetMap Overpass API",
+  "airport": {
+    "icao": "ZLXY",
+    "name": "Xi'an Xianyang International Airport"
+  },
+  "runways": [
+    {
+      "ref": "06L/24R",
+      "lat": 34.4322425,
+      "lon": 108.7666028,
+      "length_m": 3800,
+      "surface": "concrete"
+    },
+    {
+      "ref": "05L/23R",
+      "lat": 34.453458,
+      "lon": 108.7511597,
+      "length_m": 3800,
+      "surface": "concrete"
+    },
+    {
+      "ref": "06R/24L",
+      "lat": 34.4320366,
+      "lon": 108.7726108,
+      "length_m": 3000,
+      "surface": "concrete"
+    }
+  ]
+}
