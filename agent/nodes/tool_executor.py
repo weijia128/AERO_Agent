@@ -94,6 +94,16 @@ def tool_executor_node(state: AgentState) -> Dict[str, Any]:
             "final_report",
             "final_answer",
             "report_generated",
+            "awaiting_supplemental_info",
+            "supplemental_notes",
+            "finalize_report",
+            "supplemental_prompted",
+            "comprehensive_analysis",
+            "comprehensive_analysis_failed",
+            "flight_impact_prediction",
+            "position_impact_analysis",
+            "weather_impact",
+            "cleanup_time_estimate",
         ]:
             if key in result:
                 if key == "messages":
@@ -109,28 +119,19 @@ def tool_executor_node(state: AgentState) -> Dict[str, Any]:
             updates["weather_last_position"] = state.get("incident", {}).get("position")
             updates["weather_queried"] = True
         
-        # 报告生成后等待用户确认，避免继续推理导致重复询问
+        # 报告生成后等待用户确认，避免在确认前直接产出最终报告
         if result.get("report_generated"):
-            if action == "generate_report":
-                from agent.nodes.output_generator import output_generator_node
-
-                draft_state = {**state, **updates}
-                draft = output_generator_node(draft_state)
-                updates["final_report"] = draft.get("final_report", {})
-                updates["final_answer"] = draft.get("final_answer", "")
-                updates["is_complete"] = False
-                updates["awaiting_user"] = True
-                updates["next_node"] = "end"
-                updates["fsm_state"] = state.get("fsm_state")
-            else:
-                updates["awaiting_user"] = True
-                updates["next_node"] = "end"
+            updates["awaiting_user"] = True
+            updates["next_node"] = "end"
 
         # 更新推理步骤中的 observation
         reasoning_steps = state.get("reasoning_steps", [])
         if reasoning_steps:
             reasoning_steps[-1]["observation"] = result.get("observation", "")
             updates["reasoning_steps"] = reasoning_steps
+
+        if action == "analyze_spill_comprehensive":
+            updates["comprehensive_analysis_failed"] = False
 
         # 【新增】如果计算出影响范围，自动调用航班影响预测
         if "spatial_analysis" in result and result["spatial_analysis"]:
@@ -180,11 +181,15 @@ def tool_executor_node(state: AgentState) -> Dict[str, Any]:
         action_record["status"] = ActionStatus.FAILED.value
         action_record["result"] = str(e)
         
-        return {
+        failure_updates = {
             "current_observation": f"工具执行失败: {str(e)}",
             "actions_taken": state.get("actions_taken", []) + [action_record],
             "next_node": "reasoning",
         }
+        if action == "analyze_spill_comprehensive":
+            failure_updates["comprehensive_analysis_failed"] = True
+
+        return failure_updates
 
 
 def execute_tool_with_retry(tool, state: AgentState, action_input: Dict, max_retries: int = 2) -> Dict[str, Any]:

@@ -589,12 +589,25 @@ class AgentRunner:
             return {"status": "error", "message": "状态未初始化"}
 
         # 检查是否完成
-        if self.state.get("is_complete") or self.state.get("fsm_state") == "COMPLETED":
+        if self.state.get("is_complete"):
             return {
                 "status": "completed",
                 "report": self.state.get("final_report", {}),
                 "answer": self.state.get("final_answer", ""),
             }
+        if self.state.get("fsm_state") == "COMPLETED":
+            if (
+                self.state.get("scenario_type") == "oil_spill"
+                and not self.state.get("supplemental_prompted")
+                and not self.state.get("report_generated")
+            ):
+                pass
+            else:
+                return {
+                    "status": "completed",
+                    "report": self.state.get("final_report", {}),
+                    "answer": self.state.get("final_answer", ""),
+                }
 
         try:
             # 记录当前最新的 assistant 消息，避免重复追问
@@ -635,6 +648,7 @@ class AgentRunner:
 
             # 最后一次状态检查（确保拿到最终状态）
             # stream 结束后 self.state 已经是最新的了
+            self._maybe_save_advice_report({})
 
             # 检查报告是否已生成但等待用户确认
             if self.state.get("report_generated") and not self.state.get("is_complete"):
@@ -959,6 +973,7 @@ class AgentRunner:
                     total = stats.get("total_affected_flights", 0)
                     avg_delay = stats.get("average_delay_minutes", 0)
                     print_info(f"航班影响预测: {total} 架次, 平均延误 {avg_delay:.1f} 分钟")
+            self._maybe_save_advice_report(output)
 
         elif node_name == "fsm_validator":
             fsm_state = output.get("fsm_state", "")
@@ -1005,6 +1020,34 @@ class AgentRunner:
 
             return True
         return False
+
+    def _maybe_save_advice_report(self, output: Dict[str, Any]):
+        if self.state.get("scenario_type") != "oil_spill":
+            return
+        if self.state.get("advice_report_saved"):
+            return
+        actions = self.state.get("actions_taken", [])
+        action_record = None
+        for record in reversed(actions):
+            if record.get("action") == "analyze_spill_comprehensive":
+                action_record = record
+                break
+        if not action_record:
+            return
+
+        observation = action_record.get("result", "")
+        if not observation:
+            observation = (
+                output.get("current_observation")
+                or self.state.get("current_observation", "")
+            )
+        if not observation:
+            observation = "（无综合评估输出）"
+        report_file = save_advice_report(self.state, observation)
+        if report_file:
+            self.state["advice_report_saved"] = True
+            self.state["advice_report_path"] = report_file
+            print_success(f"综合评估报告已保存: {report_file}")
 
 
 # ============================================================
@@ -1147,6 +1190,72 @@ def save_report(state: Dict[str, Any], report: Dict[str, Any], answer: str = "")
             "fsm_state": state.get("fsm_state", ""),
             "actions_taken": state.get("actions_taken", []),
             "notifications_sent": state.get("notifications_sent", []),
+        }, f, ensure_ascii=False, indent=2)
+
+    return md_filename
+
+
+def save_advice_report(state: Dict[str, Any], observation: str) -> str:
+    """保存漏油综合评估报告到 outputs/advice"""
+    import json
+
+    reports_dir = os.path.join(PROJECT_ROOT, "outputs", "advice")
+    os.makedirs(reports_dir, exist_ok=True)
+
+    session_id = state.get("session_id", "unknown")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    incident = state.get("incident", {})
+    flight_no = incident.get("flight_no") or incident.get("flight_no_display", "")
+
+    if flight_no:
+        base_name = f"advice_{flight_no}_{timestamp}"
+    else:
+        base_name = f"advice_{session_id}_{timestamp}"
+    md_filename = os.path.join(reports_dir, f"{base_name}.md")
+
+    position = incident.get("position_display") or incident.get("position")
+    incident_time = incident.get("incident_time") or incident.get("start_time")
+
+    lines = [
+        "# 漏油场景综合评估报告",
+        "",
+        f"- 生成时间: {datetime.now().isoformat()}",
+    ]
+    if flight_no:
+        lines.append(f"- 航班号: {flight_no}")
+    if position:
+        lines.append(f"- 位置: {position}")
+    if incident.get("fluid_type"):
+        lines.append(f"- 油液类型: {incident['fluid_type']}")
+    if incident.get("leak_size"):
+        lines.append(f"- 泄漏面积: {incident['leak_size']}")
+    if incident_time:
+        lines.append(f"- 事发时间: {incident_time}")
+    lines.extend([
+        "",
+        "## 综合评估输出",
+        "",
+        observation.strip() if observation else "（无综合评估输出）",
+        "",
+    ])
+
+    with open(md_filename, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+
+    json_filename = os.path.join(reports_dir, f"{base_name}.json")
+    with open(json_filename, "w", encoding="utf-8") as f:
+        json.dump({
+            "session_id": session_id,
+            "generated_at": datetime.now().isoformat(),
+            "incident": incident,
+            "observation": observation,
+            "comprehensive_analysis": state.get("comprehensive_analysis", {}),
+            "risk_assessment": state.get("risk_assessment", {}),
+            "spatial_analysis": state.get("spatial_analysis", {}),
+            "position_impact_analysis": state.get("position_impact_analysis", {}),
+            "flight_impact_prediction": state.get("flight_impact_prediction", {}),
+            "weather_impact": state.get("weather_impact", {}),
+            "cleanup_time_estimate": state.get("cleanup_time_estimate", {}),
         }, f, ensure_ascii=False, indent=2)
 
     return md_filename

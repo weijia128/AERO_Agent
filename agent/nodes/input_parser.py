@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 from agent.state import AgentState, FSMState
 from config.llm_config import get_llm_client
 from config.settings import settings
-from config.airline_codes import AIRLINE_CHINESE_TO_IATA
+from config.airline_codes import AIRLINE_CHINESE_TO_IATA, normalize_flight_number
 from scenarios.base import ScenarioRegistry
 from agent.nodes.semantic_understanding import (
     understand_conversation,
@@ -71,6 +71,8 @@ BASE_PATTERNS = {
         (r"(?:面积)?(?:不明|不清楚|不知道|待确认|未知|无法确定)", "UNKNOWN"),
     ],
     "aircraft": [
+        r"航班(?:号)?[：:\s]*([A-Z]{3}\d{3,4})",
+        r"([A-Z]{3}\d{3,4})(?=\D|$)",
         r"航班(?:号)?[：:\s]*([A-Z]{2}\d{3,4})",  # 航班CES2355, 航班号: CA1234
         r"([A-Z]{2}\d{3,4})(?=\D|$)",  # CA1234 后面是非数字或结尾
         # 中文航空公司 + 航班号
@@ -78,6 +80,17 @@ BASE_PATTERNS = {
         r"([B]-\d{4,5})",  # B-1234
     ],
 }
+
+
+def _is_negative_supplemental(text: str) -> bool:
+    normalized = text.strip().replace(" ", "")
+    if not normalized:
+        return True
+    negatives = {
+        "没有", "无", "不用", "不需要", "没了", "没有了", "没有补充", "无补充", "无需补充",
+        "完毕", "结束", "结束对话", "已完毕"
+    }
+    return normalized in negatives
 
 _RADIOTELEPHONY_RULES = None
 
@@ -293,7 +306,7 @@ def _extract_entities_legacy(text: str) -> Dict[str, Any]:
                 # IATA或ICAO格式
                 # 保存原始格式用于显示
                 entities["flight_no_display"] = value
-                entities["flight_no"] = value
+                entities["flight_no"] = normalize_flight_number(value)
             break
 
     return entities
@@ -462,6 +475,8 @@ def apply_auto_enrichment(
                     updates["flight_plan_observation"] = result["observation"]
                 if result.get("flight_plan_table"):
                     updates["flight_plan_table"] = result["flight_plan_table"]
+                if result.get("reference_flight"):
+                    updates["reference_flight"] = result["reference_flight"]
 
             elif key == "stand_location":
                 if result.get("observation"):
@@ -549,6 +564,37 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
         return {
             "error": "没有找到用户消息",
             "next_node": "end",
+        }
+
+    if state.get("awaiting_supplemental_info"):
+        supplemental_text = user_message.strip()
+        supplemental_notes = list(state.get("supplemental_notes", []))
+        if supplemental_text and not _is_negative_supplemental(supplemental_text):
+            supplemental_notes.append(supplemental_text)
+        reasoning_steps = state.get("reasoning_steps", [])
+        reasoning_steps.append(
+            {
+                "step": 0,
+                "thought": "记录用户补充信息",
+                "action": "input_parser",
+                "action_input": {"text": supplemental_text},
+                "observation": "已记录补充信息" if supplemental_notes else "无补充信息",
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
+        return {
+            "scenario_type": state.get("scenario_type", "oil_spill"),
+            "incident": state.get("incident", {}),
+            "checklist": state.get("checklist", {}),
+            "awaiting_user": False,
+            "awaiting_supplemental_info": False,
+            "supplemental_notes": supplemental_notes,
+            "finalize_report": True,
+            "supplemental_prompted": True,
+            "reasoning_steps": reasoning_steps,
+            "current_node": "input_parser",
+            "next_node": "reasoning",
+            "iteration_count": state.get("iteration_count", 0) or 1,
         }
 
     normalized_message = normalize_radiotelephony_text(user_message)
@@ -1202,7 +1248,7 @@ def extract_entities(text: str, scenario_type: Optional[str] = None) -> Dict[str
                         break
             else:
                 entities["flight_no_display"] = value
-                entities["flight_no"] = value
+                entities["flight_no"] = normalize_flight_number(value)
             break
 
     handled_keys = {

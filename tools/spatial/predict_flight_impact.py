@@ -96,10 +96,43 @@ class PredictFlightImpactTool(BaseTool):
         if not flight_data:
             return {"observation": "未找到航班数据"}
 
-        # 获取当前时间（从事件信息中获取，或使用当前时间）
+        # 获取时间窗口的起点时间（优先级：参考航班时间 > 事故时间 > 默认时间）
         incident = state.get("incident", {})
-        # 使用示例时间（可以从事件中获取）
-        current_time = datetime.fromisoformat("2025-10-21 11:00:00")
+        reference_flight = state.get("reference_flight", {})
+
+        current_time = None
+
+        # 第1优先级：从参考航班中获取时间（用户提供的航班号）
+        if reference_flight:
+            reference_time = reference_flight.get("reference_time")
+            if reference_time:
+                try:
+                    current_time = datetime.fromisoformat(reference_time)
+                except (ValueError, TypeError):
+                    pass
+
+        # 第2优先级：从 incident 中获取时间
+        if current_time is None:
+            incident_time = incident.get("incident_time") or incident.get("start_time")
+            if incident_time:
+                try:
+                    current_time = datetime.fromisoformat(incident_time)
+                except (ValueError, TypeError):
+                    pass
+
+        # 第3优先级：使用默认时间（匹配航班数据集）
+        if current_time is None:
+            current_time = datetime.fromisoformat("2026-01-06 10:00:00")
+            time_source = "default_time"
+        else:
+            time_source = None
+
+        if reference_flight and reference_flight.get("reference_time"):
+            time_source = "reference_flight"
+        elif incident.get("incident_time") or incident.get("start_time"):
+            time_source = "incident_time"
+        if time_source is None:
+            time_source = "default_time"
 
         # 预测时间窗口
         end_time = current_time + timedelta(hours=time_window_hours)
@@ -129,6 +162,8 @@ class PredictFlightImpactTool(BaseTool):
             current_time,
             end_time
         )
+
+        observation = f"{observation}\n预测基准时间: {current_time.isoformat()} (source={time_source})"
 
         return {
             "observation": observation,
@@ -163,8 +198,16 @@ class PredictFlightImpactTool(BaseTool):
         if flight_plan_file is None:
             project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             data_dir = os.path.join(project_root, "data", "raw", "航班计划")
-            # 使用示例文件
-            flight_plan_file = os.path.join(data_dir, "Log_1.txt")
+            # 优先使用真实数据集（2026-01-06 8-12点）
+            primary_file = os.path.join(data_dir, "Flight_Plan_2026-01-06_08-12.txt")
+            fallback_file = os.path.join(data_dir, "Log_1.txt")
+
+            if os.path.exists(primary_file):
+                flight_plan_file = primary_file
+            elif os.path.exists(fallback_file):
+                flight_plan_file = fallback_file
+            else:
+                raise FileNotFoundError(f"未找到航班计划文件: {primary_file} 或 {fallback_file}")
 
         if not os.path.exists(flight_plan_file):
             raise FileNotFoundError(f"航班计划文件不存在: {flight_plan_file}")
@@ -340,9 +383,9 @@ class PredictFlightImpactTool(BaseTool):
                 "average_delay_minutes": total_delay / len(flights_with_delays) if flights_with_delays else 0,
                 "delay_distribution": delay_distribution,
                 "severity_distribution": {
-                    "high": sum(1 for f in flights_with_delays if f['estimated_delay_minutes'] >= 60),
-                    "medium": sum(1 for f in flights_with_delays if 20 <= f['estimated_delay_minutes'] < 60),
-                    "low": sum(1 for f in flights_with_delays if f['estimated_delay_minutes'] < 20)
+                    "high": sum(1 for f in flights_with_delays if (f.get('estimated_delay_minutes') or 0) >= 60),
+                    "medium": sum(1 for f in flights_with_delays if 20 <= (f.get('estimated_delay_minutes') or 0) < 60),
+                    "low": sum(1 for f in flights_with_delays if (f.get('estimated_delay_minutes') or 0) < 20)
                 }
             }
         }

@@ -94,10 +94,24 @@ def after_fsm_validation(state: AgentState) -> Literal["reasoning", "output_gene
 
     # 达到完成状态
     if fsm_state == FSMState.COMPLETED.value:
+        if (
+            state.get("scenario_type") == "oil_spill"
+            and not state.get("supplemental_prompted")
+            and not state.get("awaiting_supplemental_info")
+            and not state.get("report_generated")
+        ):
+            return "reasoning"
         return "output_generator"
 
     # 达到 P8 关闭状态
     if fsm_state == FSMState.P8_CLOSE.value:
+        if (
+            state.get("scenario_type") == "oil_spill"
+            and not state.get("supplemental_prompted")
+            and not state.get("awaiting_supplemental_info")
+            and not state.get("report_generated")
+        ):
+            return "reasoning"
         # 检查是否还有待执行的强制动作（如通知部门）
         # 如果有，返回 reasoning 让 check_immediate_triggers 触发
         from agent.nodes.reasoning import check_immediate_triggers

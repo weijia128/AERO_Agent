@@ -90,7 +90,7 @@ airport-emergency-agent/
 │   ├── raw/         # Raw data (flight plans, weather, ATC rules)
 │   ├── processed/   # Processed data (weather CSV/XLSX)
 │   └── spatial/     # Spatial data (topology graphs)
-├── outputs/         # Generated reports
+├── outputs/         # Generated reports (reports/ final checklists, advice/ comprehensive analysis)
 └── scripts/         # Data processing scripts
 ```
 
@@ -120,10 +120,12 @@ User Input → Input Parser → ReAct Reasoning Loop → FSM Validation → Outp
    - Stage 1: Basic rule-based conversion (洞→0, 幺→1, 拐→7)
    - Stage 2: LLM + rule-based Few-shot retrieval
    - Auto-enrichment: Parallel queries for flight info, topology, weather
+   - Flight plan lookup records `reference_flight` time for downstream impact prediction
 
 2. **Reasoning Node**: ReAct loop with dynamic scenario prompts
    - Uses tools to gather information and take actions
    - Follows scenario-specific field collection order
+   - For oil_spill, runs comprehensive analysis after P1 + risk assessment, then asks for supplemental info before final report
 
 3. **Tool Executor**: Executes tools from registry
    - Information tools: ask, get_aircraft_info, flight_plan_lookup, get_weather, smart_ask
@@ -140,6 +142,7 @@ User Input → Input Parser → ReAct Reasoning Loop → FSM Validation → Outp
    - Builds timeline of actions
    - Generates recommendations based on risk level
    - Compiles affected areas and flight impacts
+   - Oil spill comprehensive analysis is saved to `outputs/advice` (Markdown + JSON) before final report
 
 ## Core Components
 
@@ -161,6 +164,8 @@ User Input → Input Parser → ReAct Reasoning Loop → FSM Validation → Outp
 - **Spatial tools** (5): Topology analysis using NetworkX graph algorithms
 - **Assessment tools** (3): Risk scoring engines (scenario-specific)
 - **Action tools** (2): External notifications and report generation
+
+Flight impact prediction uses `reference_flight.reference_time` when available and logs the prediction base time in its observation output.
 
 ### FSM System
 9-state workflow validation:

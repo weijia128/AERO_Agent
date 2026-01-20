@@ -8,11 +8,13 @@ ReAct 推理节点
 - 支持场景专属 Prompt
 """
 import json
+import re
 from typing import Dict, Any, Optional, Tuple
 from datetime import datetime
 
 from agent.state import AgentState, FSMState
 from agent.prompts.builder import build_prompt
+from scenarios.base import ScenarioRegistry
 from config.llm_config import get_llm_client
 from tools.registry import get_tools_description, ToolRegistry
 
@@ -115,6 +117,11 @@ def check_immediate_triggers(state: AgentState) -> Optional[Dict[str, Any]]:
 
 def check_auto_weather_trigger(state: AgentState) -> Optional[Dict[str, Any]]:
     """检测是否需要触发自动气象查询"""
+    def _normalize_weather_position(value: Optional[str]) -> str:
+        if not value:
+            return ""
+        return re.sub(r"^(RUNWAY|RWY|跑道)\\s*", "", value.strip().upper())
+
     incident = state.get("incident", {})
     position = incident.get("position")
     if not position:
@@ -123,13 +130,69 @@ def check_auto_weather_trigger(state: AgentState) -> Optional[Dict[str, Any]]:
         return None
     if state.get("current_action") == "get_weather":
         return None
-    if state.get("weather_queried") and state.get("weather_last_position") == position:
-        return None
+    if state.get("weather_queried"):
+        last_position = state.get("weather_last_position", "")
+        if _normalize_weather_position(last_position) == _normalize_weather_position(position):
+            return None
     return {
         "forced_action": "get_weather",
         "forced_input": {"location": position},
         "reason": "自动查询气象信息",
     }
+
+
+def _should_prompt_supplemental(state: AgentState) -> bool:
+    if state.get("awaiting_user") or state.get("awaiting_supplemental_info"):
+        return False
+    if state.get("supplemental_prompted") or state.get("report_generated"):
+        return False
+
+    scenario_type = state.get("scenario_type", "oil_spill")
+    scenario = ScenarioRegistry.get(scenario_type)
+    checklist = state.get("checklist", {})
+
+    if scenario:
+        p1_fields = [f.get("key") for f in scenario.p1_fields if f.get("key")]
+        if any(not checklist.get(f) for f in p1_fields):
+            return False
+        if scenario.risk_required:
+            mandatory = state.get("mandatory_actions_done", {})
+            if not mandatory.get("risk_assessed"):
+                return False
+    else:
+        required = ["fluid_type", "position", "engine_status", "continuous"]
+        if any(not checklist.get(f) for f in required):
+            return False
+
+    return True
+
+
+def _should_run_comprehensive(state: AgentState) -> bool:
+    if state.get("awaiting_user") or state.get("awaiting_supplemental_info"):
+        return False
+    if state.get("report_generated"):
+        return False
+    if state.get("comprehensive_analysis"):
+        return False
+    actions = state.get("actions_taken", [])
+    if any(action.get("action") == "analyze_spill_comprehensive" for action in actions):
+        return False
+    if state.get("comprehensive_analysis_failed"):
+        return False
+    if state.get("scenario_type") != "oil_spill":
+        return False
+
+    scenario = ScenarioRegistry.get("oil_spill")
+    checklist = state.get("checklist", {})
+    if scenario:
+        p1_fields = [f.get("key") for f in scenario.p1_fields if f.get("key")]
+        if any(not checklist.get(f) for f in p1_fields):
+            return False
+        if scenario.risk_required:
+            mandatory = state.get("mandatory_actions_done", {})
+            if not mandatory.get("risk_assessed"):
+                return False
+    return True
 
 
 def build_context_summary(state: AgentState) -> str:
@@ -273,6 +336,21 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
     # 检查迭代次数
     iteration = state.get("iteration_count", 0) + 1
 
+    if state.get("finalize_report"):
+        return {
+            "current_thought": "收到补充信息，重新生成最终报告",
+            "next_node": "output_generator",
+            "iteration_count": iteration,
+            "finalize_report": False,
+            "reasoning_steps": state.get("reasoning_steps", []) + [{
+                "step": iteration,
+                "thought": "补充信息已记录，生成最终报告",
+                "action": "output_generator",
+                "action_input": {},
+                "timestamp": datetime.now().isoformat(),
+            }],
+        }
+
     # 检查强制触发
     forced = check_immediate_triggers(state)
     if forced:
@@ -333,6 +411,49 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
                 "iteration_count": iteration,
                 "reasoning_steps": reasoning_steps + [new_step],
             }
+
+    if _should_run_comprehensive(state):
+        reasoning_steps = state.get("reasoning_steps", [])
+        new_step = {
+            "step": iteration,
+            "thought": "P1与风险评估已完成，调用综合分析工具",
+            "action": "analyze_spill_comprehensive",
+            "action_input": {},
+            "timestamp": datetime.now().isoformat(),
+        }
+        return {
+            "current_thought": "执行综合分析",
+            "current_action": "analyze_spill_comprehensive",
+            "current_action_input": {},
+            "next_node": "tool_executor",
+            "iteration_count": iteration,
+            "reasoning_steps": reasoning_steps + [new_step],
+        }
+
+    if _should_prompt_supplemental(state):
+        incident = state.get("incident", {})
+        flight_no = incident.get("flight_no_display") or incident.get("flight_no") or ""
+        prompt = "处置流程已完成。若有补充信息请直接说明；如无请回复“完毕”或“结束”。"
+        if flight_no:
+            prompt = f"{flight_no}，{prompt}"
+        reasoning_steps = state.get("reasoning_steps", [])
+        new_step = {
+            "step": iteration,
+            "thought": "P1信息已完成，发起补充信息确认",
+            "action": "ask_for_detail",
+            "action_input": {"field": "supplemental_notes"},
+            "timestamp": datetime.now().isoformat(),
+        }
+        return {
+            "current_thought": "需要确认补充信息",
+            "messages": [{"role": "assistant", "content": prompt}],
+            "awaiting_user": True,
+            "awaiting_supplemental_info": True,
+            "supplemental_prompted": True,
+            "next_node": "end",
+            "iteration_count": iteration,
+            "reasoning_steps": reasoning_steps + [new_step],
+        }
     
     # 构建上下文
     context = build_context_summary(state)
