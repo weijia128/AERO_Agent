@@ -117,6 +117,7 @@ guardrails.requires_human_approval=true
 - ✅ 符合实际机场运行场景
 - ✅ 自动触发分析（航班查询、空间推理、风险评估）
 - ✅ 实时反馈分析结果给管制员
+- ✅ 漏油场景自动生成综合评估报告（outputs/advice，Markdown+JSON）
 
 #### 运行方式
 
@@ -307,7 +308,7 @@ airport-emergency-agent/
 ├── constraints/               # 约束系统
 │   ├── loader.py             # ✅ 约束加载器
 │   └── checker.py            # ✅ 约束检查器
-├── spatial/                   # 空间推理 (⚠️ 部分实现)
+├── spatial/                   # 空间推理 (✅ 已实现)
 │   └── data/                 # 机场拓扑数据
 │       └── airport_topology.json  # ✅ 拓扑数据
 ├── api/                       # API 接口
@@ -330,20 +331,21 @@ airport-emergency-agent/
 | `constraints/loader.py` | ✅ 已完成 | 从 YAML 配置加载约束定义 |
 | `constraints/checker.py` | ✅ 已完成 | Checklist 约束检查与强制动作验证 |
 
-### 中优先级 (影响系统完整性)
+### 中优先级 (影响系统完整性) ✅ 已完成
 
 | 组件 | 状态 | 影响 | 预估工作量 |
 |------|------|------|-----------|
-| `rules/risk_engine.py` | ⚠️ 部分实现 | 风险评估规则不够完善，可能影响高风险场景判断准确性 | 3-4 天 |
-| `spatial/topology.py` | ❌ 缺失 | 缺少机场拓扑结构定义，影响复杂场景分析 | 2-3 天 |
-| `spatial/graph_engine.py` | ❌ 缺失 | 缺少路径查找算法，影响影响区域计算 | 2-3 天 |
+| `tools/assessment/assess_oil_spill_risk.py` | ✅ 已完成 | 漏油风险规则与评分映射已实现 | - |
+| `tools/spatial/topology_loader.py` | ✅ 已完成 | 机场拓扑加载与节点查询已实现 | - |
+| `tools/spatial/calculate_impact_zone.py` | ✅ 已完成 | BFS 扩散与影响范围计算已实现 | - |
+| `tools/spatial/predict_flight_impact.py` | ✅ 已完成 | 历史航班 + 拓扑影响预测已实现 | - |
 
 ### 低优先级 (扩展功能)
 
 | 组件 | 状态 | 说明 | 预估工作量 |
 |------|------|------|-----------|
 | `knowledge/retriever.py` | ⚠️ 使用中 | 当前 `search_regulations.py` 已实现基本功能 | - |
-| `scenarios/bird_strike/` | ❌ 缺失 | 鸟击场景扩展，增加新场景需 1-2 周 | 1-2 周 |
+| `scenarios/bird_strike/` | ✅ 已完成 | 完整鸟击场景 + BSRC 风险评估 | - |
 | `scenarios/tire_burst/` | ❌ 缺失 | 轮胎爆破场景 | 1-2 周 |
 | `scenarios/runway_incursion/` | ❌ 缺失 | 跑道入侵场景 | 2-3 周 |
 
@@ -352,10 +354,10 @@ airport-emergency-agent/
 **阶段一 (核心修复)** - ✅ 已完成
 1. 实现 `constraints/` 完整约束系统 - 确保流程合规 ✅
 
-**阶段二 (能力增强)**：
-1. 完善 `rules/risk_engine.py` - 增强风险评估准确性
-2. 实现 `spatial/topology.py` - 机场拓扑建模
-3. 实现 `spatial/graph_engine.py` - 路径查找与影响分析
+**阶段二 (能力增强)** - ✅ 已完成：
+1. 完善 `tools/assessment/assess_oil_spill_risk.py` - 风险评估规则与评分映射 ✅
+2. 实现 `tools/spatial/topology_loader.py` - 机场拓扑建模 ✅
+3. 实现 `tools/spatial/calculate_impact_zone.py`/`tools/spatial/predict_flight_impact.py` - 影响范围与航班预测 ✅
 
 **阶段三 (场景扩展)**：
 1. 添加更多应急场景支持
@@ -395,6 +397,11 @@ python run_interactive.py
 # 运行测试
 python -m pytest tests/
 ```
+
+### 输出目录
+
+- `outputs/reports/`: 最终处置报告（按场景分类）
+- `outputs/advice/`: 漏油综合评估报告（Markdown + JSON）
 
 ### 环境配置
 
@@ -878,8 +885,8 @@ scenarios/
 
 | 问题 | 影响 | 状态 |
 |------|------|------|
-| 航班影响预测（部分实现） | 运行影响评估不完整 | 待实现 |
-| 单场景报告模板 | 无法为不同场景自定义输出 | 计划中（阶段3） |
+| 航班影响预测 | 已支持历史航班 + 拓扑联动预测 | ✅ 已实现 |
+| 多场景报告模板 | oil_spill/bird_strike/fod 模板已提供 | ✅ 已实现 |
 | 无提示版本控制 | 无法A/B测试或回滚提示 | 计划中（阶段5） |
 | 无中间件/钩子系统 | 扩展点有限 | 计划中（阶段5） |
 
