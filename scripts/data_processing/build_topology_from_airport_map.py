@@ -324,6 +324,88 @@ def build_topology(stand_shp_path, taxi_shp_path, output_path):
         adjacency[start].add(end)
         adjacency[end].add(start)
 
+    # Connect isolated taxiways by nearest geometry (conservative threshold).
+    max_taxiway_gap_m = 25.0
+    lines_by_token = defaultdict(list)
+    for record in taxiway_records:
+        tokens = []
+        for token in record["tokens"]:
+            if token_is_runway(token):
+                tokens.append(canonical_runway_token(token))
+            else:
+                tokens.append(token)
+        if len(tokens) != 1:
+            continue
+        points = record["points"]
+        if len(points) < 2:
+            continue
+        line = LineString(points)
+        if line.is_empty:
+            continue
+        lines_by_token[tokens[0]].append(line)
+
+    all_lines = []
+    line_meta = []
+    for token, lines in lines_by_token.items():
+        for line in lines:
+            all_lines.append(line)
+            line_meta.append({"token": token})
+
+    if all_lines:
+        tree = STRtree(all_lines)
+        for node_id, node in nodes.items():
+            if node.get("type") != "taxiway":
+                continue
+            if adjacency.get(node_id):
+                continue
+            token = node_id.replace("taxiway_", "")
+            if token not in lines_by_token:
+                continue
+            best = None
+            for line in lines_by_token[token]:
+                for idx in tree.query(line):
+                    cand_line = all_lines[idx]
+                    cand_token = line_meta[idx]["token"]
+                    if cand_token == token:
+                        continue
+                    dist = line.distance(cand_line)
+                    if dist <= max_taxiway_gap_m and (best is None or dist < best[0]):
+                        best = (dist, cand_token)
+            if best:
+                dist, cand_token = best
+                other_id = f"taxiway_{cand_token}"
+                key = tuple(sorted([node_id, other_id]))
+                if key not in edge_counts:
+                    edge_counts[key] = 1
+                    adjacency[node_id].add(other_id)
+                    adjacency[other_id].add(node_id)
+
+    # Connect isolated stands to nearest taxiway node (conservative threshold).
+    max_stand_gap_m = 40.0
+    taxiway_nodes = [node_id for node_id, node in nodes.items() if node.get("type") == "taxiway"]
+    for node_id, node in nodes.items():
+        if node.get("type") != "stand":
+            continue
+        if adjacency.get(node_id):
+            continue
+        if node.get("x") is None or node.get("y") is None:
+            continue
+        best = None
+        for taxi_id in taxiway_nodes:
+            taxi_node = nodes[taxi_id]
+            if taxi_node.get("x") is None or taxi_node.get("y") is None:
+                continue
+            dist = math.hypot(node["x"] - taxi_node["x"], node["y"] - taxi_node["y"])
+            if dist <= max_stand_gap_m and (best is None or dist < best[0]):
+                best = (dist, taxi_id)
+        if best:
+            dist, taxi_id = best
+            key = tuple(sorted([node_id, taxi_id]))
+            if key not in edge_counts:
+                edge_counts[key] = 1
+                adjacency[node_id].add(taxi_id)
+                adjacency[taxi_id].add(node_id)
+
     # Fill missing coordinates from neighbors.
     missing = True
     while missing:

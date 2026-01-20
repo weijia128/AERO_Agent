@@ -165,7 +165,9 @@ class AssessWeatherImpactTool(BaseTool):
 
     def _analyze_visibility_impact(self, weather: Dict[str, Any]) -> Dict[str, Any]:
         """分析能见度影响"""
-        visibility = weather.get("visibility", 10000)  # 默认10km
+        visibility = weather.get("visibility")
+        if visibility is None:
+            visibility = 10000  # 默认10km
 
         if visibility >= 10000:
             safety_level = "良好"

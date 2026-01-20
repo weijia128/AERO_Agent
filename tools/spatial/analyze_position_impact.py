@@ -409,7 +409,9 @@ class AnalyzePositionImpactTool(BaseTool):
         elif node_type == "stand":
             # 检查机位使用频率
             node_info = topology.get_node(node_id)
-            observations = node_info.get('observations', 0) if node_info else 0
+            observations = node_info.get('observations') if node_info else 0
+            if observations is None:
+                observations = 0
 
             is_high_traffic = observations > 15  # 观测次数超过15次视为高使用率
 
