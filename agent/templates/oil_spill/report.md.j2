@@ -12,4 +12,12 @@
 | 泄漏面积评估 | {{ leak_area }} |
 | 漏油形态 | {{ oil_leak_pattern }} |
 | 现场气象条件 | —— |
+
+{% if cleanup_time_text %}
+### 2.2 清理时间与气象影响
+清理时间预估：{{ cleanup_time_text }}
+{% if cleanup_weather_factor %}
+气象调整系数：{{ cleanup_weather_factor }}
+{% endif %}
+{% endif %}
 {% endblock %}

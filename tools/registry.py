@@ -87,6 +87,7 @@ def register_all_tools():
     from tools.assessment.assess_fod_risk import AssessFodRiskTool
     from tools.assessment.assess_weather_impact import AssessWeatherImpactTool
     from tools.assessment.estimate_cleanup_time import EstimateCleanupTimeTool
+    from tools.assessment.analyze_spill_comprehensive import AnalyzeSpillComprehensiveTool
     from tools.action.notify_department import NotifyDepartmentTool
     from tools.action.generate_report import GenerateReportTool
 
@@ -108,6 +109,7 @@ def register_all_tools():
     ToolRegistry.register(AssessRiskTool(), ["oil_spill"])
     ToolRegistry.register(AssessWeatherImpactTool(), ["oil_spill"])
     ToolRegistry.register(EstimateCleanupTimeTool(), ["oil_spill"])
+    ToolRegistry.register(AnalyzeSpillComprehensiveTool(), ["oil_spill"])  # 综合分析工具
     ToolRegistry.register(AssessBirdStrikeRiskTool(), ["bird_strike"])
     ToolRegistry.register(AssessFodRiskTool(), ["fod"])
 

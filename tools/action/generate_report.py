@@ -51,12 +51,10 @@ class GenerateReportTool(BaseTool):
         incident = state.get("incident", {})
         observation = "报告准备完成，等待用户确认是否需要补充信息。"
 
-        flight_no = incident.get("flight_no_display") or incident.get("flight_no") or ""
-        confirmation_message = f"{flight_no}，处置流程已完成。你还有什么需要补充的吗？" if flight_no else "处置流程已完成。你还有什么需要补充的吗？"
-
         return {
             "observation": observation,
             # 不直接设置 is_complete，而是设置 report_generated 标志
             "report_generated": True,
-            "messages": [{"role": "assistant", "content": confirmation_message}],
+            "awaiting_supplemental_info": False,
+            "messages": [],
         }

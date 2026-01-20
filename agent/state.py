@@ -249,6 +249,11 @@ class AgentState(TypedDict, total=False):
     is_complete: bool                  # 是否完成
     report_generated: bool             # 报告是否已生成（等待用户确认）
     awaiting_user: bool               # 是否等待用户输入
+    awaiting_supplemental_info: bool  # 是否等待补充信息
+    supplemental_notes: List[str]     # 补充信息（原文）
+    finalize_report: bool             # 是否需要重新生成报告
+    supplemental_prompted: bool       # 是否已提示补充信息
+    comprehensive_analysis_failed: bool  # 综合分析失败标记
     error: str                         # 错误信息
     
     # ===== 最终输出 =====
@@ -363,6 +368,11 @@ def create_initial_state(
         is_complete=False,
         report_generated=False,
         awaiting_user=False,
+        awaiting_supplemental_info=False,
+        supplemental_notes=[],
+        finalize_report=False,
+        supplemental_prompted=False,
+        comprehensive_analysis_failed=False,
         error="",
 
         # 最终输出

@@ -5,11 +5,17 @@ import os
 from pathlib import Path
 from typing import Optional, List
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, ConfigDict
 
 
 class Settings(BaseSettings):
     """系统全局配置"""
+
+    model_config = ConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
     
     # 项目路径
     PROJECT_ROOT: Path = Path(__file__).parent.parent
@@ -73,12 +79,6 @@ class Settings(BaseSettings):
     LANGCHAIN_API_KEY: Optional[str] = Field(default=None, description="LangSmith API Key")
     LANGCHAIN_PROJECT: Optional[str] = Field(default=None, description="LangSmith 项目名称")
     LANGCHAIN_ENDPOINT: str = Field(default="https://api.smith.langchain.com", description="LangSmith API 端点")
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        extra = "ignore"  # 忽略 LangSmith 等额外的环境变量
-
 
 # 全局配置实例
 settings = Settings()

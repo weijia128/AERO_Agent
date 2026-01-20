@@ -116,4 +116,9 @@
 ---
 **说明**：本检查单应随事件处置过程同步填写，事件关闭后统一归档，用于运行复盘与安全审计。
 
+{% if supplemental_notes %}
+## 12. 补充信息
+{{ supplemental_notes }}
+{% endif %}
+
 报告生成时间：{{ generated_at }}

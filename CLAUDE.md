@@ -264,7 +264,7 @@ pytest tests/tools/test_assess_risk.py -v -s
 | Oil spill scenario | ✅ Complete | Full FSM + 12-rule engine |
 | Bird strike scenario | ✅ Complete | BSRC scoring engine |
 | Tire burst scenario | 📋 Planned | Template ready |
-| Flight impact prediction | ⚠️ Partial | Needs delay model |
+| Flight impact prediction | ✅ Complete | Dynamic time window from flight number |
 | Report template engine | ⚠️ String concat | Needs refactoring |
 | Session persistence | ⚠️ Memory only | Needs PostgreSQL/Redis |
 
@@ -290,23 +290,54 @@ For detailed technical documentation, see:
 - **docs/SCENARIO_FIELD_CONTRACTS.md**: Field definitions for each scenario
 - **docs/ARCHITECTURE_DECISIONS.md**: Design decisions and trade-offs
 - **docs/DEPLOYMENT_GUIDE.md**: Production deployment instructions
+- **docs/DYNAMIC_TIME_WINDOW.md**: Flight-based dynamic time window feature (v2.0.0)
 
-## Recent Updates (2026-01-15)
+## Recent Updates
 
-### Newly Documented Modules
+### v2.0.0 (2026-01-20) - Dynamic Time Window Feature
+
+**Major Improvement: Flight-Based Time Window Prediction**
+
+Replaced hardcoded incident time with dynamic time window calculation based on user-provided flight numbers:
+
+- ✅ **flight_plan_lookup** enhanced to extract flight time and record `reference_flight` in state
+- ✅ **predict_flight_impact** now uses 3-tier time source priority:
+  1. `reference_flight.reference_time` (from flight number query)
+  2. `incident.incident_time` (user-specified time)
+  3. Default fallback: `2026-01-06 10:00:00`
+- ✅ **analyze_spill_comprehensive** reports display reference flight and time source
+- ✅ Time window: `reference_time` + (cleanup_time + 30min buffer)
+
+**Example workflow:**
+```
+User: "CES2876航班在501机位漏油"
+→ System queries CES2876 → finds takeoff at 08:35
+→ Analysis window: 08:35 - 10:05 (based on actual flight time)
+→ Predicts impact on 12 adjacent flights in that window
+```
+
+**Test coverage:** `tests/test_dynamic_time_window.py` (4 scenarios, all passing)
+
+**Documentation:** See `docs/DYNAMIC_TIME_WINDOW.md` for complete technical details
+
+---
+
+### v1.0.0 (2026-01-15)
+
+**Newly Documented Modules**
 - Semantic Understanding Module with confidence scoring
 - Dialogue Strategy Manager for conversation flow
 - Smart Ask Tool for multi-field questioning
 - Complete FSM Engine with precondition checking
 - Constraint System with dynamic rule evaluation
 
-### Architectural Clarifications
+**Architectural Clarifications**
 - `assess_risk.py` is a compatibility shim
 - Actual implementations: `assess_oil_spill_risk.py`, `assess_bird_strike_risk.py`
 - Primary topology: `scripts/data_processing/topology_clustering_based.json`
 - Weather formats: CSV and XLSX both supported
 
-### Data Files (as of 2026-01-15)
+**Data Files**
 - `awos_weather_2026-01-13.csv` / `.xlsx` - Weather observations
 - `topology_clustering_based.json` - Airport topology graph
 - `Radiotelephony_ATC.json` - ATC normalization rules

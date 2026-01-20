@@ -32,10 +32,10 @@ def _format_plan_table(records: List[Dict[str, Any]]) -> str:
 
 
 class FlightPlanLookupTool(BaseTool):
-    """从 Log_4.txt 查询航班计划并返回表格文本"""
+    """从航班计划数据查询航班并返回表格文本"""
 
     name = "flight_plan_lookup"
-    description = """从 data/raw/航班计划/Log_4.txt 查询航班计划（仅展示）。
+    description = """从航班计划数据查询航班（仅展示）。
 
 输入参数:
 - flight_no: 航班号（支持多种格式）
@@ -49,7 +49,19 @@ class FlightPlanLookupTool(BaseTool):
             return {"observation": "缺少航班号，未查询航班计划"}
 
         flight_no = normalize_flight_number(flight_no_raw)
-        plan_file = Path(__file__).resolve().parents[2] / "data" / "raw" / "航班计划" / "Log_4.txt"
+
+        # 优先使用真实数据集（2026-01-06 8-12点）
+        data_dir = Path(__file__).resolve().parents[2] / "data" / "raw" / "航班计划"
+        primary_file = data_dir / "Flight_Plan_2026-01-06_08-12.txt"
+        fallback_file = data_dir / "Log_4.txt"
+
+        if primary_file.exists():
+            plan_file = primary_file
+        elif fallback_file.exists():
+            plan_file = fallback_file
+        else:
+            return {"observation": f"未找到航班计划文件: {primary_file} 或 {fallback_file}"}
+
         if not plan_file.exists():
             return {"observation": f"未找到航班计划文件: {plan_file}"}
 
@@ -73,9 +85,39 @@ class FlightPlanLookupTool(BaseTool):
         inorout = "出发" if rec.get("inorout") == "D" else "到达" if rec.get("inorout") == "A" else rec.get("inorout", "")
         stand = rec.get("stand", "N/A")
         runway = rec.get("runway", "N/A")
-        brief = f"已查到航班计划: {flight_no} {inorout}, 机位 {stand}, 跑道 {runway}"
+
+        # 提取时间信息
+        eldt = rec.get("eldt") or rec.get("aldt")  # 预计降落时间/实际降落时间
+        etot = rec.get("etot") or rec.get("atot")  # 预计起飞时间/实际起飞时间
+
+        # 确定参考时间（优先使用起飞时间，如果没有则用降落时间）
+        reference_time = etot or eldt
+
+        # 将查询到的航班信息写入 state
+        if "reference_flight" not in state:
+            state["reference_flight"] = {}
+
+        state["reference_flight"] = {
+            "callsign": flight_no,
+            "inorout": rec.get("inorout"),
+            "stand": stand,
+            "runway": runway,
+            "eldt": eldt,
+            "etot": etot,
+            "reference_time": reference_time,  # 用于时间窗口计算的基准时间
+        }
+
+        # 构建简要说明（包含时间信息）
+        time_info = ""
+        if etot:
+            time_info = f", 计划起飞 {etot}"
+        elif eldt:
+            time_info = f", 计划降落 {eldt}"
+
+        brief = f"已查到航班计划: {flight_no} {inorout}, 机位 {stand}, 跑道 {runway}{time_info}"
 
         return {
             "observation": brief,
             "flight_plan_table": table,
+            "reference_flight": state["reference_flight"],  # 返回给调用者
         }

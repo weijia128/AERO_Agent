@@ -808,6 +808,9 @@ def _build_render_context(
     flight_impact = state.get("flight_impact_prediction", {})
     knowledge = state.get("retrieved_knowledge", {})
     actions = state.get("actions_taken", [])
+    cleanup_time_estimate = state.get("cleanup_time_estimate", {})
+    weather_impact = state.get("weather_impact", {})
+    comprehensive = state.get("comprehensive_analysis", {})
 
     ctx = _build_event_context(incident, risk)
     engine_status = "运行中" if incident.get("engine_status") == "RUNNING" else "关闭"
@@ -892,6 +895,21 @@ def _build_render_context(
         else "——"
     )
 
+    cleanup_time_text = ""
+    cleanup_base = cleanup_time_estimate.get("base_time_minutes")
+    cleanup_adjusted = cleanup_time_estimate.get("adjusted_time_minutes")
+    if cleanup_base is None or cleanup_adjusted is None:
+        cleanup_base = comprehensive.get("cleanup_analysis", {}).get("base_time_minutes")
+        cleanup_adjusted = comprehensive.get("cleanup_analysis", {}).get("weather_adjusted_minutes")
+    if cleanup_base is not None and cleanup_adjusted is not None:
+        cleanup_time_text = f"基准{cleanup_base}分钟，气象调整后{cleanup_adjusted}分钟"
+
+    cleanup_weather_factor = None
+    if weather_impact.get("cleanup_time_adjustment"):
+        cleanup_weather_factor = weather_impact["cleanup_time_adjustment"].get("total_factor")
+    if cleanup_weather_factor is None:
+        cleanup_weather_factor = comprehensive.get("cleanup_analysis", {}).get("weather_factors", {}).get("total_factor")
+
     # 知识库
     cleanup_method = "——"
     regs = knowledge.get("regulations", []) if knowledge else []
@@ -900,6 +918,8 @@ def _build_render_context(
 
     recent_actions = [a.get("action", "") for a in actions[-5:] if a.get("action")]
     recent_actions_text = "、".join(recent_actions) if recent_actions else "——"
+    supplemental_notes = state.get("supplemental_notes", [])
+    supplemental_text = "\n".join([note for note in supplemental_notes if note]) if supplemental_notes else ""
 
     return {
         "scope": "机坪特情处置检查单",
@@ -949,6 +969,9 @@ def _build_render_context(
         "crew_request": incident.get("crew_request", "——") or "——",
         "suspend_resources": "是" if incident.get("suspend_resources") else "否",
         "followup_required": "是" if incident.get("followup_required") else "否",
+        "supplemental_notes": supplemental_text,
+        "cleanup_time_text": cleanup_time_text,
+        "cleanup_weather_factor": cleanup_weather_factor,
     }
 
 
@@ -1018,6 +1041,7 @@ def output_generator_node(state: AgentState) -> Dict[str, Any]:
         "generated_at": datetime.now().isoformat(),
         "fsm_final_state": state.get("fsm_state", ""),
         "llm_generated": False,
+        "supplemental_notes": state.get("supplemental_notes", []),
     }
 
     return {
