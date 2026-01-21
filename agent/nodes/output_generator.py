@@ -11,10 +11,13 @@ import logging
 import re
 from datetime import datetime
 from typing import Any, Dict, List
+
+from agent.nodes.template_renderer import render_report
 from agent.state import AgentState, FSMState, risk_level_rank
 from config.llm_config import get_llm_client
-from agent.nodes.template_renderer import render_report
 from scenarios.base import ScenarioRegistry
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # 常量定义
@@ -910,6 +913,9 @@ def _build_render_context(
     if cleanup_weather_factor is None:
         cleanup_weather_factor = comprehensive.get("cleanup_analysis", {}).get("weather_factors", {}).get("total_factor")
 
+    operational_impact_narrative = comprehensive.get("operational_impact_narrative", "") or ""
+    command_dispatch_advice = comprehensive.get("command_dispatch_advice", "") or ""
+
     # 知识库
     cleanup_method = "——"
     regs = knowledge.get("regulations", []) if knowledge else []
@@ -972,6 +978,8 @@ def _build_render_context(
         "supplemental_notes": supplemental_text,
         "cleanup_time_text": cleanup_time_text,
         "cleanup_weather_factor": cleanup_weather_factor,
+        "operational_impact_narrative": operational_impact_narrative,
+        "command_dispatch_advice": command_dispatch_advice,
     }
 
 
@@ -981,12 +989,20 @@ def output_generator_node(state: AgentState) -> Dict[str, Any]:
 
     调用 LLM 基于 SKILL 规范和知识库生成结构化的机坪特情处置检查单报告
     """
+    session_id = state.get("session_id", "unknown")
     scenario_type = state.get("scenario_type", "oil_spill")
     incident = state.get("incident", {})
     risk = state.get("risk_assessment", {})
     spatial = state.get("spatial_analysis", {})
     actions = state.get("actions_taken", [])
     knowledge = state.get("retrieved_knowledge", {})
+
+    logger.info(
+        f"[{session_id}] 报告生成开始, "
+        f"场景: {scenario_type}, "
+        f"风险等级: {risk.get('level', '未评估')}, "
+        f"动作数: {len(actions)}"
+    )
 
     # 基础数据准备
     coordination_units = generate_coordination_units(state)
@@ -1043,6 +1059,11 @@ def output_generator_node(state: AgentState) -> Dict[str, Any]:
         "llm_generated": False,
         "supplemental_notes": state.get("supplemental_notes", []),
     }
+
+    logger.info(
+        f"[{session_id}] 报告生成完成, "
+        f"报告长度: {len(final_answer)}"
+    )
 
     return {
         "final_report": final_report,

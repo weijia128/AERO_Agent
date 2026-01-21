@@ -101,7 +101,7 @@ class CorrectedStandDetector:
             start_time = datetime.fromisoformat(segment[0]['TIME'])
             end_time = datetime.fromisoformat(segment[-1]['TIME'])
             duration = (end_time - start_time).total_seconds()
-        except:
+        except (ValueError, TypeError, KeyError):
             duration = 0
 
         lat = sum(p['LAT'] for p in segment) / len(segment)
@@ -194,7 +194,7 @@ class CorrectedStandDetector:
                             start_time = datetime.fromisoformat(window[0]['TIME'])
                             end_time = datetime.fromisoformat(window[-1]['TIME'])
                             duration = (end_time - start_time).total_seconds()
-                        except:
+                        except (ValueError, TypeError, KeyError):
                             duration = 0
 
                         if duration >= 30:  # 至少30秒

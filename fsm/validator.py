@@ -11,6 +11,7 @@ FSM 验证器
 - 发现问题时提供清晰的错误信息
 - 告诉 Agent 需要补救什么
 """
+import logging
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 
@@ -25,6 +26,8 @@ from .states import (
     DEFAULT_MANDATORY_ACTIONS,
 )
 from .engine import FSMEngine
+
+logger = logging.getLogger(__name__)
 
 
 class FSMValidator:
@@ -290,7 +293,13 @@ class FSMValidator:
         try:
             from constraints.loader import get_loader
             return get_loader().get_all_p1_keys(scenario_type)
-        except Exception:
+        except Exception as exc:
+            logger.warning(
+                "Failed to load P1 fields for scenario %s: %s",
+                scenario_type,
+                exc,
+                exc_info=True,
+            )
             return ["fluid_type", "continuous", "engine_status", "position"]
 
     def _get_p1_fields_with_labels(self, agent_state: Dict[str, Any]) -> Tuple[List[str], Dict[str, str]]:
@@ -303,7 +312,13 @@ class FSMValidator:
             p1_fields = [f.key for f in constraints.p1_fields]
             labels = {f.key: f.label for f in constraints.p1_fields}
             return p1_fields, labels
-        except Exception:
+        except Exception as exc:
+            logger.warning(
+                "Failed to load P1 field labels for scenario %s: %s",
+                scenario_type,
+                exc,
+                exc_info=True,
+            )
             return ["fluid_type", "continuous", "engine_status", "position"], {}
 
     def generate_validation_report(

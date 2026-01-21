@@ -17,7 +17,7 @@ def parse_trajectory_line(line):
     try:
         _, _, _, json_str = match.groups()
         return json.loads(json_str)
-    except:
+    except (json.JSONDecodeError, ValueError):
         return None
 
 

@@ -5,29 +5,33 @@ FastAPI 入口
 from dotenv import load_dotenv
 load_dotenv()
 
-import uuid
 import logging
-from typing import Optional
+import uuid
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, Request
+from typing import Optional
+
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from agent.state import create_initial_state
 from agent.graph import agent
-from config.settings import settings
+from agent.state import create_initial_state
 from agent.storage import get_session_store
+from apps.api.auth import get_current_user
+from apps.api.rate_limit import rate_limit_check
+from config.logging_config import setup_logging
+from config.settings import settings
 
+# 初始化日志配置
+setup_logging()
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="机场应急响应智能 Agent",
     description="融合 ReAct Agent + FSM 验证的机坪特情处置系统",
     version="1.0.0",
 )
-
-logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO))
-logger = logging.getLogger("airport_emergency_agent")
 
 # CORS
 app.add_middleware(
@@ -94,7 +98,7 @@ session_store = get_session_store(settings.SESSION_STORE_BACKEND)
 
 @app.get("/")
 async def root():
-    """健康检查"""
+    """健康检查（公开端点）"""
     return {
         "service": "Airport Emergency Agent",
         "status": "running",
@@ -102,8 +106,23 @@ async def root():
     }
 
 
+@app.get("/health")
+async def health_check():
+    """健康检查端点（公开）"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "version": "1.0.0",
+    }
+
+
 @app.post("/event/start", response_model=EventResponse)
-async def start_event(request: EventRequest):
+async def start_event(
+    request: EventRequest,
+    req: Request,
+    _user: str = Depends(get_current_user),
+    _rate_limit: None = Depends(rate_limit_check),
+):
     """
     启动新的事件处理
     """
@@ -151,7 +170,12 @@ async def start_event(request: EventRequest):
 
 
 @app.post("/event/chat", response_model=EventResponse)
-async def chat_event(request: ChatRequest):
+async def chat_event(
+    request: ChatRequest,
+    req: Request,
+    _user: str = Depends(get_current_user),
+    _rate_limit: None = Depends(rate_limit_check),
+):
     """
     继续对话
     """
@@ -207,7 +231,12 @@ async def chat_event(request: ChatRequest):
 
 
 @app.get("/event/{session_id}")
-async def get_event_status(session_id: str):
+async def get_event_status(
+    session_id: str,
+    request: Request,
+    _user: str = Depends(get_current_user),
+    _rate_limit: None = Depends(rate_limit_check),
+):
     """
     获取事件状态
     """
@@ -231,7 +260,12 @@ async def get_event_status(session_id: str):
 
 
 @app.get("/event/{session_id}/report")
-async def get_event_report(session_id: str):
+async def get_event_report(
+    session_id: str,
+    request: Request,
+    _user: str = Depends(get_current_user),
+    _rate_limit: None = Depends(rate_limit_check),
+):
     """
     获取事件报告（JSON格式）
     """
@@ -251,7 +285,12 @@ async def get_event_report(session_id: str):
 
 
 @app.get("/event/{session_id}/report/markdown")
-async def get_event_report_markdown(session_id: str):
+async def get_event_report_markdown(
+    session_id: str,
+    request: Request,
+    _user: str = Depends(get_current_user),
+    _rate_limit: None = Depends(rate_limit_check),
+):
     """
     获取事件报告（Markdown文件格式）
     """
@@ -286,7 +325,12 @@ async def get_event_report_markdown(session_id: str):
 
 
 @app.delete("/event/{session_id}")
-async def close_event(session_id: str):
+async def close_event(
+    session_id: str,
+    request: Request,
+    _user: str = Depends(get_current_user),
+    _rate_limit: None = Depends(rate_limit_check),
+):
     """
     关闭事件会话
     """

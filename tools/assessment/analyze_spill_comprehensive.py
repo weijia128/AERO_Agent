@@ -7,6 +7,8 @@
 - 气象数据：2026-01-06 08:00-12:00 真实数据
 - 机场拓扑：真实拓扑图数据
 """
+import json
+import logging
 from typing import Dict, Any, List
 from datetime import datetime, timedelta
 
@@ -15,6 +17,9 @@ from tools.assessment.assess_weather_impact import AssessWeatherImpactTool
 from tools.assessment.estimate_cleanup_time import EstimateCleanupTimeTool
 from tools.spatial.calculate_impact_zone import CalculateImpactZoneTool
 from tools.spatial.predict_flight_impact import PredictFlightImpactTool
+from config.llm_config import get_llm_client
+
+logger = logging.getLogger(__name__)
 
 
 class AnalyzeSpillComprehensiveTool(BaseTool):
@@ -174,6 +179,35 @@ class AnalyzeSpillComprehensiveTool(BaseTool):
             position_impact=position_impact
         )
 
+        impact_narrative = self._generate_operational_impact_narrative(
+            state=state,
+            position=position,
+            fluid_type=fluid_type,
+            leak_size=leak_size,
+            incident_time=incident_time,
+            cleanup_minutes=cleanup_minutes,
+            base_time=base_time,
+            weather_impact=weather_impact,
+            spatial_analysis=spatial_analysis,
+            flight_impact=flight_impact,
+            position_impact=position_impact,
+            risk_level=risk_level,
+        )
+        command_dispatch_advice = self._generate_command_dispatch_advice(
+            state=state,
+            position=position,
+            fluid_type=fluid_type,
+            leak_size=leak_size,
+            incident_time=incident_time,
+            cleanup_minutes=cleanup_minutes,
+            base_time=base_time,
+            weather_impact=weather_impact,
+            spatial_analysis=spatial_analysis,
+            flight_impact=flight_impact,
+            position_impact=position_impact,
+            risk_level=risk_level,
+        )
+
         # ============================================================
         # 生成综合观测结果（整合位置影响数据）
         # ============================================================
@@ -190,7 +224,9 @@ class AnalyzeSpillComprehensiveTool(BaseTool):
             flight_impact=flight_impact,
             risk_scenarios=risk_scenarios,
             recommendations=recommendations,
-            position_impact=position_impact
+            position_impact=position_impact,
+            impact_narrative=impact_narrative,
+            command_dispatch_advice=command_dispatch_advice,
         )
 
         return {
@@ -220,6 +256,8 @@ class AnalyzeSpillComprehensiveTool(BaseTool):
                 },
                 "risk_scenarios": risk_scenarios,
                 "recommendations": recommendations,
+                "operational_impact_narrative": impact_narrative,
+                "command_dispatch_advice": command_dispatch_advice,
             }
         }
 
@@ -560,7 +598,9 @@ class AnalyzeSpillComprehensiveTool(BaseTool):
         flight_impact: Dict[str, Any],
         risk_scenarios: List[Dict[str, Any]],
         recommendations: List[Dict[str, Any]],
-        position_impact: Dict[str, Any]
+        position_impact: Dict[str, Any],
+        impact_narrative: str,
+        command_dispatch_advice: str,
     ) -> str:
         """生成综合观测结果（格式化输出）"""
 
@@ -654,7 +694,8 @@ class AnalyzeSpillComprehensiveTool(BaseTool):
                 start_dt = datetime.fromisoformat(start_time)
                 end_dt = datetime.fromisoformat(end_time)
                 lines.append(f"  分析时间窗口: {start_dt.strftime('%H:%M')} - {end_dt.strftime('%H:%M')}")
-            except:
+            except (ValueError, TypeError) as e:
+                logger.debug(f"解析时间窗口失败: {e}")
                 lines.append(f"  分析时间窗口: {start_time} - {end_time}")
 
         lines.append(f"  受影响航班: {total_flights} 架次")
@@ -667,6 +708,14 @@ class AnalyzeSpillComprehensiveTool(BaseTool):
         lines.append(f"    - 严重 (≥60分钟): {sev.get('high', 0)} 架次")
         lines.append(f"    - 中等 (20-59分钟): {sev.get('medium', 0)} 架次")
         lines.append(f"    - 轻微 (<20分钟): {sev.get('low', 0)} 架次")
+
+        if impact_narrative:
+            lines.append("\n【运行影响解读】")
+            lines.append(impact_narrative.strip())
+
+        if command_dispatch_advice:
+            lines.append("\n【指挥调度建议】")
+            lines.append(command_dispatch_advice.strip())
 
         # 风险场景
         lines.append("\n【可能发生的情况】")
@@ -694,6 +743,163 @@ class AnalyzeSpillComprehensiveTool(BaseTool):
 
         return "\n".join(lines)
 
+    def _generate_operational_impact_narrative(
+        self,
+        state: Dict[str, Any],
+        position: str,
+        fluid_type: str,
+        leak_size: str,
+        incident_time: str,
+        cleanup_minutes: int,
+        base_time: int,
+        weather_impact: Dict[str, Any],
+        spatial_analysis: Dict[str, Any],
+        flight_impact: Dict[str, Any],
+        position_impact: Dict[str, Any],
+        risk_level: str,
+    ) -> str:
+        payload = {
+            "incident": {
+                "position": position,
+                "fluid_type": fluid_type,
+                "leak_size": leak_size,
+                "incident_time": incident_time,
+                "risk_level": risk_level,
+            },
+            "cleanup": {
+                "base_minutes": base_time,
+                "adjusted_minutes": cleanup_minutes,
+                "weather_adjustment": weather_impact.get("cleanup_time_adjustment", {}),
+            },
+            "spatial_impact": {
+                "affected_stands_count": len(spatial_analysis.get("affected_stands", [])),
+                "affected_taxiways_count": len(spatial_analysis.get("affected_taxiways", [])),
+                "affected_runways": spatial_analysis.get("affected_runways", []),
+            },
+            "position_impact": position_impact.get("direct_impact", {}),
+            "flight_impact": {
+                "time_window": flight_impact.get("time_window", {}),
+                "statistics": flight_impact.get("statistics", {}),
+                "top_affected_flights": [
+                    {
+                        "callsign": f.get("callsign"),
+                        "type": f.get("type"),
+                        "estimated_delay_minutes": f.get("estimated_delay_minutes"),
+                        "stand": f.get("stand"),
+                        "runway": f.get("runway"),
+                    }
+                    for f in (flight_impact.get("affected_flights", []) or [])[:5]
+                ],
+            },
+        }
+
+        reference_flight = state.get("reference_flight", {})
+        if reference_flight:
+            payload["reference_flight"] = {
+                "callsign": reference_flight.get("callsign"),
+                "reference_time": reference_flight.get("reference_time"),
+                "stand": reference_flight.get("stand"),
+                "runway": reference_flight.get("runway"),
+            }
+
+        prompt = (
+            "你是机场运行影响分析助手。请基于以下结构化数据输出“运行影响解读”。\n"
+            "要求：\n"
+            "1) 只基于提供的数据，不新增事实或假设。\n"
+            "2) 重点解释对运行能力、跑道/滑行/机位、航班延误和恢复时间的影响。\n"
+            "3) 输出 4-6 句中文，客观克制，禁止建议或处置动作。\n"
+            "4) 如果数据不足，请明确说明“影响评估受限”。\n"
+            "只输出正文文本，不要标题。\n\n"
+            f"结构化数据:\n{json.dumps(payload, ensure_ascii=False)}"
+        )
+
+        try:
+            llm = get_llm_client()
+            response = llm.invoke(prompt)
+            content = response.content if hasattr(response, "content") else str(response)
+            return content.strip()
+        except Exception as exc:
+            logger.warning("运行影响解读生成失败: %s", exc)
+            return ""
+
+    def _generate_command_dispatch_advice(
+        self,
+        state: Dict[str, Any],
+        position: str,
+        fluid_type: str,
+        leak_size: str,
+        incident_time: str,
+        cleanup_minutes: int,
+        base_time: int,
+        weather_impact: Dict[str, Any],
+        spatial_analysis: Dict[str, Any],
+        flight_impact: Dict[str, Any],
+        position_impact: Dict[str, Any],
+        risk_level: str,
+    ) -> str:
+        payload = {
+            "incident": {
+                "position": position,
+                "fluid_type": fluid_type,
+                "leak_size": leak_size,
+                "incident_time": incident_time,
+                "risk_level": risk_level,
+            },
+            "cleanup": {
+                "base_minutes": base_time,
+                "adjusted_minutes": cleanup_minutes,
+                "weather_adjustment": weather_impact.get("cleanup_time_adjustment", {}),
+            },
+            "spatial_impact": {
+                "affected_stands_count": len(spatial_analysis.get("affected_stands", [])),
+                "affected_taxiways_count": len(spatial_analysis.get("affected_taxiways", [])),
+                "affected_runways": spatial_analysis.get("affected_runways", []),
+            },
+            "position_impact": position_impact.get("direct_impact", {}),
+            "flight_impact": {
+                "time_window": flight_impact.get("time_window", {}),
+                "statistics": flight_impact.get("statistics", {}),
+                "top_affected_flights": [
+                    {
+                        "callsign": f.get("callsign"),
+                        "type": f.get("type"),
+                        "estimated_delay_minutes": f.get("estimated_delay_minutes"),
+                        "stand": f.get("stand"),
+                        "runway": f.get("runway"),
+                    }
+                    for f in (flight_impact.get("affected_flights", []) or [])[:5]
+                ],
+            },
+        }
+
+        reference_flight = state.get("reference_flight", {})
+        if reference_flight:
+            payload["reference_flight"] = {
+                "callsign": reference_flight.get("callsign"),
+                "reference_time": reference_flight.get("reference_time"),
+                "stand": reference_flight.get("stand"),
+                "runway": reference_flight.get("runway"),
+            }
+
+        prompt = (
+            "你是机场运行指挥调度助手。请基于以下结构化数据给出“指挥调度建议”。\n"
+            "要求：\n"
+            "1) 只基于提供的数据，不新增事实或假设。\n"
+            "2) 建议聚焦跑道/滑行/机位调度、航班流量与放行顺序、资源协同与信息发布。\n"
+            "3) 输出 3-5 条中文建议，每条单独一行，禁止标题、不要编号前缀。\n"
+            "4) 如果数据不足，请输出一条：影响评估受限，建议继续补充现场数据。\n"
+            "只输出正文文本。\n\n"
+            f"结构化数据:\n{json.dumps(payload, ensure_ascii=False)}"
+        )
+
+        try:
+            llm = get_llm_client()
+            response = llm.invoke(prompt)
+            content = response.content if hasattr(response, "content") else str(response)
+            return content.strip()
+        except Exception as exc:
+            logger.warning("指挥调度建议生成失败: %s", exc)
+            return ""
     def _normalize_risk_level(self, risk_level_raw: str) -> str:
         """
         标准化风险等级

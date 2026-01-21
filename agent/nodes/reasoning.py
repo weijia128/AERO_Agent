@@ -8,11 +8,14 @@ ReAct 推理节点
 - 支持场景专属 Prompt
 """
 import json
+import logging
 import re
-from typing import Dict, Any, Optional, Tuple
 from datetime import datetime
+from typing import Any, Dict, Optional, Tuple
 
 from agent.state import AgentState, FSMState
+
+logger = logging.getLogger(__name__)
 from agent.prompts.builder import build_prompt
 from scenarios.base import ScenarioRegistry
 from config.llm_config import get_llm_client
@@ -485,11 +488,23 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
     )
     
     # 调用 LLM
+    session_id = state.get("session_id", "unknown")
     try:
         llm = get_llm_client()
+        logger.debug(f"[{session_id}] LLM 调用开始, prompt 长度: {len(prompt)}")
+        start_time = datetime.now()
+
         response = llm.invoke(prompt)
         llm_output = response.content if hasattr(response, 'content') else str(response)
+
+        duration_ms = (datetime.now() - start_time).total_seconds() * 1000
+        logger.info(
+            f"[{session_id}] LLM 调用成功, "
+            f"耗时: {duration_ms:.1f}ms, "
+            f"响应长度: {len(llm_output)}"
+        )
     except Exception as e:
+        logger.error(f"[{session_id}] LLM 调用失败: {type(e).__name__}: {str(e)}", exc_info=True)
         return {
             "error": f"LLM 调用失败: {str(e)}",
             "next_node": "end",

@@ -62,6 +62,17 @@ class Settings(BaseSettings):
     API_PORT: int = Field(default=8000, description="API 端口")
     CORS_ALLOW_ORIGINS: List[str] = Field(default=["*"], description="CORS 允许来源")
 
+    # API 认证配置
+    API_AUTH_ENABLED: bool = Field(default=False, description="是否启用 API 认证")
+    API_KEYS: List[str] = Field(default=[], description="允许的 API Keys")
+    JWT_SECRET: str = Field(default="change-me-in-production", description="JWT 密钥")
+    JWT_ALGORITHM: str = Field(default="HS256", description="JWT 算法")
+    JWT_EXPIRE_MINUTES: int = Field(default=60, description="JWT 过期时间(分钟)")
+
+    # 速率限制配置
+    RATE_LIMIT_ENABLED: bool = Field(default=True, description="是否启用速率限制")
+    RATE_LIMIT_REQUESTS: int = Field(default=100, description="每分钟最大请求数")
+
     # 模板/Jinja 配置
     TEMPLATE_ROOT: Path = Field(
         default=Path(__file__).parent.parent / "agent" / "templates",
@@ -72,6 +83,7 @@ class Settings(BaseSettings):
     
     # 日志配置
     LOG_LEVEL: str = Field(default="INFO", description="日志级别")
+    LOG_FORMAT: str = Field(default="text", description="日志格式: text, json")
     LOG_FILE: Optional[Path] = Field(default=None, description="日志文件路径")
 
     # LangSmith 追踪配置

@@ -93,6 +93,16 @@
 | 航班调整/取消 | —— |
 | 机坪运行影响 | {{ affected_area_text }} |
 | 跑道/滑行路线调整 | {{ runway_adjust_text }} |
+{% if operational_impact_narrative %}
+
+**运行影响解读：**
+{{ operational_impact_narrative }}
+{% endif %}
+{% if command_dispatch_advice %}
+
+**指挥调度建议：**
+{{ command_dispatch_advice }}
+{% endif %}
 
 ## 10. 事件总结与改进建议
 **事件经过简述：**

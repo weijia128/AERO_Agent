@@ -1215,6 +1215,9 @@ def save_advice_report(state: Dict[str, Any], observation: str) -> str:
 
     position = incident.get("position_display") or incident.get("position")
     incident_time = incident.get("incident_time") or incident.get("start_time")
+    comprehensive = state.get("comprehensive_analysis", {})
+    impact_narrative = comprehensive.get("operational_impact_narrative", "") or ""
+    command_dispatch_advice = comprehensive.get("command_dispatch_advice", "") or ""
 
     lines = [
         "# 漏油场景综合评估报告",
@@ -1231,6 +1234,20 @@ def save_advice_report(state: Dict[str, Any], observation: str) -> str:
         lines.append(f"- 泄漏面积: {incident['leak_size']}")
     if incident_time:
         lines.append(f"- 事发时间: {incident_time}")
+    if impact_narrative:
+        lines.extend([
+            "",
+            "## 运行影响解读",
+            "",
+            impact_narrative.strip(),
+        ])
+    if command_dispatch_advice:
+        lines.extend([
+            "",
+            "## 指挥调度建议",
+            "",
+            command_dispatch_advice.strip(),
+        ])
     lines.extend([
         "",
         "## 综合评估输出",
@@ -1249,6 +1266,8 @@ def save_advice_report(state: Dict[str, Any], observation: str) -> str:
             "generated_at": datetime.now().isoformat(),
             "incident": incident,
             "observation": observation,
+            "operational_impact_narrative": impact_narrative,
+            "command_dispatch_advice": command_dispatch_advice,
             "comprehensive_analysis": state.get("comprehensive_analysis", {}),
             "risk_assessment": state.get("risk_assessment", {}),
             "spatial_analysis": state.get("spatial_analysis", {}),
@@ -1263,6 +1282,10 @@ def save_advice_report(state: Dict[str, Any], observation: str) -> str:
 
 def main():
     """主函数"""
+    # 初始化日志配置
+    from config.logging_config import setup_logging
+    setup_logging()
+
     print_header("机场机坪特情应急响应 Agent")
     print_info(f"启动时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print()

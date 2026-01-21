@@ -7,12 +7,15 @@
 3. 更新状态
 4. 返回观察结果
 """
-from typing import Dict, Any
+import logging
 import re
 from datetime import datetime
+from typing import Dict, Any
 
 from agent.state import AgentState, ActionStatus
 from tools.registry import get_tool, ToolRegistry
+
+logger = logging.getLogger(__name__)
 
 
 def tool_executor_node(state: AgentState) -> Dict[str, Any]:
@@ -23,16 +26,19 @@ def tool_executor_node(state: AgentState) -> Dict[str, Any]:
     """
     action = state.get("current_action", "")
     action_input = state.get("current_action_input", {})
+    session_id = state.get("session_id", "unknown")
 
     if not action:
+        logger.warning(f"[{session_id}] 工具执行: 未指定工具")
         return {
             "current_observation": "没有指定要执行的工具",
             "next_node": "reasoning",
         }
-    
+
     # 获取工具
     tool = get_tool(action)
     if not tool:
+        logger.warning(f"[{session_id}] 工具执行: 未找到工具 {action}")
         return {
             "current_observation": f"未找到工具: {action}",
             "next_node": "reasoning",
@@ -66,8 +72,22 @@ def tool_executor_node(state: AgentState) -> Dict[str, Any]:
 
     try:
         # 执行工具
-        result = tool.execute(state, action_input)
-        
+        start_time = datetime.now()
+        logger.info(f"[{session_id}] 工具执行开始: {action}, 输入: {str(action_input)[:200]}")
+
+        # 使用带验证的执行方法（如果工具支持）
+        if hasattr(tool, "execute_with_validation"):
+            result = tool.execute_with_validation(state, action_input)
+        else:
+            result = tool.execute(state, action_input)
+
+        duration_ms = (datetime.now() - start_time).total_seconds() * 1000
+        logger.info(
+            f"[{session_id}] 工具执行成功: {action}, "
+            f"耗时: {duration_ms:.1f}ms, "
+            f"结果长度: {len(result.get('observation', ''))}"
+        )
+
         # 更新动作记录
         action_record["status"] = ActionStatus.COMPLETED.value
         action_record["result"] = result.get("observation", "")
@@ -178,9 +198,17 @@ def tool_executor_node(state: AgentState) -> Dict[str, Any]:
         
     except Exception as e:
         # 工具执行失败
+        duration_ms = (datetime.now() - start_time).total_seconds() * 1000
+        logger.error(
+            f"[{session_id}] 工具执行失败: {action}, "
+            f"耗时: {duration_ms:.1f}ms, "
+            f"错误: {type(e).__name__}: {str(e)}",
+            exc_info=True
+        )
+
         action_record["status"] = ActionStatus.FAILED.value
         action_record["result"] = str(e)
-        
+
         failure_updates = {
             "current_observation": f"工具执行失败: {str(e)}",
             "actions_taken": state.get("actions_taken", []) + [action_record],

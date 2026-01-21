@@ -205,7 +205,7 @@ class EnhancedStandDetector:
             start_time = datetime.fromisoformat(segment[0]['TIME'])
             end_time = datetime.fromisoformat(segment[-1]['TIME'])
             duration = (end_time - start_time).total_seconds()
-        except:
+        except (ValueError, TypeError, KeyError):
             duration = 0
 
         lat = sum(p['LAT'] for p in segment) / len(segment)
@@ -255,7 +255,7 @@ class EnhancedStandDetector:
         """检查时间连续性"""
         try:
             point_time = datetime.fromisoformat(point['TIME'])
-        except:
+        except (ValueError, TypeError, KeyError):
             return 0
 
         consecutive_count = 0
@@ -266,7 +266,7 @@ class EnhancedStandDetector:
 
                 if time_diff <= max_gap_seconds:
                     consecutive_count += 1
-            except:
+            except (ValueError, TypeError, KeyError):
                 continue
 
         return consecutive_count

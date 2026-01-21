@@ -3,10 +3,13 @@
 
 基于历史航班计划数据 + 拓扑图分析，预测泄漏事件对航班运行的影响
 """
+import logging
 import os
 import sys
 from typing import Dict, Any, List, Set, Optional
 from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
 
 # 添加父目录到路径以便导入 scripts/data_processing 模块
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -247,16 +250,16 @@ class PredictFlightImpactTool(BaseTool):
                     etot_dt = datetime.fromisoformat(etot)
                     if start_time <= etot_dt <= end_time:
                         flight_in_window = True
-                except:
-                    pass
+                except (ValueError, TypeError) as e:
+                    logger.debug(f"解析航班起飞时间失败 etot={etot}: {e}")
 
             if eldt:
                 try:
                     eldt_dt = datetime.fromisoformat(eldt)
                     if start_time <= eldt_dt <= end_time:
                         flight_in_window = True
-                except:
-                    pass
+                except (ValueError, TypeError) as e:
+                    logger.debug(f"解析航班降落时间失败 eldt={eldt}: {e}")
 
             if flight_in_window:
                 relevant.append(flight)

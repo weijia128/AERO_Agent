@@ -173,7 +173,7 @@ class TaxiPathExtractor:
             start_time = datetime.fromisoformat(start.get('TIME', ''))
             end_time = datetime.fromisoformat(end.get('TIME', ''))
             duration = (end_time - start_time).total_seconds()
-        except:
+        except (ValueError, TypeError):
             duration = 0
 
         # 识别转折点

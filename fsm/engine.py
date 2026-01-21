@@ -12,6 +12,7 @@ FSM 引擎
 - Agent 通过完成工作来推动 FSM 状态变化
 - 支持从 YAML 配置加载
 """
+import logging
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 import yaml
@@ -30,6 +31,8 @@ from .states import (
     DEFAULT_TRANSITIONS,
     DEFAULT_MANDATORY_ACTIONS,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class FSMEngine:
@@ -216,7 +219,13 @@ class FSMEngine:
         try:
             from constraints.loader import get_loader
             return get_loader().get_all_p1_keys(scenario_type)
-        except Exception:
+        except Exception as exc:
+            logger.warning(
+                "Failed to load P1 fields for scenario %s: %s",
+                scenario_type,
+                exc,
+                exc_info=True,
+            )
             return ["fluid_type", "continuous", "engine_status", "position"]
 
     def can_transition(self, from_state: str, to_state: str) -> bool:

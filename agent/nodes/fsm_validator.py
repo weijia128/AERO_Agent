@@ -10,10 +10,13 @@ FSM 验证节点
 本模块现已重构，核心逻辑委托给 fsm 模块处理。
 保留原有接口以确保向后兼容。
 """
-from typing import Dict, Any, List, Optional
+import logging
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from agent.state import AgentState, FSMState, RiskLevel, risk_level_rank
+
+logger = logging.getLogger(__name__)
 from fsm import FSMEngine, FSMValidator, FSMStateEnum
 from fsm.states import FSMTransitionRecord
 from scenarios.base import ScenarioRegistry
@@ -220,6 +223,9 @@ def fsm_validator_node(state: AgentState) -> Dict[str, Any]:
     # 如果状态发生变化，记录到历史
     current_fsm = state.get("fsm_state", FSMStateEnum.INIT.value)
     if current_fsm != result.inferred_state:
+        logger.info(
+            f"[{session_id}] FSM 状态转换: {current_fsm} -> {result.inferred_state}"
+        )
         fsm_history.append({
             "from_state": current_fsm,
             "to_state": result.inferred_state,
@@ -231,14 +237,17 @@ def fsm_validator_node(state: AgentState) -> Dict[str, Any]:
     errors = result.errors.copy()
     if result.warnings:
         # 警告不阻塞流程，但记录下来
-        pass
+        for warning in result.warnings:
+            logger.warning(f"[{session_id}] FSM 验证警告: {warning}")
 
     # 确定下一步
     if errors:
         # 有错误，返回推理节点处理
+        logger.warning(f"[{session_id}] FSM 验证错误: {errors}")
         next_node = "reasoning"
     elif result.inferred_state in [FSMStateEnum.P8_CLOSE.value, FSMStateEnum.COMPLETED.value]:
         # 达到完成条件
+        logger.info(f"[{session_id}] FSM 验证通过, 进入输出生成")
         next_node = "output_generator"
     else:
         # 继续推理
