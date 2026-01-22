@@ -197,7 +197,7 @@ class AssessRiskTool(BaseTool):
         observation = (
             f"风险评估完成: 等级={level}, 分数={score}, "
             f"因素={matched_factors}, "
-            f"原因: {matched_rule['description']}"
+            f"原因: {matched_rule.get('description', '未知')}"
         )
         
         return {
@@ -206,7 +206,7 @@ class AssessRiskTool(BaseTool):
                 "level": level,
                 "score": score,
                 "factors": matched_factors,
-                "rationale": matched_rule["description"],
+                "rationale": matched_rule.get("description", "未知"),
                 "immediate_actions": immediate_actions,
             },
             "mandatory_actions_done": {

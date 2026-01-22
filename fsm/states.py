@@ -46,14 +46,14 @@ class TransitionRule:
     """状态转换规则"""
     from_state: str
     to_states: List[str]
-    condition: Optional[Callable[[Dict], bool]] = None
+    condition: Optional[Callable[[Dict[str, Any]], bool]] = None
     priority: int = 0  # 优先级，数字越大优先级越高
 
     def can_transition(self, context: Dict[str, Any]) -> bool:
         """检查是否可以进行此转换"""
         if self.condition is None:
             return True
-        return self.condition(context)
+        return bool(self.condition(context))
 
 
 @dataclass
@@ -69,18 +69,18 @@ class Precondition:
         """检查前置条件是否满足"""
         if self.check_type == "checklist":
             checklist = state.get("checklist", {})
-            return checklist.get(self.field, False) == self.value
+            return bool(checklist.get(self.field, False) == self.value)
 
         elif self.check_type == "mandatory":
             mandatory = state.get("mandatory_actions_done", {})
-            return mandatory.get(self.field, False) == self.value
+            return bool(mandatory.get(self.field, False) == self.value)
 
         elif self.check_type == "risk_level":
             risk = state.get("risk_assessment", {})
             risk_level = risk.get("level")
             if isinstance(self.value, list):
-                return risk_level in self.value
-            return risk_level == self.value
+                return bool(risk_level in self.value)
+            return bool(risk_level == self.value)
 
         elif self.check_type == "checklist_complete":
             checklist = state.get("checklist", {})
@@ -128,7 +128,7 @@ class MandatoryAction:
                 return not actual
             if isinstance(expected_value, (list, tuple, set)):
                 return actual in expected_value
-            return actual == expected_value
+            return bool(actual == expected_value)
 
         def resolve_value(condition_key: str) -> Any:
             if condition_key == "risk_level":
@@ -160,7 +160,7 @@ class MandatoryAction:
     def is_completed(self, state: Dict[str, Any]) -> bool:
         """检查强制动作是否已完成"""
         mandatory = state.get("mandatory_actions_done", {})
-        return mandatory.get(self.check_field, False)
+        return bool(mandatory.get(self.check_field, False))
 
 
 @dataclass
@@ -190,7 +190,7 @@ class FSMValidationResult:
     def add_warning(self, warning: str):
         self.warnings.append(warning)
 
-    def add_pending_action(self, action: str, params: Dict[str, Any] = None):
+    def add_pending_action(self, action: str, params: Optional[Dict[str, Any]] = None):
         self.pending_actions.append({
             "action": action,
             "params": params or {}

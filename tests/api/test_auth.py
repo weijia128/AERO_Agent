@@ -208,10 +208,10 @@ class TestJwtValidation:
     def test_jwt_decode_expired_token(self):
         """测试解码过期 Token"""
         from jose import jwt, JWTError
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         # 创建已过期的 token
-        expired_time = datetime.utcnow() - timedelta(hours=1)
+        expired_time = datetime.now(timezone.utc) - timedelta(hours=1)
         token = jwt.encode(
             {"sub": "user1", "exp": expired_time},
             "secret",

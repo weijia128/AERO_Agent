@@ -13,12 +13,12 @@ import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 logger = logging.getLogger(__name__)
 
 from agent.state import AgentState, FSMState
-from config.llm_config import get_llm_client
+from agent.llm_guard import invoke_llm
 from config.settings import settings
 from config.airline_codes import AIRLINE_CHINESE_TO_IATA, normalize_flight_number
 from scenarios.base import ScenarioRegistry
@@ -30,7 +30,7 @@ from agent.nodes.semantic_understanding import (
 
 
 # 通用实体提取正则（场景通用部分）
-BASE_PATTERNS = {
+BASE_PATTERNS: Dict[str, Any] = {
     "position": [
         r"(\d{1,3})\s*(?:滑行道)",  # 12滑行道 -> 12
         r"(\d{2,3})\s*(?:机位|停机位)",  # 501机位, 32停机位 (数字在前)
@@ -61,13 +61,15 @@ BASE_PATTERNS = {
         (r"(?<!不|没)(?:运转|运行|在转|启动中)(?!了|止)", "RUNNING"),
     ],
     "continuous": [
-        (r"(?:还在|持续|不断|一直).{0,3}(?:漏|滴|流)", True),
+        (r"(?:还在|持续|不断|一直).{0,3}(?:漏|滴|流|喷(?:涌|射)?)", True),
         (r"(?:已经|已|停止).{0,3}(?:不漏|停了|止住)", False),
+        (r"(?:少量|微量|轻微).{0,6}(?:渗漏|渗出|滴漏|泄漏|漏油)", False),
+        (r"(?:渗漏|渗出|滴漏|泄漏|漏油).{0,6}(?:较小|很小|少量)", False),
     ],
     "leak_size": [
-        (r"大面积|很大|大量|>5㎡|大于5", "LARGE"),
+        (r"大面积|很大|大量|较大|>5㎡|大于5", "LARGE"),
         (r"中等|一般|1-5㎡|1到5㎡", "MEDIUM"),
-        (r"小面积|很小|少量|一点|<1㎡|小于1", "SMALL"),
+        (r"小面积|很小|少量|一点|较小|<1㎡|小于1", "SMALL"),
         (r"(?:面积)?(?:不明|不清楚|不知道|待确认|未知|无法确定)", "UNKNOWN"),
     ],
     "aircraft": [
@@ -92,12 +94,14 @@ def _is_negative_supplemental(text: str) -> bool:
     }
     return normalized in negatives
 
-_RADIOTELEPHONY_RULES = None
+_RADIOTELEPHONY_RULES: Optional[Dict[str, Any]] = None
 
 
 def _build_incident_and_checklist_templates(scenario_type: str) -> tuple[Dict[str, Any], Dict[str, bool]]:
     """根据场景配置构建 incident/checklist 模板，便于切换场景时重建字段。"""
     scenario = ScenarioRegistry.get(scenario_type)
+    incident_fields: Dict[str, Any] = {}
+    checklist_fields: Dict[str, bool] = {}
     if not scenario:
         incident_fields = {
             "fluid_type": None,
@@ -111,9 +115,6 @@ def _build_incident_and_checklist_templates(scenario_type: str) -> tuple[Dict[st
         }
         checklist_fields = {k: False for k in incident_fields.keys()}
         return incident_fields, checklist_fields
-
-    incident_fields: Dict[str, Any] = {}
-    checklist_fields: Dict[str, bool] = {}
     for field in scenario.p1_fields + scenario.p2_fields:
         key = field.get("key")
         if key:
@@ -198,6 +199,21 @@ def _format_position_display(position: str, raw_text: str) -> str:
     if re.search(r"(跑道|RWY|RUNWAY)", raw_text, re.IGNORECASE) and re.fullmatch(r"\d{2}[LRC]?", pos):
         return f"跑道{pos}"
     return pos
+
+
+def _infer_leak_size_from_area(text: str) -> Optional[str]:
+    match = re.search(r"(?:约|大约|大概)?\s*(\d+(?:\.\d+)?)\s*(?:㎡|平方米|平米)", text)
+    if not match:
+        return None
+    try:
+        area = float(match.group(1))
+    except ValueError:
+        return None
+    if area >= 2:
+        return "LARGE"
+    if area >= 1:
+        return "MEDIUM"
+    return "SMALL"
 
 
 def _extract_entities_legacy(text: str) -> Dict[str, Any]:
@@ -343,13 +359,28 @@ def identify_scenario(text: str) -> str:
     return "oil_spill"
 
 
-def update_checklist(incident: Dict[str, Any], base_checklist: Dict[str, bool] = None) -> Dict[str, bool]:
-    """根据事件信息更新 Checklist 状态（保持场景字段）"""
-    if base_checklist:
-        return {k: incident.get(k) is not None for k in base_checklist.keys()}
+def update_checklist(
+    incident: Dict[str, Any],
+    base_checklist: Optional[Dict[str, bool]] = None,
+) -> Dict[str, bool]:
+    """根据事件信息更新 Checklist 状态（保持场景字段）
 
+    特殊处理：
+    - flight_no: 检查 flight_no 或 flight_no_display 任一存在即标记为已收集
+    """
+    if base_checklist:
+        result = {}
+        for k in base_checklist.keys():
+            # 特殊处理：航班号检查两个字段
+            if k == "flight_no":
+                result[k] = bool(incident.get("flight_no") or incident.get("flight_no_display"))
+            else:
+                result[k] = incident.get(k) is not None
+        return result
+
+    # Fallback（无场景配置时的默认字段）
     return {
-        "flight_no": incident.get("flight_no") is not None,
+        "flight_no": bool(incident.get("flight_no") or incident.get("flight_no_display")),
         "fluid_type": incident.get("fluid_type") is not None,
         "continuous": incident.get("continuous") is not None,
         "engine_status": incident.get("engine_status") is not None,
@@ -364,7 +395,7 @@ def _execute_future_with_timeout(
 ) -> Dict[str, Any] | None:
     """执行 future 并处理超时和异常"""
     try:
-        return future.result(timeout=timeout)
+        return cast(Dict[str, Any], future.result(timeout=timeout))
     except concurrent.futures.TimeoutError:
         logger.debug("Future execution timed out")
         return None
@@ -779,7 +810,7 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
         current_incident["reported_by"] = reporter or flight_no_display or "——"
 
     # 记录解析结果
-    observation_parts = []
+    observation_parts: List[str] = []
 
     # 添加规范化信息
     if normalization_confidence > 0.7:
@@ -789,8 +820,9 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
 
     if semantic_understanding:
         observation_parts.append(f"语义理解: {semantic_understanding.get('conversation_summary', '')}")
-    if enrichment.get("enrichment_observation"):
-        observation_parts.append(enrichment.get("enrichment_observation"))
+    enrichment_observation = enrichment.get("enrichment_observation")
+    if enrichment_observation:
+        observation_parts.append(str(enrichment_observation))
     reasoning_step = {
         "step": 0,
         "thought": f"解析用户输入，识别为{scenario_type}场景",
@@ -886,7 +918,7 @@ LLM_EXTRACT_PROMPT = """你是一个机场应急响应系统的事件信息提�
 """
 
 # 枚举值映射表
-ENUM_VALUE_MAPS = {
+ENUM_VALUE_MAPS: Dict[str, Dict[str, Any]] = {
     "fluid_type": {
         "valid_values": {"FUEL", "HYDRAULIC", "OIL", "UNKNOWN"},
         "mappings": {
@@ -1088,7 +1120,7 @@ def _get_scenario_field_keys(scenario_type: Optional[str]) -> set[str]:
 
     # 收集场景特定字段
     scenario_fields = {
-        field.get("key")
+        str(field.get("key"))
         for field in scenario.p1_fields + scenario.p2_fields
         if field.get("key")
     }
@@ -1233,6 +1265,10 @@ def extract_entities(text: str, scenario_type: Optional[str] = None) -> Dict[str
         if re.search(pattern, text):
             entities["leak_size"] = value
             break
+    if "leak_size" not in entities:
+        inferred_size = _infer_leak_size_from_area(text)
+        if inferred_size:
+            entities["leak_size"] = inferred_size
 
     for pattern in patterns.get("aircraft", []):
         match = re.search(pattern, text)
@@ -1248,7 +1284,11 @@ def extract_entities(text: str, scenario_type: Optional[str] = None) -> Dict[str
                         break
             else:
                 entities["flight_no_display"] = value
-                entities["flight_no"] = normalize_flight_number(value)
+                upper_value = value.upper()
+                if re.match(r"^[A-Z0-9]{2}\d{3,4}$", upper_value):
+                    entities["flight_no"] = upper_value
+                else:
+                    entities["flight_no"] = normalize_flight_number(value)
             break
 
     handled_keys = {
@@ -1280,11 +1320,10 @@ def extract_entities(text: str, scenario_type: Optional[str] = None) -> Dict[str
 def extract_entities_llm(text: str, history: str = "", scenario_type: Optional[str] = None) -> Dict[str, Any]:
     """使用 LLM 提取实体（更灵活，根据场景类型动态构建prompt）"""
     try:
-        llm = get_llm_client()
         # 使用动态构建的prompt
         prompt_template = _build_llm_extract_prompt(scenario_type)
         prompt = prompt_template.format(history=history, user_input=text)
-        response = llm.invoke(prompt)
+        response = invoke_llm(prompt)
         content = response.content if hasattr(response, 'content') else str(response)
 
         # 解析 JSON

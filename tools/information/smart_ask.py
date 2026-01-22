@@ -1,7 +1,7 @@
 """
 智能问题生成工具 - 根据缺失字段智能合并问题
 """
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 from tools.base import BaseTool
 from config.airline_codes import format_callsign_display
 from scenarios.base import ScenarioRegistry
@@ -31,11 +31,11 @@ def _resolve_required_fields(scenario_type: str, incident: Dict[str, Any]) -> Li
     """从场景配置中获取必填字段列表（P1 required），无配置则回退并按已知字段推断。"""
     scenario = ScenarioRegistry.get(scenario_type)
     if scenario:
-        fields = [
-            field.get("key")
-            for field in scenario.p1_fields
-            if field.get("required", True) and field.get("key")
-        ]
+        fields: List[str] = []
+        for field in scenario.p1_fields:
+            key = field.get("key")
+            if field.get("required", True) and key:
+                fields.append(str(key))
         if fields:
             return fields
 
@@ -64,14 +64,33 @@ def _ask_prompt(scenario_type: str, field_key: str) -> str:
     return ASK_PROMPTS.get(field_key, f"请提供{_field_name(scenario_type, field_key)}")
 
 
-def get_missing_fields(incident: Dict[str, Any], checklist: Dict[str, bool], scenario_type: str) -> List[str]:
-    """获取未收集的必填字段（按场景配置）。"""
+def get_missing_fields(
+    incident: Dict[str, Any],
+    checklist: Dict[str, bool],
+    scenario_type: str = "oil_spill",
+) -> List[str]:
+    """获取未收集的必填字段（按场景配置）。
+
+    优先使用 checklist 状态判断字段是否已收集，确保与 input_parser 更新的状态一致。
+    """
     required_fields = _resolve_required_fields(scenario_type, incident)
     missing = []
     for field in required_fields:
-        value = incident.get(field)
-        if value in [None, ""]:
-            missing.append(field)
+        # 优先检查 checklist 状态（input_parser 已更新）
+        if checklist.get(field, False):
+            # 字段已标记为已收集，跳过
+            continue
+
+        # Fallback: 如果 checklist 中没有该字段，检查 incident 的值
+        # 特殊处理：航班号检查两个字段
+        if field == "flight_no":
+            flight_no = incident.get("flight_no") or incident.get("flight_no_display")
+            if not flight_no:
+                missing.append(field)
+        else:
+            value = incident.get(field)
+            if value in [None, ""]:
+                missing.append(field)
     return missing
 
 
@@ -119,7 +138,11 @@ def group_missing_fields(missing: List[str]) -> List[List[str]]:
     return groups
 
 
-def build_combined_question(fields: List[str], flight_no: str = None, scenario_type: str = "oil_spill") -> str:
+def build_combined_question(
+    fields: List[str],
+    flight_no: Optional[str] = None,
+    scenario_type: str = "oil_spill",
+) -> str:
     """根据字段列表构建合并的问题"""
     if len(fields) == 1:
         # 单个字段
@@ -137,8 +160,9 @@ def build_combined_question(fields: List[str], flight_no: str = None, scenario_t
         prompts = [_ask_prompt(scenario_type, f) for f in fields[:2]]
         question = "？".join(prompts) + "？"
 
-    # 添加航班号前缀（统一格式化显示）
-    if flight_no and "报告你机号" not in question:
+    # 添加航班号前缀（符合航空通话规范）
+    # 只要航班号存在，就添加前缀（即使是询问其他字段）
+    if flight_no:
         callsign = format_callsign_display(flight_no)
         if callsign and not question.startswith(callsign):
             question = f"{callsign}，{question}"
@@ -166,10 +190,15 @@ class SmartAskTool(BaseTool):
 - 字段分组信息
 """
 
-    def execute(self, state: Dict[str, Any], inputs: Dict[str, Any] = None) -> Dict[str, Any]:
+    def execute(
+        self,
+        state: Dict[str, Any],
+        inputs: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         incident = state.get("incident", {})
         checklist = state.get("checklist", {})
         scenario_type = state.get("scenario_type", "oil_spill")
+
 
         # 获取缺失字段
         missing = get_missing_fields(incident, checklist, scenario_type)
@@ -209,7 +238,7 @@ class SmartAskTool(BaseTool):
         }
 
 
-def get_next_questions(state: Dict[str, Any]) -> Tuple[str, List[str]]:
+def get_next_questions(state: Dict[str, Any]) -> Tuple[Optional[str], List[str]]:
     """获取下一组问题和缺失字段列表"""
     incident = state.get("incident", {})
     checklist = state.get("checklist", {})

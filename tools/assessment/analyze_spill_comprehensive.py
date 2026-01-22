@@ -17,7 +17,7 @@ from tools.assessment.assess_weather_impact import AssessWeatherImpactTool
 from tools.assessment.estimate_cleanup_time import EstimateCleanupTimeTool
 from tools.spatial.calculate_impact_zone import CalculateImpactZoneTool
 from tools.spatial.predict_flight_impact import PredictFlightImpactTool
-from config.llm_config import get_llm_client
+from agent.llm_guard import invoke_llm
 
 logger = logging.getLogger(__name__)
 
@@ -814,10 +814,9 @@ class AnalyzeSpillComprehensiveTool(BaseTool):
         )
 
         try:
-            llm = get_llm_client()
-            response = llm.invoke(prompt)
+            response = invoke_llm(prompt)
             content = response.content if hasattr(response, "content") else str(response)
-            return content.strip()
+            return str(content).strip()
         except Exception as exc:
             logger.warning("运行影响解读生成失败: %s", exc)
             return ""
@@ -893,10 +892,9 @@ class AnalyzeSpillComprehensiveTool(BaseTool):
         )
 
         try:
-            llm = get_llm_client()
-            response = llm.invoke(prompt)
+            response = invoke_llm(prompt)
             content = response.content if hasattr(response, "content") else str(response)
-            return content.strip()
+            return str(content).strip()
         except Exception as exc:
             logger.warning("指挥调度建议生成失败: %s", exc)
             return ""

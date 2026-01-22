@@ -8,9 +8,9 @@
 """
 import os
 from pathlib import Path
-from typing import Dict, List, Any, Optional
-from dataclasses import dataclass, field
-import yaml
+from typing import Dict, List, Any, Optional, Union
+from dataclasses import dataclass, field as dataclass_field
+import yaml  # type: ignore[import-untyped]
 
 
 @dataclass
@@ -22,7 +22,7 @@ class ChecklistField:
     field_type: str
     required: bool
     priority: str  # P1 or P2
-    options: List[Dict[str, str]] = field(default_factory=list)
+    options: List[Dict[str, str]] = dataclass_field(default_factory=list)
     ask_prompt: str = ""
     validation: str = ""
 
@@ -33,26 +33,28 @@ class MandatoryAction:
     action: str
     condition: str  # 触发条件
     description: str = ""
-    params: Dict[str, Any] = field(default_factory=dict)
+    params: Dict[str, Any] = dataclass_field(default_factory=dict)
 
 
 @dataclass
 class StateConstraint:
     """状态约束定义"""
     state_id: str
-    required_checklist_fields: List[str] = field(default_factory=list)
-    required_mandatory_actions: List[str] = field(default_factory=list)
-    triggers: List[Dict[str, Any]] = field(default_factory=list)
+    required_checklist_fields: List[str] = dataclass_field(default_factory=list)
+    required_mandatory_actions: List[Union[str, Dict[str, Any]]] = dataclass_field(
+        default_factory=list
+    )
+    triggers: List[Dict[str, Any]] = dataclass_field(default_factory=list)
 
 
 @dataclass
 class ScenarioConstraints:
     """场景约束集合"""
     scenario_type: str
-    p1_fields: List[ChecklistField] = field(default_factory=list)
-    p2_fields: List[ChecklistField] = field(default_factory=list)
-    mandatory_actions: List[MandatoryAction] = field(default_factory=list)
-    state_constraints: Dict[str, StateConstraint] = field(default_factory=dict)
+    p1_fields: List[ChecklistField] = dataclass_field(default_factory=list)
+    p2_fields: List[ChecklistField] = dataclass_field(default_factory=list)
+    mandatory_actions: List[MandatoryAction] = dataclass_field(default_factory=list)
+    state_constraints: Dict[str, StateConstraint] = dataclass_field(default_factory=dict)
 
 
 class ConstraintLoader:
@@ -97,7 +99,7 @@ class ConstraintLoader:
 
         # 加载 config.yaml
         config_file = scenario_path / "config.yaml"
-        config = {}
+        config: Dict[str, Any] = {}
         if config_file.exists():
             with open(config_file, 'r', encoding='utf-8') as f:
                 config = yaml.safe_load(f) or {}
@@ -108,14 +110,14 @@ class ConstraintLoader:
             raise FileNotFoundError(f"Checklist 配置文件不存在: {checklist_file}")
 
         with open(checklist_file, 'r', encoding='utf-8') as f:
-            checklist_config = yaml.safe_load(f)
+            checklist_config: Dict[str, Any] = yaml.safe_load(f) or {}
 
         # 加载 fsm_states.yaml
         fsm_file = scenario_path / "fsm_states.yaml"
-        fsm_config = {}
+        fsm_config: Dict[str, Any] = {}
         if fsm_file.exists():
             with open(fsm_file, 'r', encoding='utf-8') as f:
-                fsm_config = yaml.safe_load(f)
+                fsm_config = yaml.safe_load(f) or {}
 
         # 构建约束对象
         constraints = self._build_constraints(scenario_type, checklist_config, fsm_config, config)
@@ -128,9 +130,9 @@ class ConstraintLoader:
     def _build_constraints(
         self,
         scenario_type: str,
-        checklist_config: Dict,
-        fsm_config: Dict,
-        config: Dict
+        checklist_config: Dict[str, Any],
+        fsm_config: Dict[str, Any],
+        config: Dict[str, Any],
     ) -> ScenarioConstraints:
         """构建约束对象"""
         constraints = ScenarioConstraints(scenario_type=scenario_type)
@@ -152,7 +154,7 @@ class ConstraintLoader:
             state_id = state_def.get('id')
             if state_id:
                 # 处理 required_mandatory_actions (支持字符串和字典两种格式)
-                required_mas = []
+                required_mas: List[Union[str, Dict[str, Any]]] = []
                 for ma in state_def.get('required_mandatory_actions', []):
                     if isinstance(ma, str):
                         required_mas.append(ma)

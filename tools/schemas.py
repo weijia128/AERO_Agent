@@ -6,7 +6,7 @@
 import re
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 # =============================================================================
@@ -16,9 +16,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 class ToolInput(BaseModel):
     """工具输入基类"""
-
-    class Config:
-        extra = "ignore"  # 忽略额外字段，提高容错性
+    model_config = ConfigDict(extra="ignore")  # 忽略额外字段，提高容错性
 
 
 class ToolOutput(BaseModel):

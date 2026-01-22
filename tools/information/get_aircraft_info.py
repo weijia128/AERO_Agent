@@ -12,10 +12,10 @@ from tools.base import BaseTool
 from config.airline_codes import normalize_flight_number, get_airline_name
 
 
-def load_flight_data() -> Dict[str, Dict]:
+def load_flight_data() -> Dict[str, Dict[str, Any]]:
     """从 data/raw 文件夹加载所有航班数据"""
     data_dir = Path(__file__).parent.parent.parent / "data" / "raw"
-    flights = {}
+    flights: Dict[str, Dict[str, Any]] = {}
 
     if not data_dir.exists():
         print(f"Data directory not found: {data_dir}")
@@ -70,10 +70,10 @@ def load_flight_data() -> Dict[str, Dict]:
 
 
 # 加载航班数据
-_FLIGHT_DATA = None
+_FLIGHT_DATA: Optional[Dict[str, Dict[str, Any]]] = None
 
 
-def get_flight_data() -> Dict[str, Dict]:
+def get_flight_data() -> Dict[str, Dict[str, Any]]:
     """获取航班数据（懒加载）"""
     global _FLIGHT_DATA
     if _FLIGHT_DATA is None:

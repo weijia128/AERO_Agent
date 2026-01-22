@@ -118,8 +118,16 @@ def build_prompt(
 
     # Checklist - 按场景定义的顺序，区分 P1 必填 / P2 可选
     if scenario:
-        p1_order = [f.get("key") for f in scenario.p1_fields if f.get("key")]
-        p2_order = [f.get("key") for f in scenario.p2_fields if f.get("key")]
+        p1_order = []
+        for field in scenario.p1_fields:
+            key = field.get("key")
+            if key:
+                p1_order.append(str(key))
+        p2_order = []
+        for field in scenario.p2_fields:
+            key = field.get("key")
+            if key:
+                p2_order.append(str(key))
         missing_p1 = [f for f in p1_order if not checklist.get(f, False)]
         missing_p2 = [f for f in p2_order if not checklist.get(f, False)]
         collected_fields = [f for f, v in checklist.items() if v]

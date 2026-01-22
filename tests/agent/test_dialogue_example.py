@@ -9,6 +9,8 @@
 import sys
 import os
 
+import pytest
+
 # 添加项目路径
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, PROJECT_ROOT)
@@ -72,12 +74,17 @@ def test_with_mock():
 
 def test_with_llm():
     """使用真实LLM测试（需要API密钥）"""
+    if os.environ.get("RUN_LLM_TESTS") != "1":
+        pytest.skip("set RUN_LLM_TESTS=1 to run interactive LLM test")
+    if not sys.stdin.isatty():
+        pytest.skip("interactive LLM test requires a TTY stdin")
+
     print("正在启动真实LLM测试...")
     print("请按照以下提示输入对话：\n")
 
     # 实际运行agent
     from apps.run_agent import main
-    sys.exit(main())
+    assert main() == 0
 
 
 if __name__ == "__main__":

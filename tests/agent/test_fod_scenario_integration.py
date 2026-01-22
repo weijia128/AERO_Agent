@@ -32,7 +32,7 @@ def test_fod_scenario_conversation_flow():
 
     # 验证提取的字段
     incident_1 = result_1["incident"]
-    assert incident_1.get("position") == "18R", f"位置应为18R，实际为: {incident_1.get('position')}"
+    assert incident_1.get("position") == "跑道18R", f"位置应为跑道18R，实际为: {incident_1.get('position')}"
     assert incident_1.get("location_area") == "RUNWAY", "位置类别应为RUNWAY"
 
     # 关键：不应提取oil_spill字段

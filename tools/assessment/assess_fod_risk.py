@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from tools.base import BaseTool
 
@@ -17,7 +17,7 @@ def _load_rules() -> Dict[str, Any]:
     if not FOD_RULE_PATH.exists():
         return {}
     with FOD_RULE_PATH.open("r", encoding="utf-8") as f:
-        return json.load(f)
+        return cast(Dict[str, Any], json.load(f))
 
 
 _FOD_RULES = _load_rules()
@@ -59,7 +59,7 @@ def _eval_operand(data: Dict[str, Any], operand: Any) -> Any:
 def _evaluate_clause(data: Dict[str, Any], clause: Dict[str, Any]) -> bool:
     if "eq" in clause:
         key, value = clause["eq"]
-        return _get_path_value(data, key) == value
+        return bool(_get_path_value(data, key) == value)
     if "exists" in clause:
         return _exists(data, clause["exists"])
     if "lte" in clause:
@@ -82,9 +82,11 @@ def _evaluate_clause(data: Dict[str, Any], clause: Dict[str, Any]) -> bool:
 
 def _evaluate_condition(data: Dict[str, Any], condition: Dict[str, Any]) -> bool:
     if "all" in condition:
-        return all(_evaluate_clause(data, c) for c in condition["all"])
+        clauses = cast(List[Dict[str, Any]], condition["all"])
+        return all(_evaluate_clause(data, c) for c in clauses)
     if "any" in condition:
-        return any(_evaluate_clause(data, c) for c in condition["any"])
+        clauses = cast(List[Dict[str, Any]], condition["any"])
+        return any(_evaluate_clause(data, c) for c in clauses)
     return False
 
 

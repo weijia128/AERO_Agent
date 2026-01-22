@@ -167,6 +167,21 @@ User Input → Input Parser → ReAct Reasoning Loop → FSM Validation → Outp
 
 Flight impact prediction uses `reference_flight.reference_time` when available and logs the prediction base time in its observation output.
 
+### Cross-Validation System (NEW)
+Hybrid verification system combining rule engine + LLM validation for critical decisions:
+- **Architecture**: Rule Engine (deterministic) → Result A + LLM Reasoning → Result B → Consistency Check → Final Result
+- **Validation Scope**: Currently validates risk assessment (R1-R4), planned for cleanup time, fire notification, runway closure
+- **Conflict Resolution**:
+  - Low LLM confidence (<0.75) → Ignore LLM, use rules
+  - High confidence (>0.85) + 1-level diff → Use stricter level
+  - High confidence + 2+ level diff → Use stricter level + manual review flag
+- **Configuration**: `config/validation_config.py` controls thresholds, sampling rate, validation scope
+- **Cost Control**: Sampling rate (default 100%), LLM timeout (5s), low temperature (0.1)
+- **Monitoring**: Logs all validations, conflict cases, consistency rates
+- **Fallback**: Gracefully degrades to pure rule engine on LLM failure
+
+See `tests/tools/test_cross_validation.py` for 10 test scenarios covering consistency, conflicts, and edge cases.
+
 ### FSM System
 9-state workflow validation:
 ```
@@ -210,6 +225,7 @@ See [API Documentation](./docs/API_DOCUMENTATION.md) for schemas and examples.
 ```bash
 # .env configuration
 ENABLE_SEMANTIC_UNDERSTANDING=false  # Enable LLM semantic extraction
+ENABLE_CROSS_VALIDATION=true         # Enable rule engine + LLM cross-validation
 LLM_PROVIDER=zhipu                   # or "openai"
 LLM_MODEL=glm-4                      # Model name
 LLM_API_KEY=your_key_here            # API key
@@ -265,6 +281,7 @@ pytest tests/tools/test_assess_risk.py -v -s
 | Bird strike scenario | ✅ Complete | BSRC scoring engine |
 | Tire burst scenario | 📋 Planned | Template ready |
 | Flight impact prediction | ✅ Complete | Dynamic time window from flight number |
+| Cross-validation system | ✅ Phase 1 Complete | Risk assessment validation live |
 | Report template engine | ⚠️ String concat | Needs refactoring |
 | Session persistence | ⚠️ Memory only | Needs PostgreSQL/Redis |
 
@@ -291,8 +308,73 @@ For detailed technical documentation, see:
 - **docs/ARCHITECTURE_DECISIONS.md**: Design decisions and trade-offs
 - **docs/DEPLOYMENT_GUIDE.md**: Production deployment instructions
 - **docs/DYNAMIC_TIME_WINDOW.md**: Flight-based dynamic time window feature (v2.0.0)
+- **docs/INTELLIGENCE_ASSESSMENT.md**: AI intelligence assessment report (75/100, Tier 3 system)
 
 ## Recent Updates
+
+### v2.1.0 (2026-01-21) - Cross-Validation System (Phase 1)
+
+**Major Enhancement: Hybrid Validation System**
+
+Implemented rule engine + LLM cross-validation system for critical decision points, providing dual-layer verification while maintaining deterministic foundations:
+
+- ✅ **CrossValidateRiskTool**: New tool combining 12-rule risk engine + LLM reasoning
+- ✅ **Validation Config**: Comprehensive configuration system (`config/validation_config.py`)
+  - Confidence thresholds (0.75 base, 0.85 high)
+  - Sampling rate control (default 100%)
+  - Conflict resolution strategies (use stricter level, manual review flags)
+  - Feature toggles (per validation scope)
+- ✅ **Dynamic Tool Registration**: Auto-switches between pure rule engine and cross-validation based on config
+- ✅ **Conflict Resolution**: 4-tier decision tree
+  - Consistent → Use rules
+  - Low LLM confidence (<0.75) → Ignore LLM
+  - High confidence (>0.85) + 1-level diff → Use stricter
+  - High confidence + 2+ level diff → Use stricter + flag manual review
+- ✅ **Graceful Degradation**: Falls back to rule engine on LLM failure
+- ✅ **Test Coverage**: 10 unit tests covering all validation paths
+
+**Architecture:**
+```
+Rule Engine → Result A (R4, 80 points)
+     ↓
+LLM Validation → Result B (R3, confidence=0.9)
+     ↓
+Consistency Check → Conflict detected (1-level diff)
+     ↓
+Resolution Strategy → Final: R4 (stricter level)
+```
+
+**Configuration Example:**
+```python
+# config/validation_config.py
+ENABLE_CROSS_VALIDATION = True
+CONFIDENCE_THRESHOLD = 0.75
+SAMPLING_RATE = 1.0  # 100% validation
+VALIDATE_RISK_ASSESSMENT = True  # Phase 1
+```
+
+**Test Results:**
+- 10/10 unit tests passing
+- Covers: consistency, conflicts, confidence levels, fallback, sampling control
+- Run: `pytest tests/tools/test_cross_validation.py -v`
+
+**Phase 2 Roadmap:**
+- [ ] Cleanup time validation
+- [ ] Fire notification cross-check
+- [ ] Runway closure decision validation
+- [ ] Monitoring dashboard (consistency rate, conflict rate)
+
+**Cost Impact:** ~$0.06/event (100 events/month = $6/month)
+
+**Files Changed:**
+- `tools/assessment/cross_validate_assessment.py` (new, 360 lines)
+- `config/validation_config.py` (new, 140 lines)
+- `config/settings.py` (added ENABLE_CROSS_VALIDATION)
+- `tools/registry.py` (dynamic tool registration logic)
+- `tools/assessment/assess_oil_spill_risk.py` (fixed KeyError bug)
+- `tests/tools/test_cross_validation.py` (new, 270 lines)
+
+---
 
 ### v2.0.0 (2026-01-20) - Dynamic Time Window Feature
 

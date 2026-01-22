@@ -10,39 +10,74 @@
 import logging
 import re
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, cast
 
 from agent.state import AgentState, ActionStatus
+from agent.exceptions import ToolExecutionError
+from agent.retry import retry
 from tools.registry import get_tool, ToolRegistry
 
 logger = logging.getLogger(__name__)
+
+def _build_return_state(state: AgentState, updates: Dict[str, Any]) -> Dict[str, Any]:
+    """构建返回状态，确保关键字段被传递。
+
+    LangGraph 0.2.x 使用 Dict[str, Any] 时不会自动合并状态，
+    需要显式传递关键字段以确保下游节点能访问完整状态。
+    """
+    critical_fields = [
+        "session_id",
+        "scenario_type",
+        "incident",
+        "checklist",
+        "messages",
+        "risk_assessment",
+        "spatial_analysis",
+        "weather",
+        "mandatory_actions_done",
+        "actions_taken",
+        "fsm_state",
+        "reference_flight",
+        "flight_plan_table",
+        "position_impact_analysis",
+        "comprehensive_analysis",
+    ]
+
+    result: Dict[str, Any] = {}
+    for field in critical_fields:
+        if field in state:
+            result[field] = state[field]
+
+    result.update(updates)
+    return result
 
 
 def tool_executor_node(state: AgentState) -> Dict[str, Any]:
     """
     工具执行节点
-    
+
     执行 ReAct Agent 决定的工具，返回观察结果
     """
     action = state.get("current_action", "")
     action_input = state.get("current_action_input", {})
     session_id = state.get("session_id", "unknown")
 
+
     if not action:
         logger.warning(f"[{session_id}] 工具执行: 未指定工具")
-        return {
+        return _build_return_state(state, {
             "current_observation": "没有指定要执行的工具",
             "next_node": "reasoning",
-        }
+        })
 
     # 获取工具
     tool = get_tool(action)
     if not tool:
         logger.warning(f"[{session_id}] 工具执行: 未找到工具 {action}")
-        return {
+        return _build_return_state(state, {
             "current_observation": f"未找到工具: {action}",
             "next_node": "reasoning",
-        }
+        })
     
     # 规范化部分工具输入（兼容 ReAct 格式异常）
     if action == "get_aircraft_info":
@@ -57,10 +92,10 @@ def tool_executor_node(state: AgentState) -> Dict[str, Any]:
             incident = state.get("incident", {})
             missing = [f for f in fields if not checklist.get(f) or incident.get(f) is None]
             if not missing:
-                return {
+                return _build_return_state(state, {
                     "current_observation": "目标字段已收集，跳过重复询问",
                     "next_node": "reasoning",
-                }
+                })
 
     # 创建动作记录（提前，避免异常时未定义）
     action_record = {
@@ -76,10 +111,12 @@ def tool_executor_node(state: AgentState) -> Dict[str, Any]:
         logger.info(f"[{session_id}] 工具执行开始: {action}, 输入: {str(action_input)[:200]}")
 
         # 使用带验证的执行方法（如果工具支持）
-        if hasattr(tool, "execute_with_validation"):
-            result = tool.execute_with_validation(state, action_input)
-        else:
-            result = tool.execute(state, action_input)
+        result = execute_tool_with_retry(
+            tool,
+            state,
+            action_input,
+            max_retries=getattr(tool, "max_retries", 2),
+        )
 
         duration_ms = (datetime.now() - start_time).total_seconds() * 1000
         logger.info(
@@ -194,7 +231,7 @@ def tool_executor_node(state: AgentState) -> Dict[str, Any]:
                         current_obs = updates.get("current_observation", "")
                         updates["current_observation"] = current_obs + f"\n航班影响预测失败: {str(e)}"
 
-        return updates
+        return _build_return_state(state, updates)
         
     except Exception as e:
         # 工具执行失败
@@ -217,22 +254,43 @@ def tool_executor_node(state: AgentState) -> Dict[str, Any]:
         if action == "analyze_spill_comprehensive":
             failure_updates["comprehensive_analysis_failed"] = True
 
-        return failure_updates
+        return _build_return_state(state, failure_updates)
 
 
-def execute_tool_with_retry(tool, state: AgentState, action_input: Dict, max_retries: int = 2) -> Dict[str, Any]:
+def _is_retryable_exception(exc: Exception) -> bool:
+    return isinstance(exc, (TimeoutError, ConnectionError))
+
+
+def execute_tool_with_retry(
+    tool: Any,
+    state: AgentState,
+    action_input: Dict,
+    max_retries: int = 2,
+) -> Dict[str, Any]:
     """带重试的工具执行"""
-    last_error = None
-    
-    for attempt in range(max_retries):
+    tool_name = getattr(tool, "name", "unknown")
+    max_attempts = max(1, max_retries)
+    retryer = retry(
+        max_attempts=max_attempts,
+        delay=0.5,
+        backoff=2.0,
+        exceptions=(ToolExecutionError,),
+    )
+
+    def _call() -> Dict[str, Any]:
         try:
-            return tool.execute(state, action_input)
-        except Exception as e:
-            last_error = e
-            if attempt < max_retries - 1:
-                continue
-    
-    raise last_error
+            if hasattr(tool, "execute_with_validation"):
+                return cast(Dict[str, Any], tool.execute_with_validation(state, action_input))
+            return cast(Dict[str, Any], tool.execute(state, action_input))
+        except Exception as exc:
+            raise ToolExecutionError(
+                tool_name,
+                str(exc),
+                retryable=_is_retryable_exception(exc),
+                cause=exc,
+            ) from exc
+
+    return retryer(_call)()
 
 
 def _normalize_flight_input(action_input: Dict[str, Any]) -> Dict[str, Any]:

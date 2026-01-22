@@ -7,6 +7,7 @@ load_dotenv()
 
 import logging
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
 
@@ -27,10 +28,21 @@ from config.settings import settings
 setup_logging()
 logger = logging.getLogger(__name__)
 
+backend = settings.STORAGE_BACKEND or settings.SESSION_STORE_BACKEND
+session_store = get_session_store(backend)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    await session_store.init()
+    yield
+
+
 app = FastAPI(
     title="机场应急响应智能 Agent",
     description="融合 ReAct Agent + FSM 验证的机坪特情处置系统",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # CORS
@@ -72,7 +84,7 @@ class EventRequest(BaseModel):
     """事件请求"""
     message: str = Field(..., description="用户输入消息")
     session_id: Optional[str] = Field(None, description="会话ID，不传则新建")
-    scenario_type: Optional[str] = Field("oil_spill", description="场景类型")
+    scenario_type: str = Field("oil_spill", description="场景类型")
 
 
 class EventResponse(BaseModel):
@@ -91,9 +103,6 @@ class ChatRequest(BaseModel):
     """对话请求"""
     session_id: str = Field(..., description="会话ID")
     message: str = Field(..., description="用户消息")
-
-
-session_store = get_session_store(settings.SESSION_STORE_BACKEND)
 
 
 @app.get("/")
@@ -130,7 +139,7 @@ async def start_event(
     session_id = request.session_id or str(uuid.uuid4())
     
     # 清理过期会话
-    session_store.cleanup_expired()
+    await session_store.cleanup_expired()
 
     # 创建初始状态
     state = create_initial_state(
@@ -146,7 +155,7 @@ async def start_event(
         raise HTTPException(status_code=500, detail=str(e))
     
     # 保存会话
-    session_store.set(session_id, result, settings.SESSION_TTL_SECONDS)
+    await session_store.set(session_id, result, settings.SESSION_TTL_SECONDS)
     
     # 构建响应
     response = EventResponse(
@@ -181,13 +190,10 @@ async def chat_event(
     """
     session_id = request.session_id
     
-    session_store.cleanup_expired()
+    await session_store.cleanup_expired()
 
-    if not session_store.get(session_id):
-        raise HTTPException(status_code=404, detail="会话不存在")
-    
     # 获取当前状态
-    state = session_store.get(session_id)
+    state = await session_store.get(session_id)
     if not state:
         raise HTTPException(status_code=404, detail="会话不存在")
     
@@ -207,7 +213,7 @@ async def chat_event(
         raise HTTPException(status_code=500, detail=str(e))
     
     # 更新会话
-    session_store.set(session_id, result, settings.SESSION_TTL_SECONDS)
+    await session_store.set(session_id, result, settings.SESSION_TTL_SECONDS)
     
     # 构建响应
     response = EventResponse(
@@ -240,12 +246,9 @@ async def get_event_status(
     """
     获取事件状态
     """
-    session_store.cleanup_expired()
+    await session_store.cleanup_expired()
 
-    if not session_store.get(session_id):
-        raise HTTPException(status_code=404, detail="会话不存在")
-    
-    state = session_store.get(session_id)
+    state = await session_store.get(session_id)
     if not state:
         raise HTTPException(status_code=404, detail="会话不存在")
     
@@ -269,12 +272,9 @@ async def get_event_report(
     """
     获取事件报告（JSON格式）
     """
-    session_store.cleanup_expired()
+    await session_store.cleanup_expired()
 
-    if not session_store.get(session_id):
-        raise HTTPException(status_code=404, detail="会话不存在")
-
-    state = session_store.get(session_id)
+    state = await session_store.get(session_id)
     if not state:
         raise HTTPException(status_code=404, detail="会话不存在")
 
@@ -294,12 +294,9 @@ async def get_event_report_markdown(
     """
     获取事件报告（Markdown文件格式）
     """
-    session_store.cleanup_expired()
+    await session_store.cleanup_expired()
 
-    if not session_store.get(session_id):
-        raise HTTPException(status_code=404, detail="会话不存在")
-
-    state = session_store.get(session_id)
+    state = await session_store.get(session_id)
     if not state:
         raise HTTPException(status_code=404, detail="会话不存在")
 
@@ -334,12 +331,13 @@ async def close_event(
     """
     关闭事件会话
     """
-    session_store.cleanup_expired()
+    await session_store.cleanup_expired()
 
-    if not session_store.get(session_id):
+    state = await session_store.get(session_id)
+    if not state:
         raise HTTPException(status_code=404, detail="会话不存在")
     
-    session_store.delete(session_id)
+    await session_store.delete(session_id)
     
     return {"status": "closed", "session_id": session_id}
 

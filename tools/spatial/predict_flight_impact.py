@@ -6,7 +6,7 @@
 import logging
 import os
 import sys
-from typing import Dict, Any, List, Set, Optional
+from typing import Dict, Any, List, Set, Optional, cast
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
@@ -65,8 +65,8 @@ class PredictFlightImpactTool(BaseTool):
 
     def __init__(self):
         super().__init__()
-        self._flight_data_cache = None
-        self._cache_file = None
+        self._flight_data_cache: Optional[List[Dict[str, Any]]] = None
+        self._cache_file: Optional[str] = None
 
     def execute(self, state: Dict[str, Any], inputs: Dict[str, Any]) -> Dict[str, Any]:
         # 检查是否有空间分析结果
@@ -220,7 +220,7 @@ class PredictFlightImpactTool(BaseTool):
             raise ImportError("FlightPlanParser 模块未正确导入")
 
         parser = FlightPlanParser()
-        flight_data = parser.parse_file(flight_plan_file)
+        flight_data = cast(List[Dict[str, Any]], parser.parse_file(flight_plan_file))
 
         # 缓存数据
         self._flight_data_cache = flight_data

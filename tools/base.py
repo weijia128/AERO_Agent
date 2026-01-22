@@ -7,16 +7,14 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional, Type
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 logger = logging.getLogger(__name__)
 
 
 class ToolInput(BaseModel):
     """工具输入基类"""
-
-    class Config:
-        extra = "ignore"
+    model_config = ConfigDict(extra="ignore")
 
 
 class ToolOutput(BaseModel):
@@ -39,6 +37,7 @@ class BaseTool(ABC):
     description: str = ""
     input_schema: Optional[Type[ToolInput]] = None  # 子类可覆盖指定输入模式
     enable_validation: bool = True  # 是否启用输入验证
+    max_retries: int = 2  # 最大尝试次数（含首试）
 
     @abstractmethod
     def execute(self, state: Dict[str, Any], inputs: Dict[str, Any]) -> Dict[str, Any]:

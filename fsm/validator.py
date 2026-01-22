@@ -94,7 +94,7 @@ class FSMValidator:
         Returns:
             错误信息列表
         """
-        errors = []
+        errors: List[str] = []
         state_def = self.engine.get_state_definition(target_state)
 
         if not state_def or not state_def.preconditions:
@@ -198,7 +198,7 @@ class FSMValidator:
         Returns:
             推荐动作列表
         """
-        actions = []
+        actions: List[Dict[str, Any]] = []
         checklist = agent_state.get("checklist", {})
         mandatory = agent_state.get("mandatory_actions_done", {})
         risk = agent_state.get("risk_assessment", {})

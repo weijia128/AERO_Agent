@@ -2,9 +2,9 @@
 场景基类
 """
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional, TypedDict
+from typing import Dict, Any, List, Optional, TypedDict, cast
 from pathlib import Path
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from scenarios.schema import ScenarioManifest
 
@@ -99,17 +99,23 @@ class BaseScenario(ABC):
     def keywords(self) -> List[str]:
         """场景识别关键词（用于自动分类）"""
         meta = self.metadata or {}
-        return meta.get("keywords", [])
+        return cast(List[str], meta.get("keywords", []))
 
     @property
     def summary_prompts(self) -> Dict[str, Any]:
         """报告摘要 prompt 配置"""
-        return getattr(self, "_summary_prompts", None) or self.config.get("summary_prompts", {})
+        return cast(
+            Dict[str, Any],
+            getattr(self, "_summary_prompts", None) or self.config.get("summary_prompts", {}),
+        )
 
     @property
     def regex_patterns(self) -> Dict[str, List[Dict[str, str]]]:
         """场景专属的正则/枚举提取规则"""
-        return getattr(self, "_regex", None) or self.config.get("regex", {})
+        return cast(
+            Dict[str, List[Dict[str, str]]],
+            getattr(self, "_regex", None) or self.config.get("regex", {}),
+        )
 
     @property
     def template_path(self) -> Optional[str]:
@@ -124,7 +130,7 @@ class BaseScenario(ABC):
     @property
     def risk_required(self) -> bool:
         """是否必须完成风险评估"""
-        return self.settings.get("risk_required", True)
+        return bool(self.settings.get("risk_required", True))
 
     @property
     def checklist(self) -> Dict[str, Any]:
@@ -136,18 +142,21 @@ class BaseScenario(ABC):
     @property
     def p1_fields(self) -> List[Dict[str, Any]]:
         """获取 P1 字段列表"""
-        return self.checklist.get("p1_fields", [])
+        return cast(List[Dict[str, Any]], self.checklist.get("p1_fields", []))
 
     @property
     def p2_fields(self) -> List[Dict[str, Any]]:
         """获取 P2 字段列表"""
-        return self.checklist.get("p2_fields", [])
+        return cast(List[Dict[str, Any]], self.checklist.get("p2_fields", []))
 
     @property
     def fsm_states(self) -> List[Dict[str, Any]]:
         """获取 FSM 状态配置"""
         if self._fsm_states is None:
-            self._fsm_states = self._load_config().get("fsm_states", [])
+            self._fsm_states = cast(
+                List[Dict[str, Any]],
+                self._load_config().get("fsm_states", []),
+            )
         return self._fsm_states
 
     @property
@@ -157,17 +166,17 @@ class BaseScenario(ABC):
             self.fsm_states_path if self.fsm_states_path
             else (self.config_path.parent / "fsm_states.yaml" if self.config_path else None)
         )
-        return fsm_data.get("transitions", [])
+        return cast(List[Dict[str, Any]], fsm_data.get("transitions", []))
 
     @property
     def mandatory_triggers(self) -> List[Dict[str, Any]]:
         """获取强制触发规则"""
-        return self._load_config().get("mandatory_triggers", [])
+        return cast(List[Dict[str, Any]], self._load_config().get("mandatory_triggers", []))
 
     @property
     def risk_rules(self) -> List[Dict[str, Any]]:
         """获取风险评估规则"""
-        return self._load_config().get("risk_rules", [])
+        return cast(List[Dict[str, Any]], self._load_config().get("risk_rules", []))
 
     @property
     def immediate_actions(self) -> Dict[str, List[str]]:
@@ -199,21 +208,22 @@ class BaseScenario(ABC):
     @property
     def system_prompt(self) -> str:
         """获取场景 System Prompt"""
-        return self.prompt_config.get("system_prompt", "")
+        return str(self.prompt_config.get("system_prompt", ""))
 
     @property
     def field_order(self) -> List[str]:
         """获取字段收集顺序"""
-        return self.prompt_config.get("field_order", [])
+        return cast(List[str], self.prompt_config.get("field_order", []))
 
     @property
     def field_names(self) -> Dict[str, str]:
         """获取字段中文名称映射"""
-        return self.prompt_config.get("field_names", {})
+        return cast(Dict[str, str], self.prompt_config.get("field_names", {}))
 
     def get_ask_prompt_by_key(self, field_key: str) -> str:
         """根据字段 key 获取追问提示"""
-        return self.prompt_config.get("ask_prompts", {}).get(field_key, f"请提供{field_key}信息？")
+        prompts = cast(Dict[str, str], self.prompt_config.get("ask_prompts", {}))
+        return prompts.get(field_key, f"请提供{field_key}信息？")
 
     def get_field_name(self, field_key: str) -> str:
         """获取字段的中文名称"""

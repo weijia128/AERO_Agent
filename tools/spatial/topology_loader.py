@@ -5,7 +5,7 @@
 """
 import json
 import os
-from typing import Dict, Any, List, Set, Optional, Tuple
+from typing import Dict, Any, List, Set, Optional, Tuple, cast
 from collections import defaultdict
 
 
@@ -29,9 +29,9 @@ class TopologyLoader:
             topology_file = next((path for path in candidates if os.path.exists(path)), candidates[0])
 
         self.topology_file = topology_file
-        self.topology = None
-        self._adjacency_map = None
-        self._node_types = None
+        self.topology: Optional[Dict[str, Any]] = None
+        self._adjacency_map: Optional[Dict[str, Set[str]]] = None
+        self._node_types: Optional[Dict[str, List[str]]] = None
 
     def load(self) -> Dict[str, Any]:
         """加载拓扑图数据"""
@@ -64,8 +64,9 @@ class TopologyLoader:
         except json.JSONDecodeError as e:
             raise ValueError(f"拓扑图文件格式错误: {e}")
 
-    def _build_adjacency_map(self):
+    def _build_adjacency_map(self) -> None:
         """构建邻接表（无向图）"""
+        assert self.topology is not None
         self._adjacency_map = defaultdict(set)
 
         for edge in self.topology['edges']:
@@ -75,8 +76,9 @@ class TopologyLoader:
             self._adjacency_map[from_node].add(to_node)
             self._adjacency_map[to_node].add(from_node)
 
-    def _build_node_type_index(self):
+    def _build_node_type_index(self) -> None:
         """构建节点类型索引"""
+        assert self.topology is not None
         self._node_types = {
             'stand': [],
             'runway': [],
@@ -90,20 +92,21 @@ class TopologyLoader:
 
     def get_node(self, node_id: str) -> Optional[Dict[str, Any]]:
         """获取节点信息"""
-        if self.topology is None:
-            self.load()
-        return self.topology['nodes'].get(node_id)
+        topology = self.load()
+        return cast(Optional[Dict[str, Any]], topology['nodes'].get(node_id))
 
     def get_adjacent_nodes(self, node_id: str) -> Set[str]:
         """获取邻接节点"""
         if self._adjacency_map is None:
             self.load()
+        assert self._adjacency_map is not None
         return self._adjacency_map.get(node_id, set())
 
     def get_nodes_by_type(self, node_type: str) -> List[str]:
         """获取指定类型的所有节点ID"""
         if self._node_types is None:
             self.load()
+        assert self._node_types is not None
         return self._node_types.get(node_type, [])
 
     def find_nearest_node(
@@ -121,12 +124,11 @@ class TopologyLoader:
         Returns:
             (node_id, node_info) 或 None
         """
-        if self.topology is None:
-            self.load()
+        topology = self.load()
 
         # 直接匹配节点ID
-        if position_str in self.topology['nodes']:
-            node = self.topology['nodes'][position_str]
+        if position_str in topology['nodes']:
+            node = topology['nodes'][position_str]
             if node_type is None or node.get('type') == node_type:
                 return (position_str, node)
 
@@ -154,14 +156,14 @@ class TopologyLoader:
                     ]
 
                     for candidate_id in candidate_ids:
-                        if candidate_id in self.topology['nodes']:
-                            node = self.topology['nodes'][candidate_id]
+                        if candidate_id in topology['nodes']:
+                            node = topology['nodes'][candidate_id]
                             if node_type is None or node.get('type') == en_prefix:
                                 return (candidate_id, node)
 
         # 模糊匹配（去除前缀）
         position_str_lower = position_str.lower()
-        for node_id, node in self.topology['nodes'].items():
+        for node_id, node in topology['nodes'].items():
             if node_type and node.get('type') != node_type:
                 continue
 
@@ -179,10 +181,11 @@ class TopologyLoader:
 
         # 获取相邻滑行道
         adjacent_nodes = self.get_adjacent_nodes(stand_id)
-        adjacent_taxiways = [
-            n for n in adjacent_nodes
-            if self.get_node(n).get('type') == 'taxiway'
-        ]
+        adjacent_taxiways = []
+        for n in adjacent_nodes:
+            node_info = self.get_node(n)
+            if node_info and node_info.get('type') == 'taxiway':
+                adjacent_taxiways.append(n)
 
         # 查找最近的跑道
         nearest_runway = self._find_nearest_runway(stand_id)
@@ -202,6 +205,7 @@ class TopologyLoader:
         """BFS查找最近的跑道节点"""
         if self._adjacency_map is None:
             self.load()
+        assert self._adjacency_map is not None
 
         visited = {node_id}
         queue = [node_id]
@@ -233,6 +237,8 @@ class TopologyLoader:
         """
         if self._adjacency_map is None:
             self.load()
+        assert self._adjacency_map is not None
+        adjacency_map = self._adjacency_map
 
         visited = {start_node}
         queue = [(start_node, 0)]
@@ -242,7 +248,7 @@ class TopologyLoader:
             if hops >= max_hops:
                 continue
 
-            for neighbor in self._adjacency_map.get(node, []):
+            for neighbor in adjacency_map.get(node, []):
                 if neighbor not in visited:
                     visited.add(neighbor)
                     queue.append((neighbor, hops + 1))
@@ -251,12 +257,12 @@ class TopologyLoader:
 
     def get_statistics(self) -> Dict[str, Any]:
         """获取拓扑图统计信息"""
-        if self.topology is None:
-            self.load()
+        topology = self.load()
+        assert self._node_types is not None
 
         return {
-            'total_nodes': len(self.topology['nodes']),
-            'total_edges': len(self.topology['edges']),
+            'total_nodes': len(topology['nodes']),
+            'total_edges': len(topology['edges']),
             'stands': len(self._node_types['stand']),
             'runways': len(self._node_types['runway']),
             'taxiways': len(self._node_types['taxiway'])

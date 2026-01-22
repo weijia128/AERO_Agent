@@ -4,8 +4,8 @@ API 认证模块
 支持 API Key 和 JWT Token 两种认证方式。
 """
 import logging
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime, timedelta, timezone
+from typing import Optional, Any, Dict, cast
 
 from fastapi import HTTPException, Security
 from fastapi.security import APIKeyHeader, HTTPBearer
@@ -68,11 +68,11 @@ async def verify_jwt_token(
         raise HTTPException(status_code=401, detail="缺少认证令牌")
 
     try:
-        payload = jwt.decode(
+        payload = cast(Dict[str, Any], jwt.decode(
             credentials.credentials,
             settings.JWT_SECRET,
             algorithms=[settings.JWT_ALGORITHM],
-        )
+        ))
         return payload
     except JWTError as e:
         logger.warning(f"JWT 验证失败: {str(e)}")
@@ -94,11 +94,11 @@ def create_access_token(
         编码后的 JWT token
     """
     to_encode = data.copy()
-    expire = datetime.utcnow() + (
+    expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
     )
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+    return cast(str, jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM))
 
 
 async def get_current_user(api_key: str = Security(verify_api_key)) -> str:

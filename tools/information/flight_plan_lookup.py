@@ -3,7 +3,7 @@
 """
 import json
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, cast
 
 from tools.base import BaseTool
 from config.airline_codes import normalize_flight_number
@@ -16,7 +16,7 @@ def _parse_log_line(line: str) -> Dict[str, Any]:
     json_str = line[json_start:].strip()
     json_str = json_str.replace(",}", "}").replace(",]", "]")
     try:
-        return json.loads(json_str)
+        return cast(Dict[str, Any], json.loads(json_str))
     except json.JSONDecodeError:
         return {}
 

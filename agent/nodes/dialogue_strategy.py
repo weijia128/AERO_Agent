@@ -3,7 +3,7 @@
 """
 from typing import Dict, Any, List
 
-from config.llm_config import get_llm_client
+from agent.llm_guard import invoke_llm
 from config.airline_codes import format_callsign_display
 from scenarios.base import ScenarioRegistry
 from tools.information.smart_ask import build_combined_question, group_missing_fields
@@ -69,9 +69,9 @@ def generate_next_question(state: Dict[str, Any], semantic_validation: Dict[str,
 """
 
     try:
-        llm = get_llm_client()
-        response = llm.invoke(prompt)
-        question = response.content.strip() if hasattr(response, "content") else str(response).strip()
+        response = invoke_llm(prompt)
+        content = response.content if hasattr(response, "content") else response
+        question = str(content).strip()
         if question:
             return question
     except Exception:

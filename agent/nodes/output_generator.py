@@ -10,11 +10,11 @@ import json
 import logging
 import re
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, cast
 
 from agent.nodes.template_renderer import render_report
 from agent.state import AgentState, FSMState, risk_level_rank
-from config.llm_config import get_llm_client
+from agent.llm_guard import invoke_llm
 from scenarios.base import ScenarioRegistry
 
 logger = logging.getLogger(__name__)
@@ -111,11 +111,11 @@ def _build_event_context(
     Returns:
         包含格式化字段的上下文字典
     """
+    fluid_type = str(incident.get("fluid_type") or "")
+    leak_size = str(incident.get("leak_size") or "")
     return {
-        "oil_type": FLUID_TYPE_MAP.get(
-            incident.get("fluid_type"), incident.get("fluid_type", "不明油液")
-        ),
-        "leak_area": LEAK_SIZE_MAP.get(incident.get("leak_size"), "待评估"),
+        "oil_type": FLUID_TYPE_MAP.get(fluid_type, incident.get("fluid_type", "不明油液")),
+        "leak_area": LEAK_SIZE_MAP.get(leak_size, "待评估"),
         "engine_status": "运行中" if incident.get("engine_status") == "RUNNING" else "已关闭",
         "is_continuous": incident.get("continuous", False),
         "is_continuous_text": "是" if incident.get("continuous") else "否",
@@ -195,7 +195,7 @@ def _extract_notified_departments(notifications: List[Dict[str, Any]]) -> str:
     Returns:
         顿号分隔的部门名称，如无则返回默认文本
     """
-    notified_units = [n.get("department") for n in notifications if n.get("department")]
+    notified_units = [str(n.get("department")) for n in notifications if n.get("department")]
     return "、".join(notified_units) if notified_units else "暂无记录"
 
 
@@ -212,7 +212,7 @@ def _parse_llm_json_response(content: str) -> Dict[str, str] | None:
     json_match = re.search(r"```json\s*(.*?)\s*```", content, re.DOTALL)
     json_str = json_match.group(1) if json_match else content
 
-    result = json.loads(json_str)
+    result = cast(Dict[str, str], json.loads(json_str))
 
     required_keys = ["event_description", "effect_evaluation", "improvement_suggestions"]
     if all(key in result for key in required_keys):
@@ -323,7 +323,7 @@ def _generate_event_summary_with_llm(
     notifications: List[Dict[str, Any]],
     recommendations: List[str],
     scenario_type: str,
-    knowledge: Dict[str, Any] = None,
+    knowledge: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, str]:
     """
     使用 LLM 生成事件总结（包含润色和智能建议）
@@ -402,8 +402,7 @@ def _generate_event_summary_with_llm(
 ```"""
 
     try:
-        llm = get_llm_client()
-        response = llm.invoke(prompt)
+        response = invoke_llm(prompt)
         content = response.content if hasattr(response, "content") else str(response)
 
         result = _parse_llm_json_response(content)
@@ -525,7 +524,7 @@ def generate_operational_impact(state: AgentState) -> Dict[str, Any]:
     affected_areas_text = _build_affected_areas_text(spatial, separator=", ")
     affected_areas = affected_areas_text.split(", ") if affected_areas_text else []
 
-    impact = {
+    impact: Dict[str, Any] = {
         "affected_areas": affected_areas,
         "affected_flights": [],
         "estimated_delay": "",
@@ -734,7 +733,7 @@ def generate_notifications_summary(state: AgentState) -> Dict[str, Any]:
     notifications = state.get("notifications_sent", [])
     risk = state.get("risk_assessment", {})
 
-    summary = {
+    summary: Dict[str, Any] = {
         "total_notifications": len(notifications),
         "notifications": [],
         "risk_based_required": [],

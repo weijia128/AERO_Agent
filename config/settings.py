@@ -4,14 +4,14 @@
 import os
 from pathlib import Path
 from typing import Optional, List
-from pydantic_settings import BaseSettings
-from pydantic import Field, ConfigDict
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
 
 
 class Settings(BaseSettings):
     """系统全局配置"""
 
-    model_config = ConfigDict(
+    model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
@@ -36,11 +36,25 @@ class Settings(BaseSettings):
     MAX_ITERATIONS: int = Field(default=15, description="最大迭代次数")
     TIMEOUT_SECONDS: int = Field(default=120, description="超时时间(秒)")
     SESSION_TTL_SECONDS: int = Field(default=3600, description="会话存活时间(秒)")
-    SESSION_STORE_BACKEND: str = Field(default="memory", description="会话存储后端")
+    SESSION_STORE_BACKEND: str = Field(default="memory", description="会话存储后端(兼容字段)")
+    STORAGE_BACKEND: Optional[str] = Field(
+        default=None, description="存储后端: memory, postgres, redis"
+    )
+
+    # 存储配置
+    POSTGRES_HOST: str = Field(default="localhost", description="PostgreSQL 主机")
+    POSTGRES_PORT: int = Field(default=5432, description="PostgreSQL 端口")
+    POSTGRES_USER: str = Field(default="aero", description="PostgreSQL 用户")
+    POSTGRES_PASSWORD: str = Field(default="", description="PostgreSQL 密码")
+    POSTGRES_DB: str = Field(default="aero_agent", description="PostgreSQL 数据库")
+    REDIS_URL: str = Field(default="redis://localhost:6379/0", description="Redis 连接地址")
 
     # 语义理解配置
     ENABLE_SEMANTIC_UNDERSTANDING: bool = Field(default=True, description="启用语义理解层")
-    
+
+    # 交叉验证配置
+    ENABLE_CROSS_VALIDATION: bool = Field(default=True, description="启用规则引擎 + LLM 交叉验证")
+
     # 知识库配置
     KNOWLEDGE_BASE_PATH: Path = Field(
         default=Path(__file__).parent.parent / "knowledge" / "data",
@@ -91,6 +105,15 @@ class Settings(BaseSettings):
     LANGCHAIN_API_KEY: Optional[str] = Field(default=None, description="LangSmith API Key")
     LANGCHAIN_PROJECT: Optional[str] = Field(default=None, description="LangSmith 项目名称")
     LANGCHAIN_ENDPOINT: str = Field(default="https://api.smith.langchain.com", description="LangSmith API 端点")
+
+    @property
+    def postgres_url(self) -> str:
+        """PostgreSQL 连接地址（异步驱动）"""
+        return (
+            "postgresql+asyncpg://"
+            f"{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        )
 
 # 全局配置实例
 settings = Settings()

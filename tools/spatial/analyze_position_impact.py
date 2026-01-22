@@ -272,7 +272,7 @@ class AnalyzePositionImpactTool(BaseTool):
             }
 
         affected = []
-        by_type = {
+        by_type: Dict[str, List[str]] = {
             "stand": [],
             "taxiway": [],
             "runway": []
@@ -304,7 +304,7 @@ class AnalyzePositionImpactTool(BaseTool):
         }.get((node_type, fluid_type), 0)
 
         # 如果有扩散半径，通过BFS获取更多受影响节点
-        additional_affected = []
+        additional_affected: List[str] = []
         if spread_radius > 0:
             spread_nodes = topology.bfs_spread(node_id, spread_radius)
             # 移除起始节点和直接相邻节点

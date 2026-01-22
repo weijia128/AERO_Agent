@@ -3,6 +3,7 @@
 """
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Any
@@ -20,19 +21,27 @@ class SessionRecord:
         return now - self.updated_at > timedelta(seconds=self.ttl_seconds)
 
 
-class SessionStore:
+class SessionStore(ABC):
     """会话存储抽象类"""
 
-    def get(self, session_id: str) -> Optional[Dict[str, Any]]:
+    async def init(self) -> None:
+        """初始化存储后端（可选）"""
+        return None
+
+    @abstractmethod
+    async def get(self, session_id: str) -> Optional[Dict[str, Any]]:
         raise NotImplementedError
 
-    def set(self, session_id: str, state: Dict[str, Any], ttl_seconds: int) -> None:
+    @abstractmethod
+    async def set(self, session_id: str, state: Dict[str, Any], ttl_seconds: int) -> None:
         raise NotImplementedError
 
-    def delete(self, session_id: str) -> None:
+    @abstractmethod
+    async def delete(self, session_id: str) -> None:
         raise NotImplementedError
 
-    def cleanup_expired(self) -> int:
+    @abstractmethod
+    async def cleanup_expired(self) -> int:
         raise NotImplementedError
 
 
@@ -42,26 +51,26 @@ class MemorySessionStore(SessionStore):
     def __init__(self) -> None:
         self._records: Dict[str, SessionRecord] = {}
 
-    def get(self, session_id: str) -> Optional[Dict[str, Any]]:
+    async def get(self, session_id: str) -> Optional[Dict[str, Any]]:
         record = self._records.get(session_id)
         if not record:
             return None
         if record.is_expired():
-            self.delete(session_id)
+            await self.delete(session_id)
             return None
         return record.state
 
-    def set(self, session_id: str, state: Dict[str, Any], ttl_seconds: int) -> None:
+    async def set(self, session_id: str, state: Dict[str, Any], ttl_seconds: int) -> None:
         self._records[session_id] = SessionRecord(
             state=state,
             updated_at=datetime.now(),
             ttl_seconds=ttl_seconds,
         )
 
-    def delete(self, session_id: str) -> None:
+    async def delete(self, session_id: str) -> None:
         self._records.pop(session_id, None)
 
-    def cleanup_expired(self) -> int:
+    async def cleanup_expired(self) -> int:
         now = datetime.now()
         expired = [sid for sid, record in self._records.items() if record.is_expired(now)]
         for sid in expired:
@@ -70,14 +79,32 @@ class MemorySessionStore(SessionStore):
 
 
 _store_instance: Optional[SessionStore] = None
+_store_backend: Optional[str] = None
 
 
-def get_session_store(backend: str = "memory") -> SessionStore:
+def get_session_store(backend: Optional[str] = "memory") -> SessionStore:
     """获取会话存储实例"""
-    global _store_instance
-    if _store_instance is None:
-        if backend == "memory":
+    global _store_instance, _store_backend
+
+    resolved = (backend or "memory").lower()
+    if resolved in {"postgresql", "pg"}:
+        resolved = "postgres"
+
+    if _store_instance is None or _store_backend != resolved:
+        if resolved == "memory":
             _store_instance = MemorySessionStore()
+        elif resolved == "postgres":
+            from agent.storage.postgres_store import PostgresSessionStore
+            from config.settings import settings
+
+            _store_instance = PostgresSessionStore(settings.postgres_url)
+        elif resolved == "redis":
+            from agent.storage.redis_store import RedisSessionStore
+            from config.settings import settings
+
+            _store_instance = RedisSessionStore(settings.REDIS_URL)
         else:
             raise ValueError(f"Unsupported session store backend: {backend}")
+        _store_backend = resolved
+
     return _store_instance

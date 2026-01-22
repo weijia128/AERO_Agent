@@ -10,6 +10,7 @@ from typing import Literal
 from langgraph.graph import StateGraph, END
 
 from agent.state import AgentState, FSMState
+from agent.llm_guard import get_llm_guard
 from agent.nodes.input_parser import input_parser_node
 from agent.nodes.reasoning import reasoning_node
 from agent.nodes.tool_executor import tool_executor_node
@@ -156,15 +157,17 @@ def create_agent_graph() -> StateGraph:
            │                                          │
            └──────────────────────────────────────────┘
     """
+    get_llm_guard()
+
     # 创建图
-    graph = StateGraph(AgentState)
+    graph = StateGraph(AgentState)  # type: ignore[type-var]
     
     # 添加节点
-    graph.add_node("input_parser", input_parser_node)
-    graph.add_node("reasoning", reasoning_node)
-    graph.add_node("tool_executor", tool_executor_node)
-    graph.add_node("fsm_validator", fsm_validator_node)
-    graph.add_node("output_generator", output_generator_node)
+    graph.add_node("input_parser", input_parser_node)  # type: ignore[type-var]
+    graph.add_node("reasoning", reasoning_node)  # type: ignore[type-var]
+    graph.add_node("tool_executor", tool_executor_node)  # type: ignore[type-var]
+    graph.add_node("fsm_validator", fsm_validator_node)  # type: ignore[type-var]
+    graph.add_node("output_generator", output_generator_node)  # type: ignore[type-var]
     
     # 设置入口
     graph.set_entry_point("input_parser")

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from tools.base import BaseTool
 
@@ -17,7 +17,7 @@ def _load_bsrc() -> Dict[str, Any]:
     if not BSRC_PATH.exists():
         return {}
     with BSRC_PATH.open("r", encoding="utf-8") as f:
-        return json.load(f)
+        return cast(Dict[str, Any], json.load(f))
 
 
 _BSRC = _load_bsrc()
@@ -153,18 +153,20 @@ def _normalize_ops_impact(incident: Dict[str, Any]) -> str:
 def _evaluate_clause(data: Dict[str, Any], clause: Dict[str, Any]) -> bool:
     if "eq" in clause:
         key, value = clause["eq"]
-        return data.get(key) == value
+        return bool(data.get(key) == value)
     if "in" in clause:
         key, values = clause["in"]
-        return data.get(key) in values
+        return bool(data.get(key) in values)
     return False
 
 
 def _evaluate_condition(data: Dict[str, Any], condition: Dict[str, Any]) -> bool:
     if "all" in condition:
-        return all(_evaluate_clause(data, c) for c in condition["all"])
+        clauses = cast(List[Dict[str, Any]], condition["all"])
+        return all(_evaluate_clause(data, c) for c in clauses)
     if "any" in condition:
-        return any(_evaluate_clause(data, c) for c in condition["any"])
+        clauses = cast(List[Dict[str, Any]], condition["any"])
+        return any(_evaluate_clause(data, c) for c in clauses)
     return False
 
 
@@ -205,7 +207,7 @@ def _weighted_score(
 def _map_risk_level(score: float, mapping: List[Dict[str, Any]]) -> str:
     for item in mapping:
         if item["min"] <= score <= item["max"]:
-            return item["risk_level"]
+            return str(item.get("risk_level", "R2"))
     return "R2"
 
 

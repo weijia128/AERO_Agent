@@ -15,7 +15,7 @@ FSM 引擎
 import logging
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
-import yaml
+import yaml  # type: ignore[import-untyped]
 from pathlib import Path
 
 from agent.state import risk_level_rank
@@ -61,6 +61,9 @@ class FSMEngine:
         self.scenario_type = scenario_type
         self.current_state = FSMStateEnum.INIT.value
         self.history: List[FSMTransitionRecord] = []
+        self.state_definitions: Dict[str, StateDefinition] = {}
+        self.transitions: Dict[str, List[str]] = {}
+        self.mandatory_actions: List[MandatoryAction] = []
 
         # 加载配置
         if config_path:
@@ -249,7 +252,7 @@ class FSMEngine:
         self,
         to_state: str,
         trigger: str = "agent_action",
-        context: Dict[str, Any] = None
+        context: Optional[Dict[str, Any]] = None,
     ) -> Tuple[bool, Optional[str]]:
         """
         执行状态转换

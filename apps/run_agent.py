@@ -23,7 +23,7 @@ import re
 import time
 import json
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 
 # 改进的输入处理（使用标准 input，prompt_toolkit 可选）
 # 如果需要更好的编辑体验，可以安装: pip install prompt_toolkit
@@ -62,7 +62,7 @@ def print_thought(text: str):
     print(f"  [思考] {text}")
 
 
-def print_action(action: str, inputs: Dict = None):
+def print_action(action: str, inputs: Optional[Dict[str, Any]] = None):
     inputs_str = ""
     if inputs:
         display = inputs
@@ -81,7 +81,7 @@ def print_observation(text: str):
     print(f"  [观察] {text}")
 
 
-def print_fsm(state: str, transition: str = None):
+def print_fsm(state: str, transition: Optional[str] = None):
     if transition:
         print(f"  [FSM] {transition} -> {state}")
     else:
@@ -517,7 +517,11 @@ class AgentRunner:
         print_info(f"识别场景: {detected_scenario}")
         return True
 
-    def _parse_pending_field_value(self, message: str, field: str) -> Optional[str]:
+    def _parse_pending_field_value(
+        self,
+        message: str,
+        field: str,
+    ) -> Optional[Union[str, bool]]:
         """
         智能解析 pending_field 对应的值
 
@@ -767,7 +771,7 @@ class AgentRunner:
         messages = self.state.get("messages", [])
         for msg in reversed(messages):
             if msg.get("role") == "assistant":
-                return msg.get("content", "")
+                return str(msg.get("content", ""))
         return ""
 
     def _print_flight_plan_brief(self, table: str, incident: Dict[str, Any]):

@@ -20,10 +20,11 @@
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, cast
 
 from tools.base import BaseTool
 from config.llm_config import get_llm_client
+from agent.llm_guard import invoke_llm
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ class RadiotelephonyNormalizer:
 
         try:
             with open(rules_path, "r", encoding="utf-8") as f:
-                return json.load(f)
+                return cast(Dict[str, Any], json.load(f))
         except Exception as e:
             logger.error(f"加载规则文件失败: {e}")
             return {}
@@ -131,7 +132,7 @@ class RadiotelephonyNormalizer:
 
         # 3. 调用 LLM
         try:
-            response = self.llm.invoke(prompt, timeout=timeout)
+            response = invoke_llm(prompt, llm=self.llm, timeout=timeout)
             content = response.content if hasattr(response, 'content') else str(response)
 
             # 4. 解析结果
@@ -216,7 +217,7 @@ class RadiotelephonyNormalizer:
             content = content.replace("```json", "").replace("```", "").strip()
 
         try:
-            result = json.loads(content)
+            result = cast(Dict[str, Any], json.loads(content))
 
             # 验证必需字段
             if "normalized_text" not in result:

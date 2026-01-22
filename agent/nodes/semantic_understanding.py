@@ -1,9 +1,9 @@
 """
 语义理解层 - 使用 Function Calling 生成结构化信息
 """
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional, cast
 
-from config.llm_config import get_llm_client
+from agent.llm_guard import invoke_llm
 
 
 DEFAULT_CONFIDENCE_THRESHOLDS = {
@@ -151,8 +151,6 @@ def understand_conversation(
     fsm_state: str,
 ) -> Dict[str, Any]:
     """使用 LLM Function Calling 理解对话内容并提取结构化信息"""
-    llm = get_llm_client()
-
     context = _build_context_prompt(conversation_history, known_facts, fsm_state)
     messages = [
         {"role": "system", "content": SEMANTIC_UNDERSTANDING_SYSTEM_PROMPT},
@@ -161,7 +159,7 @@ def understand_conversation(
     ]
 
     try:
-        response = llm.invoke(
+        response = invoke_llm(
             messages,
             functions=[UNDERSTAND_INCIDENT_SCHEMA],
             function_call={"name": "understand_incident_report"},
@@ -180,7 +178,7 @@ def understand_conversation(
 def split_by_confidence(
     extracted_facts: Dict[str, Any],
     confidence_scores: Dict[str, float],
-    thresholds: Dict[str, float] = None,
+    thresholds: Optional[Dict[str, float]] = None,
 ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     """根据置信度阈值划分高置信度与低置信度字段"""
     thresholds = thresholds or DEFAULT_CONFIDENCE_THRESHOLDS
@@ -243,7 +241,7 @@ def _parse_function_call_response(response: Any) -> Dict[str, Any]:
 
     arguments = function_call.get("arguments", "{}")
     try:
-        return json.loads(arguments)
+        return cast(Dict[str, Any], json.loads(arguments))
     except json.JSONDecodeError:
         return {
             "conversation_summary": "JSON 解析失败",

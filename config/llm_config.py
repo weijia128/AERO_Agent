@@ -1,7 +1,7 @@
 """
 LLM 配置与客户端工厂
 """
-from typing import Optional, Any, Dict
+from typing import Optional, Any, Dict, cast
 from functools import lru_cache
 
 from config.settings import settings
@@ -12,12 +12,12 @@ class LLMConfig:
     
     def __init__(
         self,
-        provider: str = None,
-        model: str = None,
-        api_key: str = None,
-        base_url: str = None,
-        temperature: float = None,
-        max_tokens: int = None,
+        provider: Optional[str] = None,
+        model: Optional[str] = None,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
     ):
         self.provider = provider or settings.LLM_PROVIDER
         self.model = model or settings.LLM_MODEL
@@ -39,7 +39,7 @@ class LLMClientFactory:
     """LLM 客户端工厂"""
     
     @staticmethod
-    def create_client(config: LLMConfig = None):
+    def create_client(config: Optional[LLMConfig] = None) -> Any:
         """创建 LLM 客户端"""
         config = config or LLMConfig()
         
@@ -64,7 +64,8 @@ class LLMClientFactory:
         except ImportError:
             # 使用 OpenAI 兼容接口
             from langchain_openai import ChatOpenAI
-            return ChatOpenAI(
+            chat_openai = cast(Any, ChatOpenAI)
+            return chat_openai(
                 model=config.model,
                 api_key=config.api_key,
                 base_url=config.base_url or "https://open.bigmodel.cn/api/anthropic",
@@ -76,7 +77,8 @@ class LLMClientFactory:
     def _create_openai_client(config: LLMConfig):
         """创建 OpenAI 客户端"""
         from langchain_openai import ChatOpenAI
-        return ChatOpenAI(
+        chat_openai = cast(Any, ChatOpenAI)
+        return chat_openai(
             model=config.model,
             api_key=config.api_key,
             base_url=config.base_url,

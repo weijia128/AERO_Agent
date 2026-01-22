@@ -25,10 +25,10 @@ def test_smart_ask_prefix_when_callsign_known():
 
 
 def test_smart_ask_no_prefix_for_flight_no():
-    """未知机号时不应出现呼号前缀"""
+    """已知航班号时，询问机号也应带呼号前缀"""
     question = build_combined_question(["flight_no"], "CZ1234")
-    assert question == "报告你机号"
-    assert not question.startswith("南航1234，")
+    assert question == "南航1234，报告你机号"
+    assert question.startswith("南航1234，")
 
 
 def test_group_missing_fields_max_two():

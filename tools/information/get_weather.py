@@ -65,7 +65,11 @@ def normalize_location(location: str) -> str:
     return loc
 
 
-def find_nearest_record(df: pd.DataFrame, location: str, timestamp: datetime) -> Optional[pd.Series]:
+def find_nearest_record(
+    df: pd.DataFrame,
+    location: str,
+    timestamp: Optional[datetime],
+) -> Optional[pd.Series]:
     """
     查找最接近指定时间和位置的气象记录
 
@@ -84,6 +88,8 @@ def find_nearest_record(df: pd.DataFrame, location: str, timestamp: datetime) ->
         return None
 
     # 计算时间差
+    if timestamp is None:
+        timestamp = df_loc['timestamp'].max()
     df_loc['time_diff'] = (df_loc['timestamp'] - timestamp).abs()
 
     # 找到时间最接近的记录
@@ -118,7 +124,7 @@ def _runway_side(location: str) -> Optional[str]:
 def _find_fallback_record(
     df: pd.DataFrame,
     requested_location: str,
-    timestamp: datetime,
+    timestamp: Optional[datetime],
 ) -> tuple[Optional[str], Optional[pd.Series]]:
     available = sorted(df["location_id"].dropna().unique().tolist())
     if not available:
@@ -155,7 +161,11 @@ def _find_fallback_record(
     return None, None
 
 
-def format_weather_info(record: pd.Series, location: str, timestamp: datetime = None) -> str:
+def format_weather_info(
+    record: pd.Series,
+    location: str,
+    timestamp: Optional[datetime] = None,
+) -> str:
     """格式化气象信息为可读文本"""
     if record is None or record.empty:
         return f"❌ 未找到位置 {location} 的气象数据"
@@ -164,7 +174,7 @@ def format_weather_info(record: pd.Series, location: str, timestamp: datetime = 
     lines.append(f"【{location} 气象信息】")
 
     # 时间信息
-    if timestamp:
+    if timestamp is not None:
         time_diff = (record['timestamp'] - timestamp).total_seconds()
         if time_diff < 60:
             time_str = f"{record['timestamp'].strftime('%H:%M:%S')}"
@@ -306,7 +316,7 @@ class GetWeatherTool(BaseTool):
         observation = fallback_note + format_weather_info(record, location, timestamp)
 
         # 构建返回结果
-        result = {
+        result: Dict[str, Any] = {
             "observation": observation,
             "weather": {
                 "location": location,

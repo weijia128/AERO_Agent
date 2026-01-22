@@ -12,7 +12,7 @@ class ToolRegistry:
     _scenario_tools: Dict[str, List[str]] = {}
     
     @classmethod
-    def register(cls, tool: BaseTool, scenarios: List[str] = None):
+    def register(cls, tool: BaseTool, scenarios: Optional[List[str]] = None):
         """注册工具"""
         cls._tools[tool.name] = tool
         
@@ -42,7 +42,7 @@ class ToolRegistry:
         return [cls._tools[name] for name in all_tool_names if name in cls._tools]
     
     @classmethod
-    def get_descriptions(cls, scenario: str = None) -> str:
+    def get_descriptions(cls, scenario: Optional[str] = None) -> str:
         """获取工具描述"""
         if scenario:
             tools = cls.get_by_scenario(scenario)
@@ -61,7 +61,7 @@ def get_tool(name: str) -> Optional[BaseTool]:
     return ToolRegistry.get(name)
 
 
-def get_tools_description(scenario: str = None) -> str:
+def get_tools_description(scenario: Optional[str] = None) -> str:
     """获取工具描述的便捷函数"""
     return ToolRegistry.get_descriptions(scenario)
 
@@ -83,6 +83,7 @@ def register_all_tools():
     from tools.spatial.analyze_position_impact import AnalyzePositionImpactTool
     from tools.knowledge.search_regulations import SearchRegulationsTool
     from tools.assessment.assess_risk import AssessRiskTool
+    from tools.assessment.cross_validate_assessment import CrossValidateRiskTool
     from tools.assessment.assess_bird_strike_risk import AssessBirdStrikeRiskTool
     from tools.assessment.assess_fod_risk import AssessFodRiskTool
     from tools.assessment.assess_weather_impact import AssessWeatherImpactTool
@@ -90,6 +91,7 @@ def register_all_tools():
     from tools.assessment.analyze_spill_comprehensive import AnalyzeSpillComprehensiveTool
     from tools.action.notify_department import NotifyDepartmentTool
     from tools.action.generate_report import GenerateReportTool
+    from config.validation_config import ValidationConfig
 
     # 通用工具
     ToolRegistry.register(AskForDetailTool(), ["common"])
@@ -106,7 +108,13 @@ def register_all_tools():
     ToolRegistry.register(PredictFlightImpactTool(), ["oil_spill"])
     ToolRegistry.register(AnalyzePositionImpactTool(), ["oil_spill"])
     ToolRegistry.register(SearchRegulationsTool(), ["oil_spill", "common"])
-    ToolRegistry.register(AssessRiskTool(), ["oil_spill"])
+
+    # 风险评估工具：根据配置选择使用交叉验证或纯规则引擎
+    if ValidationConfig.ENABLE_CROSS_VALIDATION and ValidationConfig.VALIDATE_RISK_ASSESSMENT:
+        ToolRegistry.register(CrossValidateRiskTool(), ["oil_spill"])
+    else:
+        ToolRegistry.register(AssessRiskTool(), ["oil_spill"])
+
     ToolRegistry.register(AssessWeatherImpactTool(), ["oil_spill"])
     ToolRegistry.register(EstimateCleanupTimeTool(), ["oil_spill"])
     ToolRegistry.register(AnalyzeSpillComprehensiveTool(), ["oil_spill"])  # 综合分析工具

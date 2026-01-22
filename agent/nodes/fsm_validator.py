@@ -21,6 +21,38 @@ from fsm import FSMEngine, FSMValidator, FSMStateEnum
 from fsm.states import FSMTransitionRecord
 from scenarios.base import ScenarioRegistry
 
+def _build_return_state(state: AgentState, updates: Dict[str, Any]) -> Dict[str, Any]:
+    """构建返回状态，确保关键字段被传递。
+
+    LangGraph 0.2.x 使用 Dict[str, Any] 时不会自动合并状态，
+    需要显式传递关键字段以确保下游节点能访问完整状态。
+    """
+    critical_fields = [
+        "session_id",
+        "scenario_type",
+        "incident",
+        "checklist",
+        "messages",
+        "risk_assessment",
+        "spatial_analysis",
+        "weather",
+        "mandatory_actions_done",
+        "actions_taken",
+        "fsm_state",
+        "reference_flight",
+        "flight_plan_table",
+        "position_impact_analysis",
+        "comprehensive_analysis",
+    ]
+
+    result: Dict[str, Any] = {}
+    for field in critical_fields:
+        if field in state:
+            result[field] = state[field]
+
+    result.update(updates)
+    return result
+
 
 def _build_validator_from_state(
     state: Optional[AgentState],
@@ -253,12 +285,12 @@ def fsm_validator_node(state: AgentState) -> Dict[str, Any]:
         # 继续推理
         next_node = "reasoning"
 
-    return {
+    return _build_return_state(state, {
         "fsm_state": result.inferred_state,
         "fsm_history": fsm_history,
         "fsm_validation_errors": errors,
         "next_node": next_node,
-    }
+    })
 
 
 # ============================================================

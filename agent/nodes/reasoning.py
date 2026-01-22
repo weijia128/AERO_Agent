@@ -11,19 +11,57 @@ import json
 import logging
 import re
 from datetime import datetime
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, cast
 
 from agent.state import AgentState, FSMState
 
 logger = logging.getLogger(__name__)
 from agent.prompts.builder import build_prompt
 from scenarios.base import ScenarioRegistry
-from config.llm_config import get_llm_client
+from agent.llm_guard import invoke_llm
 from tools.registry import get_tools_description, ToolRegistry
 
 
 class ParseError(Exception):
     """LLM 输出解析错误"""
+
+
+def _build_return_state(state: AgentState, updates: Dict[str, Any]) -> Dict[str, Any]:
+    """构建返回状态，确保关键字段被传递。
+
+    LangGraph 0.2.x 使用 Dict[str, Any] 时不会自动合并状态，
+    需要显式传递关键字段以确保下游节点能访问完整状态。
+    """
+    # 关键字段列表：必须传递给下游节点的状态字段
+    critical_fields = [
+        "session_id",
+        "scenario_type",
+        "incident",
+        "checklist",
+        "messages",
+        "risk_assessment",
+        "spatial_analysis",
+        "weather",
+        "mandatory_actions_done",
+        "actions_taken",
+        "fsm_state",
+        "reference_flight",
+        "flight_plan_table",
+        "position_impact_analysis",
+        "comprehensive_analysis",
+    ]
+
+    result = {}
+
+    # 复制关键字段（如果存在于当前状态中）
+    for field in critical_fields:
+        if field in state:
+            result[field] = state[field]
+
+    # 合并更新
+    result.update(updates)
+
+    return result
 
 
 class StructuredOutputParser:
@@ -32,12 +70,12 @@ class StructuredOutputParser:
     @staticmethod
     def _extract_json(text: str) -> Dict[str, Any]:
         try:
-            return json.loads(text)
+            return cast(Dict[str, Any], json.loads(text))
         except json.JSONDecodeError:
             json_start = text.find("{")
             json_end = text.rfind("}")
             if json_start != -1 and json_end != -1 and json_end > json_start:
-                return json.loads(text[json_start:json_end + 1])
+                return cast(Dict[str, Any], json.loads(text[json_start:json_end + 1]))
             raise
 
     @staticmethod
@@ -340,7 +378,7 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
     iteration = state.get("iteration_count", 0) + 1
 
     if state.get("finalize_report"):
-        return {
+        return _build_return_state(state, {
             "current_thought": "收到补充信息，重新生成最终报告",
             "next_node": "output_generator",
             "iteration_count": iteration,
@@ -352,12 +390,12 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
                 "action_input": {},
                 "timestamp": datetime.now().isoformat(),
             }],
-        }
+        })
 
     # 检查强制触发
     forced = check_immediate_triggers(state)
     if forced:
-        return {
+        return _build_return_state(state, {
             "current_thought": forced["reason"],
             "current_action": forced["forced_action"],
             "current_action_input": forced["forced_input"],
@@ -370,11 +408,11 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
                 "action_input": forced["forced_input"],
                 "timestamp": datetime.now().isoformat(),
             }],
-        }
+        })
 
     auto_weather = check_auto_weather_trigger(state)
     if auto_weather:
-        return {
+        return _build_return_state(state, {
             "current_thought": auto_weather["reason"],
             "current_action": auto_weather["forced_action"],
             "current_action_input": auto_weather["forced_input"],
@@ -387,7 +425,7 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
                 "action_input": auto_weather["forced_input"],
                 "timestamp": datetime.now().isoformat(),
             }],
-        }
+        })
 
     # 优先处理语义验证的补问需求
     semantic_validation = state.get("semantic_validation", {})
@@ -406,14 +444,14 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
                 "action_input": semantic_validation,
                 "timestamp": datetime.now().isoformat(),
             }
-            return {
+            return _build_return_state(state, {
                 "current_thought": "需要补充关键信息",
                 "messages": [{"role": "assistant", "content": question}],
                 "awaiting_user": True,
                 "next_node": "end",
                 "iteration_count": iteration,
                 "reasoning_steps": reasoning_steps + [new_step],
-            }
+            })
 
     if _should_run_comprehensive(state):
         reasoning_steps = state.get("reasoning_steps", [])
@@ -424,19 +462,19 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
             "action_input": {},
             "timestamp": datetime.now().isoformat(),
         }
-        return {
+        return _build_return_state(state, {
             "current_thought": "执行综合分析",
             "current_action": "analyze_spill_comprehensive",
             "current_action_input": {},
             "next_node": "tool_executor",
             "iteration_count": iteration,
             "reasoning_steps": reasoning_steps + [new_step],
-        }
+        })
 
     if _should_prompt_supplemental(state):
         incident = state.get("incident", {})
         flight_no = incident.get("flight_no_display") or incident.get("flight_no") or ""
-        prompt = "处置流程已完成。若有补充信息请直接说明；如无请回复“完毕”或“结束”。"
+        prompt = '处置流程已完成。若有补充信息请直接说明；如无请回复"完毕"或"结束"。'
         if flight_no:
             prompt = f"{flight_no}，{prompt}"
         reasoning_steps = state.get("reasoning_steps", [])
@@ -447,7 +485,7 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
             "action_input": {"field": "supplemental_notes"},
             "timestamp": datetime.now().isoformat(),
         }
-        return {
+        return _build_return_state(state, {
             "current_thought": "需要确认补充信息",
             "messages": [{"role": "assistant", "content": prompt}],
             "awaiting_user": True,
@@ -456,7 +494,7 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
             "next_node": "end",
             "iteration_count": iteration,
             "reasoning_steps": reasoning_steps + [new_step],
-        }
+        })
     
     # 构建上下文
     context = build_context_summary(state)
@@ -490,11 +528,10 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
     # 调用 LLM
     session_id = state.get("session_id", "unknown")
     try:
-        llm = get_llm_client()
         logger.debug(f"[{session_id}] LLM 调用开始, prompt 长度: {len(prompt)}")
         start_time = datetime.now()
 
-        response = llm.invoke(prompt)
+        response = invoke_llm(prompt)
         llm_output = response.content if hasattr(response, 'content') else str(response)
 
         duration_ms = (datetime.now() - start_time).total_seconds() * 1000
@@ -505,10 +542,10 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
         )
     except Exception as e:
         logger.error(f"[{session_id}] LLM 调用失败: {type(e).__name__}: {str(e)}", exc_info=True)
-        return {
+        return _build_return_state(state, {
             "error": f"LLM 调用失败: {str(e)}",
             "next_node": "end",
-        }
+        })
     
     # 解析输出
     allowed_actions = set(ToolRegistry.get_all().keys())
@@ -524,8 +561,7 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
             "请只输出合法 JSON，且字段包含 thought，并提供 action 或 final_answer。"
         )
         try:
-            llm = get_llm_client()
-            retry_response = llm.invoke(retry_prompt)
+            retry_response = invoke_llm(retry_prompt)
             retry_output = (
                 retry_response.content
                 if hasattr(retry_response, 'content')
@@ -535,11 +571,11 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
                 retry_output, allowed_actions
             )
         except Exception as retry_exc:
-            return {
+            return _build_return_state(state, {
                 "current_thought": "无法解析 LLM 输出",
                 "error": f"LLM 输出解析失败: {retry_exc}",
                 "next_node": "end",
-            }
+            })
     
     # 记录推理步骤
     new_step = {
@@ -554,7 +590,7 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
     # 注意：不在这里设置 final_answer，而是让 output_generator 生成完整的检查单
     if final_answer:
         if _is_waiting_for_user(final_answer):
-            return {
+            return _build_return_state(state, {
                 "current_thought": thought,
                 "final_answer": final_answer,
                 "is_complete": False,
@@ -562,8 +598,8 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
                 "next_node": "end",
                 "iteration_count": iteration,
                 "reasoning_steps": reasoning_steps + [new_step],
-            }
-        return {
+            })
+        return _build_return_state(state, {
             "current_thought": thought,
             # 不设置 final_answer，让 output_generator 生成完整的检查单报告
             # "final_answer": final_answer,  # 删除这行，避免用简短回复覆盖完整检查单
@@ -571,24 +607,24 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
             "next_node": "output_generator",  # 直接进入报告生成节点
             "iteration_count": iteration,
             "reasoning_steps": reasoning_steps + [new_step],
-        }
+        })
     
     # 如果有动作
     if action:
-        return {
+        return _build_return_state(state, {
             "current_thought": thought,
             "current_action": action,
             "current_action_input": action_input or {},
             "next_node": "tool_executor",
             "iteration_count": iteration,
             "reasoning_steps": reasoning_steps + [new_step],
-        }
-    
+        })
+
     # 没有动作也没有最终答案，可能是格式问题
-    return {
+    return _build_return_state(state, {
         "current_thought": thought or "无法解析 LLM 输出",
         "error": "LLM 输出格式不正确",
         "next_node": "reasoning",  # 重试
         "iteration_count": iteration,
         "reasoning_steps": reasoning_steps + [new_step],
-    }
+    })
