@@ -92,6 +92,7 @@ class CalculateImpactZoneTool(BaseTool):
 
         # BFS 扩散计算（使用拓扑加载器的方法）
         isolated_nodes = topology.bfs_spread(start_node_id, rule["radius"])
+        spread_levels = topology.bfs_spread_levels(start_node_id, rule["radius"])
 
         # 分类节点
         affected_taxiways = []
@@ -136,6 +137,22 @@ class CalculateImpactZoneTool(BaseTool):
             f"受影响跑道={len(affected_runways)}个"
         )
 
+        color_palette = [
+            "#f85149",
+            "#d29922",
+            "#f2c94c",
+            "#58a6ff",
+        ]
+        spread_animation = [
+            {
+                "time": index,
+                "nodes": sorted(level),
+                "color": color_palette[min(index, len(color_palette) - 1)],
+            }
+            for index, level in enumerate(spread_levels)
+            if level
+        ]
+
         return {
             "observation": observation,
             "spatial_analysis": {
@@ -147,5 +164,6 @@ class CalculateImpactZoneTool(BaseTool):
                 "affected_stands": affected_stands,
                 "affected_flights": affected_flights,
                 "impact_radius": rule["radius"],
+                "spread_animation": spread_animation,
             },
         }

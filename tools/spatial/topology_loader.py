@@ -20,13 +20,18 @@ class TopologyLoader:
             topology_file: 拓扑图JSON文件路径，如果为None则使用默认路径
         """
         if topology_file is None:
-            # 默认路径：相对于项目根目录
-            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            candidates = [
-                os.path.join(project_root, "scripts", "data_processing", "topology_map_based.json"),
-                os.path.join(project_root, "scripts", "data_processing", "topology_clustering_based.json"),
-            ]
-            topology_file = next((path for path in candidates if os.path.exists(path)), candidates[0])
+            env_override = os.getenv("AERO_TOPOLOGY_FILE")
+            if env_override:
+                topology_file = env_override
+            else:
+                # 默认路径：相对于项目根目录
+                project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                candidates = [
+                    os.path.join(project_root, "outputs", "tianfu_topology.json"),
+                    os.path.join(project_root, "scripts", "data_processing", "topology_map_based.json"),
+                    os.path.join(project_root, "scripts", "data_processing", "topology_clustering_based.json"),
+                ]
+                topology_file = next((path for path in candidates if os.path.exists(path)), candidates[0])
 
         self.topology_file = topology_file
         self.topology: Optional[Dict[str, Any]] = None
@@ -254,6 +259,34 @@ class TopologyLoader:
                     queue.append((neighbor, hops + 1))
 
         return visited
+
+    def bfs_spread_levels(self, start_node: str, max_hops: int) -> List[Set[str]]:
+        """
+        BFS扩散分层结果 - 返回每一跳的节点集合（包含起点在第0层）
+        """
+        if self._adjacency_map is None:
+            self.load()
+        assert self._adjacency_map is not None
+        adjacency_map = self._adjacency_map
+
+        visited = {start_node}
+        layers: List[Set[str]] = [set([start_node])]
+        queue = [(start_node, 0)]
+
+        while queue:
+            node, hops = queue.pop(0)
+            if hops >= max_hops:
+                continue
+            for neighbor in adjacency_map.get(node, []):
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    next_hops = hops + 1
+                    while len(layers) <= next_hops:
+                        layers.append(set())
+                    layers[next_hops].add(neighbor)
+                    queue.append((neighbor, next_hops))
+
+        return layers
 
     def get_statistics(self) -> Dict[str, Any]:
         """获取拓扑图统计信息"""

@@ -26,6 +26,14 @@ class ParseError(Exception):
     """LLM 输出解析错误"""
 
 
+def _get_risk_tool_for_scenario(scenario_type: str) -> Optional[str]:
+    return {
+        "oil_spill": "assess_risk",
+        "bird_strike": "assess_bird_strike_risk",
+        "fod": "assess_fod_risk",
+    }.get(scenario_type)
+
+
 def _build_return_state(state: AgentState, updates: Dict[str, Any]) -> Dict[str, Any]:
     """构建返回状态，确保关键字段被传递。
 
@@ -42,13 +50,17 @@ def _build_return_state(state: AgentState, updates: Dict[str, Any]) -> Dict[str,
         "risk_assessment",
         "spatial_analysis",
         "weather",
+        "weather_impact",
         "mandatory_actions_done",
         "actions_taken",
+        "notifications_sent",
         "fsm_state",
         "reference_flight",
         "flight_plan_table",
         "position_impact_analysis",
         "comprehensive_analysis",
+        "flight_impact_prediction",
+        "cleanup_time_estimate",
     ]
 
     result = {}
@@ -367,7 +379,7 @@ def build_context_summary(state: AgentState) -> str:
 def reasoning_node(state: AgentState) -> Dict[str, Any]:
     """
     ReAct 推理节点
-    
+
     融合设计：
     1. 先检查强制触发条件
     2. 构建包含约束信息的 Prompt
@@ -376,6 +388,18 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
     """
     # 检查迭代次数
     iteration = state.get("iteration_count", 0) + 1
+    session_id = state.get("session_id", "unknown")
+
+    # 【调试日志】记录进入 reasoning_node 时的关键状态
+    checklist = state.get("checklist", {})
+    mandatory = state.get("mandatory_actions_done", {})
+    actions_taken = state.get("actions_taken", [])
+    logger.info(
+        f"[{session_id}] 进入 reasoning_node: iteration={iteration}, "
+        f"checklist完成={sum(1 for v in checklist.values() if v)}/{len(checklist)}, "
+        f"risk_assessed={mandatory.get('risk_assessed', False)}, "
+        f"actions_taken={len(actions_taken)}"
+    )
 
     if state.get("finalize_report"):
         return _build_return_state(state, {
@@ -471,6 +495,41 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
             "reasoning_steps": reasoning_steps + [new_step],
         })
 
+    scenario_type = state.get("scenario_type", "oil_spill")
+    scenario = ScenarioRegistry.get(scenario_type)
+    if scenario and scenario.risk_required:
+        mandatory = state.get("mandatory_actions_done", {})
+        existing_risk = state.get("risk_assessment", {})
+        if not mandatory.get("risk_assessed") and not existing_risk.get("level"):
+            checklist = state.get("checklist", {})
+            p1_fields = [f.get("key") for f in scenario.p1_fields if f.get("key")]
+            p1_status = {f: checklist.get(f, False) for f in p1_fields}
+            all_p1_complete = all(checklist.get(f) for f in p1_fields)
+            logger.info(
+                f"[{session_id}] 风险评估检查: P1字段={p1_status}, "
+                f"全部完成={all_p1_complete}"
+            )
+            if p1_fields and all_p1_complete:
+                risk_tool = _get_risk_tool_for_scenario(scenario_type)
+                if risk_tool and ToolRegistry.get(risk_tool):
+                    logger.info(f"[{session_id}] 触发风险评估工具: {risk_tool}")
+                    reasoning_steps = state.get("reasoning_steps", [])
+                    new_step = {
+                        "step": iteration,
+                        "thought": "P1信息已完成，触发风险评估",
+                        "action": risk_tool,
+                        "action_input": {},
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                    return _build_return_state(state, {
+                        "current_thought": "执行风险评估",
+                        "current_action": risk_tool,
+                        "current_action_input": {},
+                        "next_node": "tool_executor",
+                        "iteration_count": iteration,
+                        "reasoning_steps": reasoning_steps + [new_step],
+                    })
+
     if _should_prompt_supplemental(state):
         incident = state.get("incident", {})
         flight_no = incident.get("flight_no_display") or incident.get("flight_no") or ""
@@ -549,6 +608,7 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
     
     # 解析输出
     allowed_actions = set(ToolRegistry.get_all().keys())
+    logger.debug(f"[{session_id}] LLM 原始输出: {llm_output[:500]}...")
     try:
         thought, action, action_input, final_answer = StructuredOutputParser.parse(
             llm_output, allowed_actions
@@ -585,11 +645,23 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
         "action_input": action_input,
         "timestamp": datetime.now().isoformat(),
     }
-    
+
+    # 【调试日志】记录 LLM 解析结果和决策路径
+    logger.info(
+        f"[{session_id}] LLM 解析结果: "
+        f"thought={thought[:100] if thought else 'None'}..., "
+        f"action={action}, "
+        f"final_answer={'有' if final_answer else '无'}"
+    )
+
     # 如果有最终答案（LLM 认为任务完成）
     # 注意：不在这里设置 final_answer，而是让 output_generator 生成完整的检查单
     if final_answer:
         if _is_waiting_for_user(final_answer):
+            logger.warning(
+                f"[{session_id}] LLM 返回等待用户回复，跳过工具执行! "
+                f"final_answer={final_answer[:100]}..."
+            )
             return _build_return_state(state, {
                 "current_thought": thought,
                 "final_answer": final_answer,
@@ -599,6 +671,14 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
                 "iteration_count": iteration,
                 "reasoning_steps": reasoning_steps + [new_step],
             })
+        # 【警告】LLM 直接返回 final_answer，跳过工具执行！
+        actions_taken = state.get("actions_taken", [])
+        risk_assessed = state.get("mandatory_actions_done", {}).get("risk_assessed", False)
+        logger.warning(
+            f"[{session_id}] LLM 直接返回 final_answer，跳过工具执行! "
+            f"actions_taken={len(actions_taken)}, risk_assessed={risk_assessed}, "
+            f"final_answer={final_answer[:100]}..."
+        )
         return _build_return_state(state, {
             "current_thought": thought,
             # 不设置 final_answer，让 output_generator 生成完整的检查单报告
@@ -611,6 +691,7 @@ def reasoning_node(state: AgentState) -> Dict[str, Any]:
     
     # 如果有动作
     if action:
+        logger.info(f"[{session_id}] LLM 决定执行工具: {action}, 输入: {action_input}")
         return _build_return_state(state, {
             "current_thought": thought,
             "current_action": action,

@@ -14,6 +14,132 @@ from tools.base import BaseTool
 # 缓存气象数据
 _WEATHER_DATA = None
 _DATA_FILE = None
+_RAW_WEATHER_STATS = None
+
+
+def _load_raw_weather_stats() -> Optional[Dict[str, Dict[str, float]]]:
+    """从原始AWOS日志中提取基础统计（均值）"""
+    global _RAW_WEATHER_STATS
+    if _RAW_WEATHER_STATS is not None:
+        return _RAW_WEATHER_STATS
+
+    raw_dir = Path(__file__).parent.parent.parent / "data" / "raw" / "气象数据"
+    if not raw_dir.exists():
+        _RAW_WEATHER_STATS = None
+        return None
+
+    stats: Dict[str, Dict[str, float]] = {}
+    counts: Dict[str, Dict[str, int]] = {}
+    max_lines = 20000
+    lines_read = 0
+
+    for file_path in sorted(raw_dir.glob("AWOS_*.log")):
+        try:
+            with file_path.open("r", encoding="utf-8", errors="ignore") as f:
+                for line in f:
+                    if lines_read >= max_lines:
+                        break
+                    idx = line.find("{")
+                    if idx == -1:
+                        continue
+                    try:
+                        payload = line[idx:].strip()
+                        record = json.loads(payload)
+                    except Exception:
+                        continue
+
+                    header = record.get("header", {})
+                    data = record.get("data", {})
+                    location = header.get("locationId")
+                    message_type = header.get("messageType")
+                    if not location or not message_type:
+                        continue
+
+                    location = str(location).upper()
+                    stats.setdefault(location, {})
+                    counts.setdefault(location, {})
+
+                    def _accumulate(key: str, value: Optional[float]) -> None:
+                        if value is None:
+                            return
+                        stats[location][key] = stats[location].get(key, 0.0) + float(value)
+                        counts[location][key] = counts[location].get(key, 0) + 1
+
+                    if message_type == "HUMITEMP":
+                        _accumulate("temperature", data.get("tains") or data.get("ta10m"))
+                        _accumulate("dew_point", data.get("tdins"))
+                        _accumulate("relative_humidity", data.get("rhins"))
+                    elif message_type == "WIND":
+                        _accumulate("wind_direction", data.get("wdins") or data.get("wd10m"))
+                        _accumulate("wind_speed", data.get("wsins") or data.get("ws10m"))
+                    elif message_type == "PRESS":
+                        _accumulate("qnh", data.get("qnhins"))
+                    elif message_type == "VIS":
+                        _accumulate("visibility", data.get("vis") or data.get("vis10m"))
+
+                    lines_read += 1
+            if lines_read >= max_lines:
+                break
+        except Exception:
+            continue
+
+    if not stats:
+        _RAW_WEATHER_STATS = None
+        return None
+
+    averaged: Dict[str, Dict[str, float]] = {}
+    for location, values in stats.items():
+        averaged[location] = {}
+        for key, total in values.items():
+            count = counts.get(location, {}).get(key, 0)
+            if count:
+                averaged[location][key] = total / count
+
+    _RAW_WEATHER_STATS = averaged
+    return averaged
+
+
+def _build_simulated_weather_data(
+    base_time: datetime,
+    raw_stats: Optional[Dict[str, Dict[str, float]]] = None,
+) -> pd.DataFrame:
+    """构建模拟气象数据（参考原始AWOS统计）"""
+    locations = ["05L", "05R", "06L", "06R", "23L", "23R", "24L", "24R", "NORTH", "SOUTH"]
+    if raw_stats:
+        for loc in raw_stats.keys():
+            if loc not in locations:
+                locations.append(loc)
+    records = []
+    for loc in locations:
+        seed = sum(ord(ch) for ch in loc)
+        stats = raw_stats.get(loc, {}) if raw_stats else {}
+        temp = stats.get("temperature", 18.0) + ((seed % 5) - 2) * 0.3
+        dew_point = stats.get("dew_point", temp - 4.0)
+        rh = stats.get("relative_humidity", 55.0) + ((seed % 7) - 3)
+        wind_dir = stats.get("wind_direction", 260.0) + (seed % 12)
+        wind_speed = stats.get("wind_speed", 3.0) + (seed % 5) * 0.3
+        wind_speed_10m = wind_speed + 0.5
+        qnh = stats.get("qnh", 1012.0) + ((seed % 5) - 2) * 0.2
+        visibility = stats.get("visibility", 10000.0) - (seed % 4) * 300.0
+
+        for offset in (-30, 0, 30):
+            ts = base_time + timedelta(minutes=offset)
+            records.append({
+                "location_id": loc,
+                "timestamp": ts,
+                "temperature": temp,
+                "dew_point": dew_point,
+                "relative_humidity": rh,
+                "wind_direction": wind_dir,
+                "wind_speed": wind_speed,
+                "wind_speed_10m": wind_speed_10m,
+                "qnh": qnh,
+                "visibility": visibility,
+            })
+
+    df = pd.DataFrame(records)
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    return df
 
 
 def load_weather_data() -> Optional[pd.DataFrame]:
@@ -262,11 +388,30 @@ class GetWeatherTool(BaseTool):
 
         # 加载气象数据
         df = get_weather_data()
+        using_simulated = False
 
         if df is None or len(df) == 0:
-            return {
-                "observation": "❌ 气象数据不可用，请确保已运行 extract_awos_weather.py 生成数据"
-            }
+            # 使用模拟气象数据（10月21日）
+            base_time = None
+            if timestamp_str:
+                try:
+                    base_time = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    base_time = None
+            if base_time is None:
+                incident = state.get("incident", {})
+                incident_time = incident.get("incident_time") or incident.get("start_time")
+                if incident_time:
+                    try:
+                        base_time = datetime.fromisoformat(incident_time)
+                    except (ValueError, TypeError):
+                        base_time = None
+            if base_time is None:
+                base_time = datetime.fromisoformat("2025-10-21 10:00:00")
+            raw_stats = _load_raw_weather_stats()
+            df = _build_simulated_weather_data(base_time, raw_stats)
+            _WEATHER_DATA = df
+            using_simulated = True
 
         # 处理"推荐"位置
         requested_location = location
@@ -314,6 +459,8 @@ class GetWeatherTool(BaseTool):
 
         # 格式化输出
         observation = fallback_note + format_weather_info(record, location, timestamp)
+        if using_simulated:
+            observation = "⚠️ 使用模拟气象数据（参考原始AWOS日志）\n" + observation
 
         # 构建返回结果
         result: Dict[str, Any] = {

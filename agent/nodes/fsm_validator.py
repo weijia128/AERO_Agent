@@ -36,13 +36,17 @@ def _build_return_state(state: AgentState, updates: Dict[str, Any]) -> Dict[str,
         "risk_assessment",
         "spatial_analysis",
         "weather",
+        "weather_impact",
         "mandatory_actions_done",
         "actions_taken",
+        "notifications_sent",
         "fsm_state",
         "reference_flight",
         "flight_plan_table",
         "position_impact_analysis",
         "comprehensive_analysis",
+        "flight_impact_prediction",
+        "cleanup_time_estimate",
     ]
 
     result: Dict[str, Any] = {}

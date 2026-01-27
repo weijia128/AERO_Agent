@@ -3,8 +3,8 @@
 
 集成气象影响、清理时间预估、空间影响分析、航班影响预测，并生成风险场景和解决建议。
 所有数据来源：
-- 航班计划：2026-01-06 08:00-12:00 真实数据
-- 气象数据：2026-01-06 08:00-12:00 真实数据
+- 航班计划：天府机场 10月21日数据
+- 气象数据：10月21日模拟数据
 - 机场拓扑：真实拓扑图数据
 """
 import json
@@ -78,9 +78,9 @@ class AnalyzeSpillComprehensiveTool(BaseTool):
                                f"注意：leak_size（泄漏面积）为可选字段，缺失时将使用 MEDIUM 默认值。"
             }
 
-        # 使用默认时间（2026-01-06 10:00，数据集时间范围内）
+        # 使用默认时间（10月21日，数据集时间范围内）
         if not incident_time:
-            incident_time = "2026-01-06 10:00:00"
+            incident_time = "2025-10-21 10:00:00"
             incident["incident_time"] = incident_time
 
         # 获取风险等级（如果已评估）
@@ -738,7 +738,7 @@ class AnalyzeSpillComprehensiveTool(BaseTool):
             lines.append(f"    预计耗时: {rec['estimated_time']}")
 
         lines.append("\n" + "=" * 80)
-        lines.append("分析完成 | 数据来源: 2026-01-06 真实历史数据")
+        lines.append("分析完成 | 数据来源: 天府机场10月21日数据")
         lines.append("=" * 80)
 
         return "\n".join(lines)

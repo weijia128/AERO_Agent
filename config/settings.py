@@ -25,10 +25,10 @@ class Settings(BaseSettings):
     DEBUG: bool = Field(default=True, description="调试模式")
     
     # LLM 配置
-    LLM_PROVIDER: str = Field(default="zhipu", description="LLM 提供商: zhipu, openai")
-    LLM_MODEL: str = Field(default="glm-4.7", description="模型名称")
+    LLM_PROVIDER: str = Field(default="openai", description="LLM 提供商: zhipu, openai")
+    LLM_MODEL: str = Field(default="deepseek-chat", description="模型名称")
     LLM_API_KEY: Optional[str] = Field(default=None, description="API Key")
-    LLM_BASE_URL: Optional[str] = Field(default=None, description="API Base URL")
+    LLM_BASE_URL: Optional[str] = Field(default="https://api.deepseek.com/v1", description="API Base URL")
     LLM_TEMPERATURE: float = Field(default=0.1, description="温度参数")
     LLM_MAX_TOKENS: int = Field(default=4096, description="最大 Token 数")
     

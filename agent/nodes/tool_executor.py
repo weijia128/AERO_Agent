@@ -34,13 +34,17 @@ def _build_return_state(state: AgentState, updates: Dict[str, Any]) -> Dict[str,
         "risk_assessment",
         "spatial_analysis",
         "weather",
+        "weather_impact",
         "mandatory_actions_done",
         "actions_taken",
+        "notifications_sent",
         "fsm_state",
         "reference_flight",
         "flight_plan_table",
         "position_impact_analysis",
         "comprehensive_analysis",
+        "flight_impact_prediction",
+        "cleanup_time_estimate",
     ]
 
     result: Dict[str, Any] = {}
@@ -166,7 +170,7 @@ def tool_executor_node(state: AgentState) -> Dict[str, Any]:
                 if key == "messages":
                     # 消息需要追加
                     updates[key] = state.get(key, []) + result[key]
-                elif key in ["incident", "checklist", "mandatory_actions_done"]:
+                elif key in ["incident", "checklist", "mandatory_actions_done", "spatial_analysis"]:
                     # 字典需要合并
                     updates[key] = {**state.get(key, {}), **result[key]}
                 else:

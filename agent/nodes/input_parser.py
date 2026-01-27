@@ -32,10 +32,12 @@ from agent.nodes.semantic_understanding import (
 # 通用实体提取正则（场景通用部分）
 BASE_PATTERNS: Dict[str, Any] = {
     "position": [
+        r"([A-Z]\d+)\s*(滑行道)",  # A3滑行道 (字母+数字在前，优先匹配)
+        r"([A-Z])\s*(滑行道)",  # M滑行道 (纯字母在前)
         r"(\d{1,3})\s*(?:滑行道)",  # 12滑行道 -> 12
         r"(\d{2,3})\s*(?:机位|停机位)",  # 501机位, 32停机位 (数字在前)
         r"(?:在|位于)?(?:机位|停机位)\s*号?\s*(\d{2,3})",  # 在32号机位, 501停机位, 机位32
-        r"(滑行道|TWY)[_\s]?([A-Z]?\d+)",  # 滑行道W2, TWY A3 (保留完整位置)
+        r"(滑行道|TWY)[_\s]?([A-Z]\d*)",  # 滑行道M, 滑行道W2, TWY A, TWY A3 (支持纯字母或字母+数字)
         r"(跑道|RWY)[_\s]?(\d{1,2}[LRC]?)",  # 跑道01L, 跑道2, RWY 09R (保留完整位置)
         r"(\d{2,3})\s*号",  # 234号（单独出现）
     ],
@@ -54,9 +56,9 @@ BASE_PATTERNS: Dict[str, Any] = {
         # 匹配其他明确的运转状态（运行、工作、启动）
         (r"发动机.{0,5}(?:在|还在|正在)?.{0,3}(?:运行|工作|启动)", "RUNNING"),
         # 匹配关闭状态（带"发动机"前缀）
-        (r"发动机.{0,5}(?:已关|已停|停了|关了|关闭|熄火)", "STOPPED"),
+        (r"发动机.{0,5}(?:已关|已停|停了|关了|关闭|熄火|关车)", "STOPPED"),
         # 匹配关闭状态（不带"发动机"前缀，但在上下文中提到发动机相关词）
-        (r"(?:已关|已停|停了|关了|关闭|熄火|停车)", "STOPPED"),
+        (r"(?:已关|已停|停了|关了|关闭|熄火|停车|关车)", "STOPPED"),
         # 匹配运转状态（不带"发动机"前缀）
         (r"(?<!不|没)(?:运转|运行|在转|启动中)(?!了|止)", "RUNNING"),
     ],
@@ -227,8 +229,14 @@ def _extract_entities_legacy(text: str) -> Dict[str, Any]:
             # 如果有两个捕获组（如滑行道、跑道），组合完整位置
             if len(match.groups()) == 2:
                 prefix, suffix = match.group(1), match.group(2)
-                # 修复：统一不加空格，保持紧凑格式（如"跑道2"、"滑行道19"）
-                entities["position"] = f"{prefix}{suffix}"
+                # 检测是否需要反转顺序（如"M滑行道" -> "滑行道M"）
+                location_types = {"滑行道", "跑道", "机位"}
+                if suffix in location_types:
+                    # 第二个捕获组是位置类型，需要反转
+                    entities["position"] = f"{suffix}{prefix}"
+                else:
+                    # 正常顺序（如"滑行道M"）
+                    entities["position"] = f"{prefix}{suffix}"
             else:
                 entities["position"] = match.group(1)
             break
@@ -241,25 +249,36 @@ def _extract_entities_legacy(text: str) -> Dict[str, Any]:
         if re.match(r'^\d{2,3}$', text_stripped):
             entities["position"] = text_stripped
 
-        # 2. 用户只回答了位置类型和数字（如"跑道2"、"滑行道19"）
-        elif re.match(r'^(跑道|滑行道|机位)\s*\d+', text_stripped, re.IGNORECASE):
-            # 提取完整位置字符串，去除空格
-            match = re.match(r'^(跑道|滑行道|机位)\s*(\d+)', text_stripped, re.IGNORECASE)
-            if match:
+        # 2. 用户只回答了位置类型和标识符（如"跑道2"、"滑行道19"、"滑行道M"）
+        elif re.match(r'^(跑道|滑行道|机位)\s*[A-Z]?\d*', text_stripped, re.IGNORECASE):
+            # 提取完整位置字符串，支持纯字母（如滑行道M）或字母+数字（如滑行道A3）或纯数字
+            match = re.match(r'^(跑道|滑行道|机位)\s*([A-Z]?\d*)', text_stripped, re.IGNORECASE)
+            if match and match.group(2):  # 确保有标识符部分
                 entities["position"] = f"{match.group(1)}{match.group(2)}"
 
-        # 3. 用户在一句话中提到了位置（如"我在跑道2，发动机关闭"）
+        # 3. 字母在前的格式（如"M滑行道" -> "滑行道M"）
+        elif re.match(r'^([A-Z]\d*)\s*(滑行道|跑道|机位)', text_stripped, re.IGNORECASE):
+            match = re.match(r'^([A-Z]\d*)\s*(滑行道|跑道|机位)', text_stripped, re.IGNORECASE)
+            if match:
+                entities["position"] = f"{match.group(2)}{match.group(1)}"
+
+        # 4. 用户在一句话中提到了位置（如"我在跑道2，发动机关闭"、"滑行道M上"）
         else:
-            # 尝试再次匹配跑道/滑行道+数字（不要求前后有特定词汇）
-            match = re.search(r'(跑道|滑行道|机位|TWY|RWY)[_\s]?([A-Z]?\d+)', text, re.IGNORECASE)
+            # 尝试再次匹配跑道/滑行道+标识符（支持纯字母或字母+数字或纯数字）
+            match = re.search(r'(跑道|滑行道|机位|TWY|RWY)[_\s]?([A-Z]\d*|\d+)', text, re.IGNORECASE)
             if match:
                 entities["position"] = f"{match.group(1)}{match.group(2)}"
             else:
-                # 最后尝试：纯数字（可能埋在其他文本中）
-                match = re.search(r'\b(\d{2,3})\b', text)
+                # 尝试匹配字母在前的格式
+                match = re.search(r'([A-Z]\d*)\s*(滑行道|跑道|机位)', text, re.IGNORECASE)
                 if match:
-                    # 只在没有其他位置信息时才使用纯数字
-                    entities["position"] = match.group(1)
+                    entities["position"] = f"{match.group(2)}{match.group(1)}"
+                else:
+                    # 最后尝试：纯数字（可能埋在其他文本中）
+                    match = re.search(r'\b(\d{2,3})\b', text)
+                    if match:
+                        # 只在没有其他位置信息时才使用纯数字
+                        entities["position"] = match.group(1)
 
     # 提取油液类型
     for pattern, value in BASE_PATTERNS["fluid_type"]:
@@ -566,6 +585,39 @@ def apply_auto_enrichment(
     return updates
 
 
+def _build_return_state(state: AgentState, updates: Dict[str, Any]) -> Dict[str, Any]:
+    """构建返回状态，确保关键字段被传递。"""
+    critical_fields = [
+        "session_id",
+        "scenario_type",
+        "incident",
+        "checklist",
+        "messages",
+        "risk_assessment",
+        "spatial_analysis",
+        "weather",
+        "weather_impact",
+        "mandatory_actions_done",
+        "actions_taken",
+        "notifications_sent",
+        "fsm_state",
+        "reference_flight",
+        "flight_plan_table",
+        "position_impact_analysis",
+        "comprehensive_analysis",
+        "flight_impact_prediction",
+        "cleanup_time_estimate",
+    ]
+
+    result: Dict[str, Any] = {}
+    for field in critical_fields:
+        if field in state:
+            result[field] = state[field]
+
+    result.update(updates)
+    return result
+
+
 def input_parser_node(state: AgentState) -> Dict[str, Any]:
     """
     输入解析节点
@@ -579,10 +631,10 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
     # 获取最新用户消息
     messages = state.get("messages", [])
     if not messages:
-        return {
+        return _build_return_state(state, {
             "error": "没有收到用户输入",
             "next_node": "end",
-        }
+        })
 
     # 获取用户输入
     user_message = ""
@@ -592,10 +644,10 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
             break
 
     if not user_message:
-        return {
+        return _build_return_state(state, {
             "error": "没有找到用户消息",
             "next_node": "end",
-        }
+        })
 
     if state.get("awaiting_supplemental_info"):
         supplemental_text = user_message.strip()
@@ -613,7 +665,7 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
                 "timestamp": datetime.now().isoformat(),
             }
         )
-        return {
+        return _build_return_state(state, {
             "scenario_type": state.get("scenario_type", "oil_spill"),
             "incident": state.get("incident", {}),
             "checklist": state.get("checklist", {}),
@@ -626,7 +678,7 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
             "current_node": "input_parser",
             "next_node": "reasoning",
             "iteration_count": state.get("iteration_count", 0) or 1,
-        }
+        })
 
     normalized_message = normalize_radiotelephony_text(user_message)
 
@@ -836,7 +888,7 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
     reasoning_steps = existing_steps + [reasoning_step] if existing_steps else [reasoning_step]
     iteration_count = state.get("iteration_count", 0) or 1
 
-    return {
+    return _build_return_state(state, {
         "scenario_type": scenario_type,
         "incident": current_incident,
         "checklist": checklist,
@@ -854,7 +906,7 @@ def input_parser_node(state: AgentState) -> Dict[str, Any]:
         "iteration_count": iteration_count,
         **({"semantic_understanding": semantic_understanding} if semantic_understanding else {}),
         **({"semantic_validation": semantic_validation} if semantic_validation else {}),
-    }
+    })
 
 
 def build_history_context(messages: list) -> str:
@@ -1218,7 +1270,12 @@ def extract_entities(text: str, scenario_type: Optional[str] = None) -> Dict[str
         if match:
             if len(match.groups()) == 2:
                 prefix, suffix = match.group(1), match.group(2)
-                entities["position"] = f"{prefix}{suffix}"
+                # 检测是否需要反转顺序（如"M滑行道" -> "滑行道M"）
+                location_types = {"滑行道", "跑道", "机位"}
+                if suffix in location_types:
+                    entities["position"] = f"{suffix}{prefix}"
+                else:
+                    entities["position"] = f"{prefix}{suffix}"
             else:
                 entities["position"] = match.group(1)
             break
@@ -1227,18 +1284,30 @@ def extract_entities(text: str, scenario_type: Optional[str] = None) -> Dict[str
         text_stripped = text.strip()
         if re.match(r"^\d{2,3}$", text_stripped):
             entities["position"] = text_stripped
-        elif re.match(r"^(跑道|滑行道|机位)\s*\d+", text_stripped, re.IGNORECASE):
-            match = re.match(r"^(跑道|滑行道|机位)\s*(\d+)", text_stripped, re.IGNORECASE)
-            if match:
+        elif re.match(r"^(跑道|滑行道|机位)\s*[A-Z]?\d*", text_stripped, re.IGNORECASE):
+            # 支持纯字母（如滑行道M）或字母+数字（如滑行道A3）或纯数字
+            match = re.match(r"^(跑道|滑行道|机位)\s*([A-Z]?\d*)", text_stripped, re.IGNORECASE)
+            if match and match.group(2):  # 确保有标识符部分
                 entities["position"] = f"{match.group(1)}{match.group(2)}"
+        elif re.match(r"^([A-Z]\d*)\s*(滑行道|跑道|机位)", text_stripped, re.IGNORECASE):
+            # 支持字母在前的格式（如"M滑行道" -> "滑行道M"）
+            match = re.match(r"^([A-Z]\d*)\s*(滑行道|跑道|机位)", text_stripped, re.IGNORECASE)
+            if match:
+                entities["position"] = f"{match.group(2)}{match.group(1)}"
         else:
-            match = re.search(r"(跑道|滑行道|机位|TWY|RWY)[_\s]?([A-Z]?\d+)", text, re.IGNORECASE)
+            # 支持纯字母或字母+数字或纯数字
+            match = re.search(r"(跑道|滑行道|机位|TWY|RWY)[_\s]?([A-Z]\d*|\d+)", text, re.IGNORECASE)
             if match:
                 entities["position"] = f"{match.group(1)}{match.group(2)}"
             else:
-                match = re.search(r"\b(\d{2,3})\b", text)
+                # 尝试匹配字母在前的格式
+                match = re.search(r"([A-Z]\d*)\s*(滑行道|跑道|机位)", text, re.IGNORECASE)
                 if match:
-                    entities["position"] = match.group(1)
+                    entities["position"] = f"{match.group(2)}{match.group(1)}"
+                else:
+                    match = re.search(r"\b(\d{2,3})\b", text)
+                    if match:
+                        entities["position"] = match.group(1)
 
     for pattern, value in patterns.get("fluid_type", []):
         if re.search(pattern, text):

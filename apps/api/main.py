@@ -9,14 +9,17 @@ import logging
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Optional
+from pathlib import Path
+from typing import Optional, List, Dict, Any
 
+import json
+import asyncio
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from agent.graph import agent
+from agent.graph import agent, get_agent_config
 from agent.state import create_initial_state
 from agent.storage import get_session_store
 from apps.api.auth import get_current_user
@@ -30,6 +33,30 @@ logger = logging.getLogger(__name__)
 
 backend = settings.STORAGE_BACKEND or settings.SESSION_STORE_BACKEND
 session_store = get_session_store(backend)
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+GEOJSON_LAYER_PATHS = {
+    "runway_surface": PROJECT_ROOT / "outputs" / "spatial_data" / "geojson" / "runway" / "tianfu_runway_surface.geojson",
+    "runway_centerline": PROJECT_ROOT / "outputs" / "spatial_data" / "geojson" / "runway" / "tianfu_runway_centerline.geojson",
+    "runway_label": PROJECT_ROOT / "outputs" / "spatial_data" / "geojson" / "runway" / "tianfu_runway_label.geojson",
+    "taxiway_surface": PROJECT_ROOT / "outputs" / "spatial_data" / "geojson" / "taxiway" / "tianfu_taxiway_surface.geojson",
+    "taxiway_centerline": PROJECT_ROOT / "outputs" / "spatial_data" / "geojson" / "taxiway" / "tianfu_taxiway_centerline.geojson",
+    "taxiway_label": PROJECT_ROOT / "outputs" / "spatial_data" / "geojson" / "taxiway" / "tianfu_taxiway_label.geojson",
+    "stand_surface": PROJECT_ROOT / "outputs" / "spatial_data" / "geojson" / "stand" / "tianfu_stand_surface.geojson",
+    "stand_label": PROJECT_ROOT / "outputs" / "spatial_data" / "geojson" / "stand" / "tianfu_stand_label.geojson",
+}
+
+
+def get_fsm_states_for_scenario(scenario_type: str) -> List[Dict[str, Any]]:
+    if not scenario_type:
+        return []
+    from scenarios.base import ScenarioRegistry
+
+    scenario = ScenarioRegistry.get(scenario_type)
+    if not scenario:
+        return []
+    states = scenario.fsm_states or []
+    return sorted(states, key=lambda item: item.get("order", 0))
 
 
 @asynccontextmanager
@@ -84,7 +111,25 @@ class EventRequest(BaseModel):
     """事件请求"""
     message: str = Field(..., description="用户输入消息")
     session_id: Optional[str] = Field(None, description="会话ID，不传则新建")
-    scenario_type: str = Field("oil_spill", description="场景类型")
+    scenario_type: Optional[str] = Field(None, description="场景类型")
+
+
+class ToolCallInfo(BaseModel):
+    """工具调用信息"""
+    id: str
+    name: str
+    input: dict = {}
+    output: Optional[str] = None
+    status: str = "completed"
+
+
+class ReasoningStepInfo(BaseModel):
+    """推理步骤信息"""
+    step: int
+    thought: str
+    action: Optional[str] = None
+    action_input: Optional[dict] = None
+    observation: Optional[str] = None
 
 
 class EventResponse(BaseModel):
@@ -97,6 +142,15 @@ class EventResponse(BaseModel):
     checklist: dict
     risk_level: Optional[str] = None
     next_question: Optional[str] = None
+    scenario_type: Optional[str] = None
+    incident: Optional[dict] = None
+    fsm_states: List[Dict[str, Any]] = []
+    # 新增：工具调用和推理过程
+    tool_calls: List[ToolCallInfo] = []
+    reasoning_steps: List[ReasoningStepInfo] = []
+    current_thought: Optional[str] = None
+    spatial_analysis: Optional[dict] = None
+    flight_impact_prediction: Optional[dict] = None
 
 
 class ChatRequest(BaseModel):
@@ -125,6 +179,29 @@ async def health_check():
     }
 
 
+@app.get("/spatial/geojson/{layer_name}")
+async def get_geojson_layer(
+    layer_name: str,
+    _user: str = Depends(get_current_user),
+    _rate_limit: None = Depends(rate_limit_check),
+):
+    """
+    获取机场拓扑 GeoJSON 图层
+    """
+    path = GEOJSON_LAYER_PATHS.get(layer_name)
+    if not path or not path.exists():
+        raise HTTPException(status_code=404, detail="GeoJSON layer not found")
+
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except Exception as exc:
+        detail = str(exc) if settings.DEBUG else "Failed to load GeoJSON layer"
+        raise HTTPException(status_code=500, detail=detail)
+
+    return JSONResponse(content=data)
+
+
 @app.post("/event/start", response_model=EventResponse)
 async def start_event(
     request: EventRequest,
@@ -144,7 +221,7 @@ async def start_event(
     # 创建初始状态
     state = create_initial_state(
         session_id=session_id,
-        scenario_type=request.scenario_type,
+        scenario_type=request.scenario_type or "",
         initial_message=request.message,
     )
     
@@ -157,7 +234,34 @@ async def start_event(
     # 保存会话
     await session_store.set(session_id, result, settings.SESSION_TTL_SECONDS)
     
+    # 提取工具调用信息
+    tool_calls = []
+    reasoning_steps_raw = result.get("reasoning_steps", [])
+    for i, step in enumerate(reasoning_steps_raw):
+        if step.get("action"):
+            tool_calls.append(ToolCallInfo(
+                id=f"tool-{i}",
+                name=step.get("action", ""),
+                input=step.get("action_input", {}),
+                output=step.get("observation", ""),
+                status="completed"
+            ))
+
+    # 提取推理步骤
+    reasoning_steps = [
+        ReasoningStepInfo(
+            step=i + 1,
+            thought=step.get("thought", ""),
+            action=step.get("action"),
+            action_input=step.get("action_input"),
+            observation=step.get("observation"),
+        )
+        for i, step in enumerate(reasoning_steps_raw)
+    ]
+
     # 构建响应
+    scenario_type = result.get("scenario_type") or request.scenario_type or ""
+    fsm_states = get_fsm_states_for_scenario(scenario_type)
     response = EventResponse(
         session_id=session_id,
         status="processing" if not result.get("is_complete") else "completed",
@@ -166,15 +270,23 @@ async def start_event(
         fsm_state=result.get("fsm_state", "INIT"),
         checklist=result.get("checklist", {}),
         risk_level=result.get("risk_assessment", {}).get("level"),
+        scenario_type=scenario_type or None,
+        incident=result.get("incident"),
+        fsm_states=fsm_states,
+        tool_calls=tool_calls,
+        reasoning_steps=reasoning_steps,
+        current_thought=result.get("current_thought"),
+        spatial_analysis=result.get("spatial_analysis"),
+        flight_impact_prediction=result.get("flight_impact_prediction"),
     )
-    
+
     # 检查是否需要追问
     messages = result.get("messages", [])
     for msg in reversed(messages):
         if msg.get("role") == "assistant":
             response.next_question = msg.get("content")
             break
-    
+
     return response
 
 
@@ -214,8 +326,35 @@ async def chat_event(
     
     # 更新会话
     await session_store.set(session_id, result, settings.SESSION_TTL_SECONDS)
-    
+
+    # 提取工具调用信息
+    tool_calls = []
+    reasoning_steps_raw = result.get("reasoning_steps", [])
+    for i, step in enumerate(reasoning_steps_raw):
+        if step.get("action"):
+            tool_calls.append(ToolCallInfo(
+                id=f"tool-{i}",
+                name=step.get("action", ""),
+                input=step.get("action_input", {}),
+                output=step.get("observation", ""),
+                status="completed"
+            ))
+
+    # 提取推理步骤
+    reasoning_steps = [
+        ReasoningStepInfo(
+            step=i + 1,
+            thought=step.get("thought", ""),
+            action=step.get("action"),
+            action_input=step.get("action_input"),
+            observation=step.get("observation"),
+        )
+        for i, step in enumerate(reasoning_steps_raw)
+    ]
+
     # 构建响应
+    scenario_type = result.get("scenario_type") or ""
+    fsm_states = get_fsm_states_for_scenario(scenario_type)
     response = EventResponse(
         session_id=session_id,
         status="processing" if not result.get("is_complete") else "completed",
@@ -224,15 +363,23 @@ async def chat_event(
         fsm_state=result.get("fsm_state", "INIT"),
         checklist=result.get("checklist", {}),
         risk_level=result.get("risk_assessment", {}).get("level"),
+        scenario_type=scenario_type or None,
+        incident=result.get("incident"),
+        fsm_states=fsm_states,
+        tool_calls=tool_calls,
+        reasoning_steps=reasoning_steps,
+        current_thought=result.get("current_thought"),
+        spatial_analysis=result.get("spatial_analysis"),
+        flight_impact_prediction=result.get("flight_impact_prediction"),
     )
-    
+
     # 检查是否需要追问
     messages = result.get("messages", [])
     for msg in reversed(messages):
         if msg.get("role") == "assistant":
             response.next_question = msg.get("content")
             break
-    
+
     return response
 
 
@@ -340,6 +487,203 @@ async def close_event(
     await session_store.delete(session_id)
     
     return {"status": "closed", "session_id": session_id}
+
+
+# ============================================================
+# 流式接口 (SSE - Server-Sent Events)
+# ============================================================
+
+def extract_stream_event(node_name: str, state: dict) -> dict:
+    """从节点执行结果中提取流式事件数据"""
+    event = {
+        "node": node_name,
+        "timestamp": datetime.now().isoformat(),
+        "fsm_state": state.get("fsm_state", "INIT"),
+        "checklist": state.get("checklist", {}),
+    }
+    scenario_type = state.get("scenario_type", "")
+    if scenario_type:
+        event["scenario_type"] = scenario_type
+        event["fsm_states"] = get_fsm_states_for_scenario(scenario_type)
+    if state.get("incident"):
+        event["incident"] = state.get("incident")
+
+    # 提取当前推理步骤
+    if state.get("current_thought"):
+        event["current_thought"] = state.get("current_thought")
+
+    # 提取当前动作
+    if state.get("current_action"):
+        event["current_action"] = state.get("current_action")
+        event["current_action_input"] = state.get("current_action_input", {})
+
+    # 提取观察结果
+    if state.get("current_observation"):
+        event["current_observation"] = state.get("current_observation")
+
+    # 提取推理步骤
+    reasoning_steps = state.get("reasoning_steps", [])
+    if reasoning_steps:
+        event["reasoning_steps"] = reasoning_steps
+
+    # 提取风险评估
+    if state.get("risk_assessment"):
+        event["risk_assessment"] = state.get("risk_assessment")
+
+    # 提取空间分析
+    if state.get("spatial_analysis"):
+        event["spatial_analysis"] = state.get("spatial_analysis")
+
+    # 提取航班影响
+    if state.get("flight_impact_prediction"):
+        event["flight_impact_prediction"] = state.get("flight_impact_prediction")
+
+    # 提取是否完成
+    event["is_complete"] = state.get("is_complete", False)
+
+    # 提取最终答案
+    if state.get("final_answer"):
+        event["final_answer"] = state.get("final_answer")
+
+    # 提取agent询问消息（从messages中获取最新的assistant消息）
+    messages = state.get("messages", [])
+    for msg in reversed(messages):
+        if msg.get("role") == "assistant":
+            event["next_question"] = msg.get("content")
+            break
+
+    return event
+
+
+async def stream_agent_execution(state: dict, session_id: str):
+    """流式执行 Agent 并生成 SSE 事件"""
+    try:
+        # 使用 stream 方法执行 Agent
+        config = get_agent_config()
+
+        for chunk in agent.stream(state, config=config):
+            # chunk 是一个字典，键是节点名称，值是该节点的输出状态
+            for node_name, node_output in chunk.items():
+                # 合并状态
+                state.update(node_output)
+
+                # 生成事件
+                event_data = extract_stream_event(node_name, state)
+                event_data["session_id"] = session_id
+
+                # 发送 SSE 事件
+                yield f"event: node_update\ndata: {json.dumps(event_data, ensure_ascii=False, default=str)}\n\n"
+
+                # 小延迟确保前端能够处理
+                await asyncio.sleep(0.05)
+
+        # 发送完成事件
+        scenario_type = state.get("scenario_type", "")
+        final_event = {
+            "session_id": session_id,
+            "status": "completed" if state.get("is_complete") else "processing",
+            "fsm_state": state.get("fsm_state", "INIT"),
+            "checklist": state.get("checklist", {}),
+            "risk_level": state.get("risk_assessment", {}).get("level"),
+            "final_answer": state.get("final_answer", ""),
+            "reasoning_steps": state.get("reasoning_steps", []),
+            "incident": state.get("incident", {}),
+        }
+        if scenario_type:
+            final_event["scenario_type"] = scenario_type
+            final_event["fsm_states"] = get_fsm_states_for_scenario(scenario_type)
+
+        # 检查是否有追问
+        messages = state.get("messages", [])
+        for msg in reversed(messages):
+            if msg.get("role") == "assistant":
+                final_event["next_question"] = msg.get("content")
+                break
+
+        yield f"event: complete\ndata: {json.dumps(final_event, ensure_ascii=False, default=str)}\n\n"
+
+        # 保存会话状态
+        await session_store.set(session_id, state, settings.SESSION_TTL_SECONDS)
+
+    except Exception as e:
+        logger.exception("Stream execution error")
+        error_event = {
+            "session_id": session_id,
+            "error": str(e),
+            "status": "error",
+        }
+        yield f"event: error\ndata: {json.dumps(error_event, ensure_ascii=False)}\n\n"
+
+
+@app.post("/event/start/stream")
+async def start_event_stream(
+    request: EventRequest,
+    req: Request,
+    _user: str = Depends(get_current_user),
+    _rate_limit: None = Depends(rate_limit_check),
+):
+    """
+    流式启动新的事件处理 (SSE)
+    """
+    session_id = request.session_id or str(uuid.uuid4())
+
+    await session_store.cleanup_expired()
+
+    # 创建初始状态
+    state = create_initial_state(
+        session_id=session_id,
+        scenario_type=request.scenario_type or "",
+        initial_message=request.message,
+    )
+
+    return StreamingResponse(
+        stream_agent_execution(state, session_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # 禁用 nginx 缓冲
+        },
+    )
+
+
+@app.post("/event/chat/stream")
+async def chat_event_stream(
+    request: ChatRequest,
+    req: Request,
+    _user: str = Depends(get_current_user),
+    _rate_limit: None = Depends(rate_limit_check),
+):
+    """
+    流式继续对话 (SSE)
+    """
+    session_id = request.session_id
+
+    await session_store.cleanup_expired()
+
+    # 获取当前状态
+    state = await session_store.get(session_id)
+    if not state:
+        raise HTTPException(status_code=404, detail="会话不存在")
+
+    # 添加用户消息
+    messages = state.get("messages", [])
+    messages.append({"role": "user", "content": request.message})
+    state["messages"] = messages
+
+    # 重置完成状态，继续处理
+    state["is_complete"] = False
+    state["next_node"] = "input_parser"
+
+    return StreamingResponse(
+        stream_agent_execution(state, session_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 if __name__ == "__main__":

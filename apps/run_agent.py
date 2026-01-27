@@ -1169,10 +1169,36 @@ def save_report(state: Dict[str, Any], report: Dict[str, Any], answer: str = "")
             if report.get("risk_level"):
                 f.write(f"## 风险等级: {report['risk_level']}\n\n")
 
+            execution_summary = report.get("execution_summary", {})
+            if execution_summary:
+                f.write("## 执行轨迹摘要\n")
+                f.write(f"- 会话ID: {execution_summary.get('session_id', session_id)}\n")
+                f.write(f"- FSM 状态: {execution_summary.get('fsm_state', '')}\n")
+                f.write(f"- 工具执行次数: {execution_summary.get('actions_total', 0)}\n")
+                recent_actions = execution_summary.get("recent_actions", [])
+                if recent_actions:
+                    f.write(f"- 最近动作: {', '.join(recent_actions)}\n")
+                f.write("\n")
+
             if report.get("handling_process"):
                 f.write("## 处置过程\n")
                 for step in report["handling_process"]:
                     f.write(f"- {step}\n")
+                f.write("\n")
+
+            coordination_units = report.get("coordination_units") or []
+            if coordination_units:
+                f.write("## 协同单位通知记录\n")
+                f.write("| 单位 | 是否通知 | 通知时间 |\n")
+                f.write("|---|---|---|\n")
+                for unit in coordination_units:
+                    if isinstance(unit, dict):
+                        name = unit.get("name", "")
+                        notified = "已通知" if unit.get("notified") else "未通知"
+                        notify_time = unit.get("notify_time") or "——"
+                        f.write(f"| {name} | {notified} | {notify_time} |\n")
+                    else:
+                        f.write(f"| {unit} | 未知 | —— |\n")
                 f.write("\n")
 
             if report.get("recommendations"):

@@ -13,12 +13,14 @@
 import json
 import logging
 import random
+import re
 from typing import Dict, Any, Tuple, Optional, cast
 from datetime import datetime
 
 from tools.base import BaseTool
 from tools.assessment.assess_oil_spill_risk import AssessRiskTool
 from config.llm_config import LLMConfig, LLMClientFactory
+from config.settings import settings
 from agent.llm_guard import invoke_llm
 from config.validation_config import ValidationConfig
 from agent.state import RiskLevel, normalize_risk_level
@@ -64,6 +66,10 @@ class CrossValidateRiskTool(BaseTool):
         # ============================================================
         if not ValidationConfig.ENABLE_CROSS_VALIDATION:
             logger.info("交叉验证已禁用，回退到纯规则引擎")
+            return cast(Dict[str, Any], self.rule_engine_tool.execute(state, inputs))
+
+        if not settings.LLM_API_KEY:
+            logger.warning("LLM API Key 未配置，跳过交叉验证，回退到规则引擎")
             return cast(Dict[str, Any], self.rule_engine_tool.execute(state, inputs))
 
         # ============================================================
@@ -232,9 +238,23 @@ class CrossValidateRiskTool(BaseTool):
             # 调用 LLM
             response = invoke_llm(prompt, llm=self.llm_client)
             content = response.content if hasattr(response, "content") else str(response)
+            logger.info(
+                "LLM 验证原始响应长度=%s, 片段=%r",
+                len(content) if content is not None else 0,
+                (content or "")[:200],
+            )
 
-            # 解析 JSON 响应
-            result = cast(Dict[str, Any], json.loads(content.strip()))
+            # 解析 JSON 响应（兼容代码块包裹）
+            raw = content.strip() if content else ""
+            if raw.startswith("```"):
+                raw = re.sub(r"^```(?:json)?", "", raw, flags=re.IGNORECASE).strip()
+                if raw.endswith("```"):
+                    raw = raw[:-3].strip()
+            if not raw.startswith("{"):
+                match = re.search(r"\{.*\}", raw, re.DOTALL)
+                if match:
+                    raw = match.group(0)
+            result = cast(Dict[str, Any], json.loads(raw))
 
             # 验证字段
             level = result.get("level", "R2")

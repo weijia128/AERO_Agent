@@ -7,6 +7,7 @@ import logging
 import os
 import sys
 from typing import Dict, Any, List, Set, Optional, cast
+import re
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
@@ -123,10 +124,15 @@ class PredictFlightImpactTool(BaseTool):
                 except (ValueError, TypeError):
                     pass
 
-        # 第3优先级：使用默认时间（匹配航班数据集）
+        # 第3优先级：使用航班数据推断时间
         if current_time is None:
-            current_time = datetime.fromisoformat("2026-01-06 10:00:00")
-            time_source = "default_time"
+            inferred_time = self._infer_base_time(flight_data)
+            if inferred_time is not None:
+                current_time = inferred_time
+                time_source = "data_inferred"
+            else:
+                current_time = datetime.fromisoformat("2025-10-21 10:00:00")
+                time_source = "default_time"
         else:
             time_source = None
 
@@ -186,6 +192,23 @@ class PredictFlightImpactTool(BaseTool):
             }
         }
 
+    def _infer_base_time(self, flight_data: List[Dict[str, Any]]) -> Optional[datetime]:
+        """从航班数据推断一个合理的时间基准"""
+        candidates: List[datetime] = []
+        for record in flight_data:
+            for key in ("eldt", "etot", "aldt", "atot"):
+                value = record.get(key)
+                if not value:
+                    continue
+                try:
+                    candidates.append(datetime.fromisoformat(value))
+                except (ValueError, TypeError):
+                    continue
+        if not candidates:
+            return None
+        candidates.sort()
+        return candidates[len(candidates) // 2]
+
     def _load_flight_data(
         self,
         flight_plan_file: Optional[str],
@@ -200,27 +223,24 @@ class PredictFlightImpactTool(BaseTool):
         # 确定文件路径
         if flight_plan_file is None:
             project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            data_dir = os.path.join(project_root, "data", "raw", "航班计划")
-            # 优先使用真实数据集（2026-01-06 8-12点）
-            primary_file = os.path.join(data_dir, "Flight_Plan_2026-01-06_08-12.txt")
-            fallback_file = os.path.join(data_dir, "Log_1.txt")
-
-            if os.path.exists(primary_file):
-                flight_plan_file = primary_file
-            elif os.path.exists(fallback_file):
-                flight_plan_file = fallback_file
+            preferred_dir = os.path.join(project_root, "data", "raw", "天府机场数据", "航班计划-10月21")
+            if os.path.isdir(preferred_dir):
+                flight_plan_file = preferred_dir
             else:
-                raise FileNotFoundError(f"未找到航班计划文件: {primary_file} 或 {fallback_file}")
+                raise FileNotFoundError(f"未找到航班计划文件: {preferred_dir}")
 
         if not os.path.exists(flight_plan_file):
             raise FileNotFoundError(f"航班计划文件不存在: {flight_plan_file}")
 
-        # 解析文件
+        # 解析文件或目录
         if FlightPlanParser is None:
             raise ImportError("FlightPlanParser 模块未正确导入")
 
         parser = FlightPlanParser()
-        flight_data = cast(List[Dict[str, Any]], parser.parse_file(flight_plan_file))
+        if os.path.isdir(flight_plan_file):
+            flight_data = cast(List[Dict[str, Any]], parser.parse_directory(flight_plan_file, pattern="Log_*.txt"))
+        else:
+            flight_data = cast(List[Dict[str, Any]], parser.parse_file(flight_plan_file))
 
         # 缓存数据
         self._flight_data_cache = flight_data
@@ -278,6 +298,9 @@ class PredictFlightImpactTool(BaseTool):
 
         # 加载拓扑用于查找
         topology = get_topology_loader()
+        stand_code_to_id = self._build_stand_code_map(topology)
+        affected_stand_codes = self._normalize_affected_stands(topology, affected_stands)
+        affected_runway_labels = self._normalize_affected_runways(topology, affected_runways)
 
         for flight in flights:
             stand = flight.get('stand')
@@ -287,25 +310,31 @@ class PredictFlightImpactTool(BaseTool):
 
             # 检查机位影响
             if stand:
-                # 尝试匹配受影响机位
-                for affected_stand in affected_stands:
-                    if stand in affected_stand or affected_stand in stand:
-                        impact_type.append('stand')
-                        impact_severity = max(impact_severity, 3)
-                        break
+                stand_code = self._normalize_code(stand)
+                # 尝试匹配受影响机位（使用机位编号）
+                if stand_code and (
+                    stand_code in affected_stand_codes or
+                    any(stand_code in code or code in stand_code for code in affected_stand_codes)
+                ):
+                    impact_type.append('stand')
+                    impact_severity = max(impact_severity, 3)
 
             # 检查跑道影响
             if runway:
-                for affected_runway in affected_runways:
-                    if runway in affected_runway or affected_runway in runway:
-                        impact_type.append('runway')
-                        impact_severity = max(impact_severity, 3)
-                        break
+                runway_code = self._normalize_code(runway)
+                if runway_code and (
+                    runway_code in affected_runway_labels or
+                    any(runway_code in label or label in runway_code for label in affected_runway_labels)
+                ):
+                    impact_type.append('runway')
+                    impact_severity = max(impact_severity, 3)
 
             # 检查滑行道影响（机位连接的滑行道）
             if stand and affected_taxiways:
                 # 查找机位信息
-                stand_info = topology.get_stand_info(stand)
+                stand_code = self._normalize_code(stand)
+                stand_node_id = stand_code_to_id.get(stand_code, stand)
+                stand_info = topology.get_stand_info(stand_node_id)
                 if stand_info:
                     adjacent_taxiways = stand_info.get('adjacent_taxiways', [])
                     for twy in adjacent_taxiways:
@@ -321,6 +350,54 @@ class PredictFlightImpactTool(BaseTool):
                 affected.append(flight_copy)
 
         return affected
+
+    def _normalize_code(self, value: Any) -> str:
+        """标准化编号字符串"""
+        if not value:
+            return ""
+        text = str(value).strip().upper()
+        return re.sub(r'[^0-9A-Z]', '', text)
+
+    def _build_stand_code_map(self, topology: Any) -> Dict[str, str]:
+        """构建机位编号到节点ID的映射"""
+        mapping: Dict[str, str] = {}
+        nodes = topology.load().get('nodes', {})
+        for node_id, node in nodes.items():
+            if node.get('type') != 'stand':
+                continue
+            code = self._normalize_code(node.get('code') or node_id)
+            if code and code not in mapping:
+                mapping[code] = node_id
+        return mapping
+
+    def _normalize_affected_stands(self, topology: Any, stand_ids: List[str]) -> Set[str]:
+        """将受影响机位节点转换为机位编号集合"""
+        normalized: Set[str] = set()
+        for stand_id in stand_ids:
+            node = topology.get_node(stand_id)
+            code = self._normalize_code(node.get('code') if node else stand_id)
+            if code:
+                normalized.add(code)
+        return normalized
+
+    def _normalize_affected_runways(self, topology: Any, runway_ids: List[str]) -> Set[str]:
+        """将受影响跑道节点转换为跑道编号集合"""
+        normalized: Set[str] = set()
+        for runway_id in runway_ids:
+            node = topology.get_node(runway_id)
+            labels = []
+            if node:
+                labels.extend(node.get('labels') or [])
+                name = node.get('name')
+                if name:
+                    labels.extend(name.split('/'))
+            if not labels:
+                labels.append(runway_id)
+            for label in labels:
+                code = self._normalize_code(label)
+                if code:
+                    normalized.add(code)
+        return normalized
 
     def _calculate_delays(
         self,

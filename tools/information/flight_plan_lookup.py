@@ -50,33 +50,31 @@ class FlightPlanLookupTool(BaseTool):
 
         flight_no = normalize_flight_number(flight_no_raw)
 
-        # 优先使用真实数据集（2026-01-06 8-12点）
-        data_dir = Path(__file__).resolve().parents[2] / "data" / "raw" / "航班计划"
-        primary_file = data_dir / "Flight_Plan_2026-01-06_08-12.txt"
-        fallback_file = data_dir / "Log_4.txt"
-
-        if primary_file.exists():
-            plan_file = primary_file
-        elif fallback_file.exists():
-            plan_file = fallback_file
+        # 优先使用天府机场 10/21 数据
+        preferred_dir = Path(__file__).resolve().parents[2] / "data" / "raw" / "天府机场数据" / "航班计划-10月21"
+        plan_files: List[Path] = []
+        if preferred_dir.exists():
+            plan_files = sorted(preferred_dir.glob("Log_*.txt"))
         else:
-            return {"observation": f"未找到航班计划文件: {primary_file} 或 {fallback_file}"}
+            return {"observation": f"未找到航班计划文件: {preferred_dir}"}
 
-        if not plan_file.exists():
-            return {"observation": f"未找到航班计划文件: {plan_file}"}
+        if not plan_files:
+            return {"observation": "未找到可用的航班计划文件"}
 
         records: List[Dict[str, Any]] = []
-        with plan_file.open("r", encoding="utf-8") as f:
-            for line in f:
-                data = _parse_log_line(line)
-                if not data:
-                    continue
-                if data.get("callsign", "").upper() == flight_no.upper():
-                    records.append(data)
+        for plan_file in plan_files:
+            with plan_file.open("r", encoding="utf-8") as f:
+                for line in f:
+                    data = _parse_log_line(line)
+                    if not data:
+                        continue
+                    if data.get("callsign", "").upper() == flight_no.upper():
+                        data["_source_file"] = plan_file.name
+                        records.append(data)
 
         if not records:
             return {
-                "observation": f"Log_4 中未找到航班 {flight_no} 的计划记录",
+                "observation": f"未找到航班 {flight_no} 的计划记录",
             }
 
         table = _format_plan_table(records)
@@ -114,7 +112,9 @@ class FlightPlanLookupTool(BaseTool):
         elif eldt:
             time_info = f", 计划降落 {eldt}"
 
-        brief = f"已查到航班计划: {flight_no} {inorout}, 机位 {stand}, 跑道 {runway}{time_info}"
+        source_file = rec.get("_source_file", "")
+        source_note = f" (来源: {source_file})" if source_file else ""
+        brief = f"已查到航班计划: {flight_no} {inorout}, 机位 {stand}, 跑道 {runway}{time_info}{source_note}"
 
         return {
             "observation": brief,
