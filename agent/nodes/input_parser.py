@@ -441,7 +441,7 @@ def _fetch_stand_location(incident: Dict[str, Any]) -> Dict[str, Any]:
     """获取位置拓扑信息"""
     from tools.spatial.get_stand_location import GetStandLocationTool
     tool = GetStandLocationTool()
-    return tool.execute(incident, {})
+    return tool.execute({"incident": incident}, {})
 
 
 def _calculate_impact_zone(

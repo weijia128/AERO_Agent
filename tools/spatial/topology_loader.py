@@ -27,6 +27,7 @@ class TopologyLoader:
                 # 默认路径：相对于项目根目录
                 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
                 candidates = [
+                    os.path.join(project_root, "outputs", "spatial_data", "topology_data", "tianfu_topology.json"),
                     os.path.join(project_root, "outputs", "tianfu_topology.json"),
                     os.path.join(project_root, "scripts", "data_processing", "topology_map_based.json"),
                     os.path.join(project_root, "scripts", "data_processing", "topology_clustering_based.json"),

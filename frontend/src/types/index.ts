@@ -1,7 +1,7 @@
 // AERO Agent 前端类型定义
 
 // 事件类型
-export type IncidentType = 'oil_spill' | 'bird_strike' | 'tire_burst' | 'runway_incursion';
+export type IncidentType = 'oil_spill' | 'bird_strike' | 'fod' | 'tire_burst' | 'runway_incursion';
 
 // 风险等级
 export type RiskLevel = 'R1' | 'R2' | 'R3' | 'R4';

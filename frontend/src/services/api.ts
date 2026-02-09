@@ -199,6 +199,11 @@ export const api = {
   ): AbortController => {
     return createSSEConnection('/api/event/chat/stream', params, callbacks);
   },
+
+  parseEvent: async (params: { message: string; scenario_type?: string }): Promise<ParseEventResponse> => {
+    const response = await apiClient.post('/event/parse', params);
+    return response.data as ParseEventResponse;
+  },
 };
 
 // SSE 流式事件类型
@@ -239,6 +244,13 @@ export interface StreamCallbacks {
   onNodeUpdate?: (event: StreamEvent) => void;
   onComplete?: (event: StreamEvent) => void;
   onError?: (error: Error | StreamEvent) => void;
+}
+
+export interface ParseEventResponse {
+  scenario_type?: string;
+  incident?: Record<string, unknown>;
+  checklist?: Record<string, boolean>;
+  enrichment_observation?: string;
 }
 
 // 创建 SSE 连接

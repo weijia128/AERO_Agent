@@ -1,8 +1,10 @@
+import { useRef } from 'react';
 import { Button, ConfigProvider, theme, Typography } from 'antd';
+import { ExpandOutlined } from '@ant-design/icons';
 import zhCN from 'antd/locale/zh_CN';
 import { Header, SummaryCard, Footer } from './components/layout';
 import { ChatTimeline, ReasoningTrace, InputArea } from './components/chat';
-import { TopologyMap, FlightGantt, FSMFlow, WeatherCard } from './components/visualization';
+import { TopologyMap, type TopologyMapHandle, FlightGantt, FSMFlow, WeatherCard } from './components/visualization';
 import { RiskPanel, CrossValidation, ImpactStats } from './components/assessment';
 import { ActionChecklist } from './components/action';
 import { useSession } from './hooks/useSession';
@@ -105,6 +107,7 @@ function LeftPanel() {
 // 中部面板（可视化区域）
 function CenterPanel() {
   const { bigScreenMode } = useUIStore();
+  const topologyRef = useRef<TopologyMapHandle | null>(null);
 
   return (
     <div
@@ -118,19 +121,36 @@ function CenterPanel() {
     >
       {/* 拓扑图 */}
       <div className="card" style={{ flex: 3, minHeight: 0 }}>
-        <Title
-          level={5}
+        <div
           style={{
-            margin: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
             marginBottom: bigScreenMode ? 12 : 8,
-            color: 'var(--text-primary)',
-            fontSize: bigScreenMode ? 16 : 14,
           }}
         >
-          机场拓扑图
-        </Title>
+          <Title
+            level={5}
+            style={{
+              margin: 0,
+              color: 'var(--text-primary)',
+              fontSize: bigScreenMode ? 16 : 14,
+            }}
+          >
+            机场拓扑图
+          </Title>
+          <Button
+            size="small"
+            icon={<ExpandOutlined />}
+            onClick={() => topologyRef.current?.toggleFullscreen()}
+            style={{ borderColor: 'var(--border)' }}
+          >
+            全屏查看
+          </Button>
+        </div>
         <div style={{ height: 'calc(100% - 32px)' }}>
-          <TopologyMap />
+          <TopologyMap ref={topologyRef} />
         </div>
       </div>
 

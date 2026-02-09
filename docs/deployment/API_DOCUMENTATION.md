@@ -1,6 +1,6 @@
 # API 文档
 
-**基础 URL**: `http://localhost:8000` (本地开发)
+**基础 URL**: `http://localhost:8001` (本地开发)
 **版本**: v1
 **协议**: HTTP/REST
 **格式**: JSON
@@ -23,6 +23,8 @@
 | GET | `/event/{session_id}` | 获取会话状态 | ✅ |
 | GET | `/event/{session_id}/report` | 获取生成的报告 | ✅ |
 | DELETE | `/event/{session_id}` | 关闭会话 | ✅ |
+| POST | `/analyze/parse` | 对外解析：提取字段 | ✅ |
+| POST | `/analyze/start/stream` | 对外流式分析：只输出处置意见 | ✅ |
 
 ---
 
@@ -64,6 +66,87 @@ curl -X POST http://localhost:8000/event/start \
 ```
 
 ---
+
+## 对外产品层接口（推荐给外部系统）
+
+### A1. 解析接口（先抽取字段）
+
+**端点**: `POST /analyze/parse`
+
+**描述**: 只解析输入文本，返回场景类型、incident/checklist 和缺失字段（便于补齐）。
+
+**请求体**:
+```json
+{
+  "message": "跑道11/29发现异物，疑似金属，仍在道面，请求支援",
+  "scenario_type": ""
+}
+```
+
+**响应**:
+```json
+{
+  "scenario_type": "fod",
+  "incident": {
+    "position": "跑道11/29",
+    "fod_type": "METAL",
+    "presence": "ON_SURFACE"
+  },
+  "checklist": {
+    "position": true,
+    "fod_type": true,
+    "presence": true
+  },
+  "missing_fields": []
+}
+```
+
+**Curl 示例**:
+```bash
+curl -X POST http://localhost:8001/analyze/parse \
+  -H "Content-Type: application/json" \
+  -d '{"message": "跑道11/29发现异物，疑似金属，仍在道面，请求支援"}'
+```
+
+---
+
+### A2. 流式分析接口（只输出处置意见）
+
+**端点**: `POST /analyze/start/stream`
+
+**描述**: 复用现有 Agent 能力（工具调用/FSM/规则评级），对外只输出处置意见与可解释依据。
+
+**请求体**:
+```json
+{
+  "message": "跑道11/29发现异物，疑似金属，仍在道面，请求支援",
+  "scenario_type": ""
+}
+```
+
+**SSE 事件**:
+1) `event: node_update`：包含 `incident/checklist/risk_assessment` 的阶段性更新  
+2) `event: complete`：包含最终 `recommendation`（处置意见）+ `incident/checklist/risk_assessment`
+
+**Curl 示例**:
+```bash
+curl -N http://localhost:8001/analyze/start/stream \
+  -H "Content-Type: application/json" \
+  -d '{"message": "跑道11/29发现异物，疑似金属，仍在道面，请求支援"}'
+```
+
+**complete 事件示例**:
+```json
+{
+  "session_id": "uuid",
+  "status": "completed",
+  "scenario_type": "fod",
+  "incident": { ... },
+  "checklist": { ... },
+  "risk_assessment": { ... },
+  "recommendation": "1. ...\\n2. ...\\n3. ..."
+}
+```
 
 ### 2. 继续对话
 

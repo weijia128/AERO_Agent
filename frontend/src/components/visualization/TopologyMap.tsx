@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useSessionStore } from '../../stores/sessionStore';
@@ -106,9 +106,170 @@ function safeLabelText(text: string): string {
     .replace(/\"/g, '&quot;');
 }
 
-export function TopologyMap() {
+type PlanePlacement = {
+  latlng: L.LatLng;
+  heading: number;
+};
+
+function toLatLng(coords: [number, number]): L.LatLng {
+  return L.latLng(coords[1], coords[0]);
+}
+
+function getFeatureLabel(feature: any): string {
+  const props = (feature?.properties || {}) as Record<string, unknown>;
+  return String(props.RESOURCE_C || props.NAME || '').trim();
+}
+
+function getFeatures(data: any): any[] {
+  return (data?.features || []) as any[];
+}
+
+function pointToSegmentDistance(p: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }) {
+  const abx = b.x - a.x;
+  const aby = b.y - a.y;
+  const apx = p.x - a.x;
+  const apy = p.y - a.y;
+  const abLen2 = abx * abx + aby * aby;
+  if (abLen2 === 0) {
+    const dx = p.x - a.x;
+    const dy = p.y - a.y;
+    return dx * dx + dy * dy;
+  }
+  const t = Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLen2));
+  const projx = a.x + t * abx;
+  const projy = a.y + t * aby;
+  const dx = p.x - projx;
+  const dy = p.y - projy;
+  return dx * dx + dy * dy;
+}
+
+function computeHeadingFromLine(coords: [number, number][], anchor: L.LatLng): number {
+  if (coords.length < 2) return 0;
+  const anchorScale = Math.cos((anchor.lat * Math.PI) / 180);
+  const anchorXY = {
+    x: anchor.lng * anchorScale,
+    y: anchor.lat,
+  };
+
+  let best: { a: [number, number]; b: [number, number]; dist: number } | null = null;
+  for (let i = 0; i < coords.length - 1; i += 1) {
+    const a = coords[i];
+    const b = coords[i + 1];
+    const aXY = { x: a[0] * anchorScale, y: a[1] };
+    const bXY = { x: b[0] * anchorScale, y: b[1] };
+    const dist = pointToSegmentDistance(anchorXY, aXY, bXY);
+    if (!best || dist < best.dist) {
+      best = { a, b, dist };
+    }
+  }
+  if (!best) return 0;
+  const dx = (best.b[0] - best.a[0]) * anchorScale;
+  const dy = best.b[1] - best.a[1];
+  const heading = (Math.atan2(dx, dy) * 180) / Math.PI; // 0 = north, 90 = east
+  return (heading + 360) % 360;
+}
+
+function pickClosestLineFeature(
+  lineFeatures: any[],
+  anchor: L.LatLng | null,
+  codeSet: Set<string>,
+): { coords: [number, number][], heading: number } | null {
+  const matches = lineFeatures.filter((feature) =>
+    matchesCode(getFeatureLabel(feature), codeSet)
+  );
+  if (matches.length === 0) return null;
+
+  const anchorPoint = anchor || toLatLng((matches[0].geometry?.coordinates?.[0] || [0, 0]) as [number, number]);
+  let bestCoords: [number, number][] | null = null;
+  let bestHeading = 0;
+  let bestDist = Number.POSITIVE_INFINITY;
+
+  matches.forEach((feature) => {
+    const geometry = feature.geometry || {};
+    const type = geometry.type;
+    const lines: [number, number][][] = [];
+    if (type === 'LineString') {
+      lines.push(geometry.coordinates as [number, number][]);
+    } else if (type === 'MultiLineString') {
+      lines.push(...(geometry.coordinates as [number, number][][]));
+    }
+    lines.forEach((coords) => {
+      const heading = computeHeadingFromLine(coords, anchorPoint);
+      const anchorScale = Math.cos((anchorPoint.lat * Math.PI) / 180);
+      const anchorXY = { x: anchorPoint.lng * anchorScale, y: anchorPoint.lat };
+      let localBest = Number.POSITIVE_INFINITY;
+      for (let i = 0; i < coords.length - 1; i += 1) {
+        const a = coords[i];
+        const b = coords[i + 1];
+        const aXY = { x: a[0] * anchorScale, y: a[1] };
+        const bXY = { x: b[0] * anchorScale, y: b[1] };
+        const dist = pointToSegmentDistance(anchorXY, aXY, bXY);
+        if (dist < localBest) localBest = dist;
+      }
+      if (localBest < bestDist) {
+        bestDist = localBest;
+        bestCoords = coords;
+        bestHeading = heading;
+      }
+    });
+  });
+
+  if (!bestCoords) return null;
+  return { coords: bestCoords, heading: bestHeading };
+}
+
+function getPlaneIcon(heading: number, size: number) {
+  const svg = `
+    <svg width="${size}" height="${size}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M50 4
+           C53 4 56 7 56 10
+           L56 37
+           L85 52
+           L85 58
+           L56 49
+           L56 80
+           L64 90
+           L64 94
+           L50 88
+           L36 94
+           L36 90
+           L44 80
+           L44 49
+           L15 58
+           L15 52
+           L44 37
+           L44 10
+           C44 7 47 4 50 4 Z"
+        fill="rgba(230,237,243,0.92)"
+        stroke="rgba(9,14,20,0.55)"
+        stroke-width="1.6"
+        stroke-linejoin="round"
+      />
+    </svg>
+  `;
+  const html = `
+    <div style="width:${size}px;height:${size}px;transform:rotate(${heading}deg);transform-origin:center;pointer-events:none;">
+      ${svg}
+    </div>
+  `;
+  return L.divIcon({
+    className: '',
+    html,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
+export type TopologyMapHandle = {
+  toggleFullscreen: () => Promise<void>;
+};
+
+export const TopologyMap = forwardRef<TopologyMapHandle>(function TopologyMap(_, ref) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const fullscreenTargetRef = useRef<HTMLDivElement | null>(null);
+  const planeLayerRef = useRef<L.Marker | null>(null);
   const layerDataRef = useRef<Record<LayerKey, Record<string, unknown> | null>>({
     runway_surface: null,
     runway_centerline: null,
@@ -124,12 +285,21 @@ export function TopologyMap() {
   const spreadLayerRef = useRef<L.LayerGroup | null>(null);
   const focusKeyRef = useRef<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [layersReady, setLayersReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenError, setFullscreenError] = useState<string | null>(null);
 
   const { incident, spatialAnalysis } = useSessionStore();
   const { bigScreenMode } = useUIStore();
+
+  const getFullscreenElement = () =>
+    document.fullscreenElement ||
+    // Safari/WebKit
+    (document as any).webkitFullscreenElement ||
+    (document as any).mozFullScreenElement ||
+    (document as any).msFullscreenElement ||
+    null;
 
   const labelFontSize = bigScreenMode ? 12 : 10;
   const labelOpacity = bigScreenMode ? 0.95 : 0.85;
@@ -166,6 +336,18 @@ export function TopologyMap() {
     });
     mapRef.current = map;
     map.setView([30.308, 104.441], 13);
+
+    // Leaflet will render blank/partial layers if its container size changes (layout, split panes,
+    // browser zoom, etc.) without an explicit invalidateSize(). Use ResizeObserver for robustness.
+    const resizeTarget = containerRef.current;
+    let resizeTimer: number | null = null;
+    const scheduleInvalidate = () => {
+      if (resizeTimer) window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => mapRef.current?.invalidateSize({ pan: false }), 80);
+    };
+    const resizeObserver = new ResizeObserver(scheduleInvalidate);
+    resizeObserver.observe(resizeTarget);
+    window.addEventListener('resize', scheduleInvalidate);
 
     const abortController = new AbortController();
 
@@ -269,9 +451,14 @@ export function TopologyMap() {
         });
         addBaseLayers();
         setIsLoading(false);
+        setLayersReady(true);
       } catch (error) {
+        if ((error as DOMException)?.name === 'AbortError') {
+          return;
+        }
         setLoadError(error instanceof Error ? error.message : '地图加载失败');
         setIsLoading(false);
+        setLayersReady(false);
       }
     };
 
@@ -279,6 +466,9 @@ export function TopologyMap() {
 
     return () => {
       abortController.abort();
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', scheduleInvalidate);
+      if (resizeTimer) window.clearTimeout(resizeTimer);
       map.remove();
       mapRef.current = null;
     };
@@ -372,8 +562,104 @@ export function TopologyMap() {
 
     if (bounds && bounds.isValid()) {
       map.fitBounds(bounds.pad(0.4));
+      // Ensure all vector layers repaint after programmatic zoom/pan.
+      map.invalidateSize({ pan: false });
     }
   }, [highlightSets]);
+
+  useEffect(() => {
+    if (!mapRef.current || !layersReady) return;
+    const map = mapRef.current;
+    const data = layerDataRef.current;
+    const positionText = String(incident?.position || '').trim();
+
+    if (!positionText) {
+      if (planeLayerRef.current) {
+        map.removeLayer(planeLayerRef.current);
+        planeLayerRef.current = null;
+      }
+      return;
+    }
+
+    const codeSet = buildCodeSet([positionText]);
+    const standFeatures = getFeatures(data.stand_surface);
+    const taxiwayLabelFeatures = getFeatures(data.taxiway_label);
+    const taxiwayLineFeatures = getFeatures(data.taxiway_centerline);
+    const runwayLabelFeatures = getFeatures(data.runway_label);
+    const runwayLineFeatures = getFeatures(data.runway_centerline);
+
+    let placement: PlanePlacement | null = null;
+
+    const standMatch = standFeatures.find((feature) => matchesCode(getFeatureLabel(feature), codeSet));
+    if (standMatch) {
+      const bounds = L.geoJSON(standMatch as any).getBounds();
+      if (bounds.isValid()) {
+        placement = { latlng: bounds.getCenter(), heading: 0 };
+      }
+    }
+
+    const preferRunway = /跑道|RWY|RUNWAY/i.test(positionText);
+    const preferTaxiway = /滑行道|TWY|TAXI/i.test(positionText);
+
+    const resolveLinePlacement = (
+      labelFeatures: any[],
+      lineFeatures: any[],
+    ): PlanePlacement | null => {
+      const labelFeature = labelFeatures.find((feature) => matchesCode(getFeatureLabel(feature), codeSet));
+      const labelPoint =
+        labelFeature?.geometry?.type === 'Point'
+          ? toLatLng(labelFeature.geometry.coordinates as [number, number])
+          : null;
+      const linePick = pickClosestLineFeature(lineFeatures, labelPoint, codeSet);
+      if (!linePick) return null;
+      let anchor = labelPoint;
+      if (!anchor) {
+        const bounds = L.latLngBounds(linePick.coords.map((coord) => toLatLng(coord)));
+        anchor = bounds.isValid() ? bounds.getCenter() : toLatLng(linePick.coords[0]);
+      }
+      return {
+        latlng: anchor,
+        heading: linePick.heading,
+      };
+    };
+
+    if (!placement) {
+      if (preferRunway) {
+        placement = resolveLinePlacement(runwayLabelFeatures, runwayLineFeatures)
+          || resolveLinePlacement(taxiwayLabelFeatures, taxiwayLineFeatures);
+      } else if (preferTaxiway) {
+        placement = resolveLinePlacement(taxiwayLabelFeatures, taxiwayLineFeatures)
+          || resolveLinePlacement(runwayLabelFeatures, runwayLineFeatures);
+      } else {
+        placement = resolveLinePlacement(taxiwayLabelFeatures, taxiwayLineFeatures)
+          || resolveLinePlacement(runwayLabelFeatures, runwayLineFeatures);
+      }
+    }
+
+    if (!placement) {
+      if (planeLayerRef.current) {
+        map.removeLayer(planeLayerRef.current);
+        planeLayerRef.current = null;
+      }
+      return;
+    }
+
+    if (planeLayerRef.current) {
+      map.removeLayer(planeLayerRef.current);
+      planeLayerRef.current = null;
+    }
+
+    const planeSize = bigScreenMode ? 76 : 60;
+    const icon = getPlaneIcon(placement.heading, planeSize);
+    const marker = L.marker(placement.latlng, {
+      icon,
+      interactive: false,
+      keyboard: false,
+      zIndexOffset: 1200,
+    });
+    marker.addTo(map);
+    planeLayerRef.current = marker;
+  }, [incident?.position, layersReady, bigScreenMode]);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -487,36 +773,58 @@ export function TopologyMap() {
 
   useEffect(() => {
     const handleFullscreenChange = () => {
-      const active = document.fullscreenElement === containerRef.current;
+      const active = getFullscreenElement() === fullscreenTargetRef.current;
       setIsFullscreen(active);
       if (mapRef.current) {
         setTimeout(() => mapRef.current?.invalidateSize(), 50);
       }
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange as any);
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange as any);
     };
   }, []);
 
-  const toggleFullscreen = async () => {
+  const toggleFullscreen = useCallback(async () => {
     setFullscreenError(null);
-    if (!containerRef.current) return;
+    if (!fullscreenTargetRef.current) return;
     try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-      } else if (containerRef.current.requestFullscreen) {
-        await containerRef.current.requestFullscreen();
+      const current = getFullscreenElement();
+      if (current) {
+        const exit = document.exitFullscreen || (document as any).webkitExitFullscreen;
+        if (exit) {
+          await exit.call(document);
+        } else {
+          setFullscreenError('当前浏览器不支持退出全屏');
+        }
       } else {
-        setFullscreenError('当前浏览器不支持全屏');
+        const el: any = fullscreenTargetRef.current;
+        const request = el.requestFullscreen || el.webkitRequestFullscreen;
+        if (request) {
+          await request.call(el);
+        } else {
+          setFullscreenError('当前浏览器不支持全屏');
+        }
       }
     } catch (error) {
       setFullscreenError(error instanceof Error ? error.message : '进入全屏失败');
     }
-  };
+  }, []);
+
+  useImperativeHandle(ref, () => ({ toggleFullscreen }), [toggleFullscreen]);
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div
+      ref={fullscreenTargetRef}
+      style={{
+        width: '100%',
+        height: '100%',
+        position: 'relative',
+        background: 'transparent',
+      }}
+    >
       <div
         ref={containerRef}
         style={{
@@ -532,16 +840,22 @@ export function TopologyMap() {
       <div
         style={{
           position: 'absolute',
-          top: 12,
+          // Keep Leaflet layer control at top-right; place fullscreen toggle bottom-right instead.
           right: 12,
+          bottom: 'calc(12px + env(safe-area-inset-bottom))',
           display: 'flex',
           gap: 8,
-          zIndex: 5,
+          zIndex: 1200,
+          pointerEvents: 'auto',
         }}
       >
         <button
           type="button"
-          onClick={toggleFullscreen}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            void toggleFullscreen();
+          }}
           style={{
             background: 'rgba(15, 20, 28, 0.85)',
             color: 'var(--text-primary)',
@@ -611,4 +925,4 @@ export function TopologyMap() {
       )}
     </div>
   );
-}
+});

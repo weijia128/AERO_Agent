@@ -104,6 +104,27 @@ normalized_message = normalize_radiotelephony_text(user_message)
 
 只是优化了第二步的**LLM深度规范化**触发条件。
 
+## input_parser_node 全流程（规则 + LLM + 归一化）
+
+> 目标：把“自然语言通话文本”转成结构化 incident/checklist，并触发必要的自动补充信息。
+
+1. **获取用户输入**：取最新 user 消息；若处于补充信息阶段则记录补充并结束。
+2. **基础读法规范化**：规则级转换（洞→0、幺→1 等）。
+3. **航空读法深度规范化（LLM+RAG）**：
+   - 满足条件时调用 `RadiotelephonyNormalizerTool`。
+   - 产出 `enhanced_message` + `pre_extracted_entities`（优先级最高）。
+4. **场景识别/锁定**：首次识别场景；若已锁定则不再改动。
+5. **构建场景字段模板**：只保留当前场景允许字段，过滤跨场景污染。
+6. **实体抽取（规则+LLM）**：
+   - 语义理解模式：`understand_conversation` + 规则抽取合并。
+   - 默认模式：`extract_entities_hybrid`（正则+LLM）。
+7. **规范化结果覆盖**：`pre_extracted_entities` 覆盖常规抽取（最高优先级）。
+8. **位置显示规范化**：生成 `position_display`（如“跑道11/29”）。
+9. **自动补充信息**：`apply_auto_enrichment()` 补齐航班、天气、位置影响等。
+10. **更新 checklist 与报告人**：基于场景字段自动更新完整度与 `reported_by`。
+11. **记录推理步骤**：写入 `reasoning_steps` 以便可追溯。
+12. **输出状态**：返回 `incident / checklist / spatial_analysis / weather ...` 等结构化结果。
+
 ## 测试覆盖
 
 ### 单元测试

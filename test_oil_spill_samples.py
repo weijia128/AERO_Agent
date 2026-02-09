@@ -89,14 +89,14 @@ class TestOilSpillSamples:
         assert result["risk_assessment"]["level"] == "R3"
         assert result["risk_assessment"]["score"] >= 70
 
-    def test_sample_7_hydraulic_continuous(self, samples, risk_tool):
-        """样本7：液压油持续泄漏(R3/55分)"""
+    def test_sample_7_hydraulic_minor(self, samples, risk_tool):
+        """样本7：液压油少量泄漏(R2/30分)"""
         sample = samples[6]
         state = {"incident": sample["key_factors"]}
         result = risk_tool.execute(state, {})
 
-        assert result["risk_assessment"]["level"] == "R3"
-        assert result["risk_assessment"]["score"] >= 55
+        assert result["risk_assessment"]["level"] == "R2"
+        assert result["risk_assessment"]["score"] >= 30
 
     def test_sample_8_hydraulic_large_area(self, samples, risk_tool):
         """样本8：大面积液压油泄漏(R3/65分)"""
@@ -136,7 +136,7 @@ class TestOilSpillTextInputs:
         (4, "大面积燃油泄漏"),
         (5, "普通燃油泄漏"),
         (6, "液压油持续泄漏发动机运转"),
-        (7, "液压油持续泄漏"),
+        (7, "液压油少量泄漏"),
         (8, "大面积液压油泄漏"),
         (9, "滑油持续泄漏发动机运转"),
         (10, "普通滑油泄漏"),

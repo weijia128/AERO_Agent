@@ -23,6 +23,7 @@ from agent.graph import agent, get_agent_config
 from agent.state import create_initial_state
 from agent.storage import get_session_store
 from apps.api.auth import get_current_user
+from apps.api.analyze import router as analyze_router
 from apps.api.rate_limit import rate_limit_check
 from config.logging_config import setup_logging
 from config.settings import settings
@@ -72,6 +73,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.state.session_store = session_store
+app.include_router(analyze_router)
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
@@ -112,6 +116,19 @@ class EventRequest(BaseModel):
     message: str = Field(..., description="用户输入消息")
     session_id: Optional[str] = Field(None, description="会话ID，不传则新建")
     scenario_type: Optional[str] = Field(None, description="场景类型")
+
+
+class ParseRequest(BaseModel):
+    """解析请求（仅提取信息，不启动流程）"""
+    message: str = Field(..., description="用户输入消息")
+    scenario_type: Optional[str] = Field(None, description="场景类型")
+
+
+class ParseResponse(BaseModel):
+    scenario_type: str
+    incident: Dict[str, Any]
+    checklist: Dict[str, bool]
+    enrichment_observation: Optional[str] = None
 
 
 class ToolCallInfo(BaseModel):
@@ -289,6 +306,31 @@ async def start_event(
 
     return response
 
+
+@app.post("/event/parse", response_model=ParseResponse)
+async def parse_event(
+    request: ParseRequest,
+    _: dict = Depends(get_current_user),
+):
+    """解析输入并返回提取字段，不启动完整流程"""
+    from agent.nodes.input_parser import input_parser_node, identify_scenario
+
+    scenario_type = request.scenario_type or identify_scenario(request.message)
+    state = create_initial_state(
+        session_id=f"parse-{uuid.uuid4().hex[:8]}",
+        scenario_type=scenario_type,
+        initial_message=request.message,
+    )
+
+    updates = input_parser_node(state)
+    state.update(updates)
+
+    return ParseResponse(
+        scenario_type=state.get("scenario_type", scenario_type),
+        incident=state.get("incident", {}),
+        checklist=state.get("checklist", {}),
+        enrichment_observation=state.get("enrichment_observation"),
+    )
 
 @app.post("/event/chat", response_model=EventResponse)
 async def chat_event(

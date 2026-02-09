@@ -8,6 +8,7 @@ import type { Message, FSMState, RiskLevel, ChecklistItem, ReasoningStep, Incide
 const scenarioLabels: Record<string, string> = {
   oil_spill: '油污泄漏',
   bird_strike: '鸟击事件',
+  fod: 'FOD 外来物',
   tire_burst: '轮胎爆破',
   runway_incursion: '跑道入侵',
 };
@@ -156,30 +157,19 @@ export function useSession() {
 
       if (event.incident) {
         setIncident(event.incident as Incident);
-        if ((event.incident as Incident).scenario_type) {
-          const scenarioType = (event.incident as Incident).scenario_type as string;
-          const scenarioLabel = scenarioLabels[scenarioType] || scenarioType || '待识别';
-          const existingMessages = useSessionStore.getState().messages;
-          const existingScenario = existingMessages.find(
-            (msg) => msg.role === 'system' && msg.content.startsWith('[信息] 识别场景')
-          );
-          if (existingScenario) {
-            updateMessage(existingScenario.id, {
-              content: `[信息] 识别场景: ${scenarioLabel}`,
-              timestamp: new Date().toISOString(),
-            });
-          } else {
-            addMessage({
-              id: `msg-sys-scenario-${Date.now()}`,
-              role: 'system',
-              content: `[信息] 识别场景: ${scenarioLabel}`,
-              timestamp: new Date().toISOString(),
-            });
-          }
+      }
+
+      const scenarioType =
+        (event.scenario_type as string | undefined) ||
+        ((event.incident as Incident | undefined)?.scenario_type as string | undefined);
+      if (scenarioType) {
+        const existingIncident = useSessionStore.getState().incident;
+        if (existingIncident || event.incident) {
+          updateIncident({ scenario_type: scenarioType as Incident['scenario_type'] });
+        } else {
+          setIncident({ scenario_type: scenarioType } as Incident);
         }
-      } else if (event.scenario_type) {
-        updateIncident({ scenario_type: event.scenario_type as Incident['scenario_type'] });
-        const scenarioLabel = scenarioLabels[event.scenario_type] || event.scenario_type || '待识别';
+        const scenarioLabel = scenarioLabels[scenarioType] || scenarioType || '待识别';
         const existingMessages = useSessionStore.getState().messages;
         const existingScenario = existingMessages.find(
           (msg) => msg.role === 'system' && msg.content.startsWith('[信息] 识别场景')
@@ -505,6 +495,14 @@ export function useSession() {
           if (result.incident) {
             setIncident(result.incident as Incident);
           }
+          if (result.scenario_type) {
+            const existingIncident = useSessionStore.getState().incident;
+            if (existingIncident || result.incident) {
+              updateIncident({ scenario_type: result.scenario_type as Incident['scenario_type'] });
+            } else {
+              setIncident({ scenario_type: result.scenario_type as Incident['scenario_type'] } as Incident);
+            }
+          }
 
           // 添加会话和场景系统消息
           const scenarioType = scenario?.scenario_type || result.scenario_type || '';
@@ -738,6 +736,56 @@ export function useSession() {
     [demoMode, startSession, sendMessage, resetSession]
   );
 
+  const startSessionWithMessage = useCallback(
+    async (scenarioType: string, content: string) => {
+      if (!content.trim()) return;
+      resetSession();
+      setLoading(true);
+      setThinking(true, '正在分析...');
+
+      const userMessage: Message = {
+        id: `msg-${Date.now()}`,
+        role: 'user',
+        content,
+        timestamp: new Date().toISOString(),
+      };
+      addMessage(userMessage);
+
+      try {
+        activeAbortController = api.startSessionStream(
+          {
+            message: content,
+            scenario_type: scenarioType,
+          },
+          {
+            onNodeUpdate: handleStreamEvent,
+            onComplete: handleStreamComplete,
+            onError: (error) => {
+              setError(error instanceof Error ? error.message : '请求失败');
+              setLoading(false);
+              setThinking(false);
+              activeAbortController = null;
+            },
+          }
+        );
+      } catch (error) {
+        setError(error instanceof Error ? error.message : '请求失败');
+        setLoading(false);
+        setThinking(false);
+        activeAbortController = null;
+      }
+    },
+    [
+      resetSession,
+      setLoading,
+      setThinking,
+      addMessage,
+      handleStreamEvent,
+      handleStreamComplete,
+      setError,
+    ]
+  );
+
   // 取消当前请求
   const cancelRequest = useCallback(() => {
     if (activeAbortController) {
@@ -759,6 +807,7 @@ export function useSession() {
     startSession,
     sendMessage,
     loadPresetScenario,
+    startSessionWithMessage,
     resetSession,
     cancelRequest,
   };

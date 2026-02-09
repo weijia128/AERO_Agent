@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Switch, Button, Space, Typography, Tag, Dropdown, message } from 'antd';
 import type { MenuProps } from 'antd';
 import {
@@ -8,10 +9,12 @@ import {
   DatabaseOutlined,
   FilePdfOutlined,
   FileMarkdownOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import { useUIStore } from '../../stores/uiStore';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useExport } from '../../hooks/useExport';
+import { QuickReportDrawer } from '../quick/QuickReportDrawer';
 
 const { Title, Text } = Typography;
 
@@ -20,6 +23,7 @@ export function Header() {
     useUIStore();
   const { fsmState } = useSessionStore();
   const { exportMarkdown, exportPDF } = useExport();
+  const [quickOpen, setQuickOpen] = useState(false);
 
   const handleExport = async (type: 'pdf' | 'markdown') => {
     try {
@@ -82,6 +86,17 @@ export function Header() {
 
       {/* 右侧控制区 */}
       <Space size={bigScreenMode ? 24 : 16}>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => setQuickOpen(true)}
+          style={{
+            background: 'var(--accent-blue)',
+            borderColor: 'var(--accent-blue)',
+          }}
+        >
+          快速工单
+        </Button>
         {/* 演示/在线模式切换 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <DatabaseOutlined
@@ -138,6 +153,7 @@ export function Header() {
           </Button>
         </Dropdown>
       </Space>
+      <QuickReportDrawer open={quickOpen} onClose={() => setQuickOpen(false)} />
     </header>
   );
 }
